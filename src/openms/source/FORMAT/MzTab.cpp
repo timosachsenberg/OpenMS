@@ -39,5 +39,5 @@ using namespace std;
 
 namespace OpenMS
 {
-
 }
+
