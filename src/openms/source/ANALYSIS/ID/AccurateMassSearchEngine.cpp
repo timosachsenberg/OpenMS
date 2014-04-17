@@ -586,9 +586,6 @@ namespace OpenMS
   void AccurateMassSearchEngine::exportMzTab_(const QueryResultsTable& overall_results, MzTab& mztab_out)
   {
     // iterate the overall results table
-
-    String unit_id("AccMassSearch");
-    MzTabSmallMoleculeSectionData sm_data_section;
     MzTabSmallMoleculeSectionRows all_sm_rows;
 
     Size id_group(1);
@@ -657,7 +654,7 @@ namespace OpenMS
           MzTabDouble mass_to_charge;
           mass_to_charge.set(mz_temp);
 
-          mztab_row_record.mass_to_charge = mass_to_charge;
+          mztab_row_record.calc_mass_to_charge = mass_to_charge;
 
 
           // set charge field
@@ -720,8 +717,10 @@ namespace OpenMS
             }
           }
 
-          mztab_row_record.smallmolecule_abundance_sub = int_temp3;
-
+          for (Size i = 0; i != int_temp3.size(); ++i)
+          {
+            mztab_row_record.smallmolecule_abundance_study_variable[i + 1] = int_temp3[i];
+          }
 
           // set smallmolecule_abundance_stdev_sub; not applicable for a single feature intensity, however must be filled. Otherwise, the mzTab export fails.
           double stdev_temp(0.0);
@@ -741,8 +740,10 @@ namespace OpenMS
             }
           }
 
-          mztab_row_record.smallmolecule_abundance_stdev_sub = stdev_temp3;
-
+          for (Size i = 0; i != stdev_temp3.size(); ++i)
+          {
+            mztab_row_record.smallmolecule_abundance_stdev_study_variable[i + 1] = stdev_temp3[i];
+          }
 
           // set smallmolecule_abundance_std_error_sub; not applicable for a single feature intensity, however must be filled. Otherwise, the mzTab export fails.
           double stderr_temp(0.0);
@@ -762,9 +763,10 @@ namespace OpenMS
             }
           }
 
-
-          mztab_row_record.smallmolecule_abundance_std_error_sub = stderr_temp3;
-
+          for (Size i = 0; i != stderr_temp3.size(); ++i)
+          {
+            mztab_row_record.smallmolecule_abundance_std_error_study_variable[i + 1] = stderr_temp3[i];
+          }
 
           // optional columns:
           std::vector<MzTabOptionalColumnEntry> optionals;
@@ -817,9 +819,7 @@ namespace OpenMS
       ++id_group;
     }
 
-    sm_data_section[unit_id] = all_sm_rows;
-    mztab_out.setSmallMoleculeSectionData(sm_data_section);
-
+    mztab_out.setSmallMoleculeSectionRows(all_sm_rows);
 
     // print some adduct stats:
     LOG_INFO << "Adduct stats as 'adduct: #peaks explained (#total db entries)'\n";
