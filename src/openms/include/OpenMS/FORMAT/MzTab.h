@@ -255,7 +255,7 @@ public:
         {
           if (it != entries_.begin())
           {
-            ret += ",";
+            ret += "|";
           }
           ret += it->toCellString();
         }
@@ -275,7 +275,7 @@ public:
       {
         String ss = s;
         std::vector<String> fields;
-        ss.split(",", fields);
+        ss.split("|", fields);
         for (Size i = 0; i != fields.size(); ++i)
         {
           MzTabDouble ds;
@@ -659,7 +659,7 @@ public:
         }
 
         ret += String(", ");
-      
+
         if (value_.hasSubstring(", "))
         {
           ret += String("\"") + value_ + String("\""); // quote value if it contains a ","
@@ -708,9 +708,9 @@ public:
             if (*sit == ' ' && field.empty())
             {
               continue;
-            }   
+            }
             field += *sit;
-          }           
+          }
         }
 
         fields.push_back(field.trim());
@@ -1195,7 +1195,7 @@ protected:
   {
 public:
     MzTabSpectraRef() :
-      ms_file_(0)
+      ms_run_(0)
     {
     }
 
@@ -1203,14 +1203,14 @@ public:
 
     bool isNull() const
     {
-      return (ms_file_ < 1) || (spec_ref_.empty());
+      return (ms_run_ < 1) || (spec_ref_.empty());
     }
 
     void setNull(bool b)
     {
       if (b)
       {
-        ms_file_ = 0;
+        ms_run_ = 0;
         spec_ref_.clear();
       }
     }
@@ -1220,7 +1220,7 @@ public:
       assert(index >= 1);
       if (index >= 1)
       {
-        ms_file_ = index;
+        ms_run_ = index;
       }
     }
 
@@ -1242,7 +1242,7 @@ public:
     Size getMSFile() const
     {
       assert(!isNull());
-      return ms_file_;
+      return ms_run_;
     }
 
     void setSpecRefFile(const String& spec_ref)
@@ -1262,7 +1262,7 @@ public:
       }
       else
       {
-        return String("ms_file[") + String(ms_file_) + "]:" + spec_ref_;
+        return String("ms_run[") + String(ms_run_) + "]:" + spec_ref_;
       }
     }
 
@@ -1285,12 +1285,12 @@ public:
         }
 
         spec_ref_ = fields[1];
-        ms_file_ = (Size)(fields[0].substitute("ms_run[", "").remove(']').toInt());
+        ms_run_ = (Size)(fields[0].substitute("ms_run[", "").remove(']').toInt());
       }
     }
 
 protected:
-    Size ms_file_; // number is specified in the meta data section.
+    Size ms_run_; // number is specified in the meta data section.
     String spec_ref_;
   };
 
@@ -1318,7 +1318,7 @@ protected:
     MzTabString site;
     MzTabString position;
   };
- 
+
   struct MzTabAssayMetaData
   {
     MzTabParameter quantification_reagent;
@@ -1391,9 +1391,9 @@ protected:
     MzTabParameterList false_discovery_rate;
 
     std::map<Size, MzTabString> publication;
-   
+
     std::map<Size, MzTabContactMetaData> contact;
-   
+
     std::map<Size, MzTabString> uri;
 
     std::map<Size, MzTabModificationMetaData> fixed_mod;
@@ -1415,7 +1415,7 @@ protected:
     std::map<Size, MzTabAssayMetaData> assay;
 
     std::map<Size, MzTabStudyVariableMetaData> study_variable;
-  
+
     std::map<Size, MzTabCVMetaData> cv;
 
     std::vector<String> colunit_protein;
@@ -1605,12 +1605,12 @@ protected:
 
       void setCommentRows(const std::map<Size, String> & com)
       {
-        comment_rows_ = com; 
+        comment_rows_ = com;
       }
 
       void setEmptyRows(const std::vector<Size> & empty)
       {
-        empty_rows_ = empty; 
+        empty_rows_ = empty;
       }
 
       const std::vector<Size>& getEmptyRows() const
