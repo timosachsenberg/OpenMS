@@ -91,10 +91,19 @@ public:
     void resizeEvent(QResizeEvent * e);
     void contextMenuEvent(QContextMenuEvent * e);
     //@}
+
     /// Returns if the legend is shown
     bool isLegendShown() const;
+
     ///Shows/hides the legend
     void showLegend(bool);
+
+    /// show/hide axes
+    void showAxes(bool show);
+
+    /// Returns if the axes are shown
+    bool isAxesShown() const;
+
     ///pointer to the SpectrumOpenGLCanvas implementation
     Spectrum3DOpenGLCanvas * openglcanvas_;
 
@@ -131,6 +140,9 @@ protected:
 
     ///whether the legend is shown or not
     bool legend_shown_;
+
+    ///whether the axes are shown or not
+    bool axes_shown_;
 
     //docu in base class
     virtual void translateLeft_();

@@ -78,6 +78,7 @@ namespace OpenMS
     setFocusProxy(openglcanvas_);
     connect(this, SIGNAL(actionModeChange()), openglcanvas_, SLOT(actionModeChange()));
     legend_shown_ = true;
+    axes_shown_ = true;
 
     //connect preferences change to the right slot
     connect(this, SIGNAL(preferencesChange()), this, SLOT(currentLayerParamtersChanged_()));
@@ -101,6 +102,17 @@ namespace OpenMS
   bool Spectrum3DCanvas::isLegendShown() const
   {
     return legend_shown_;
+  }
+
+  void Spectrum3DCanvas::showAxes(bool show)
+  {
+    axes_shown_ = show;
+    update_(__PRETTY_FUNCTION__);
+  }
+
+  bool Spectrum3DCanvas::isAxesShown() const
+  {
+    return axes_shown_;
   }
 
   bool Spectrum3DCanvas::finishAdding_()
@@ -269,6 +281,7 @@ namespace OpenMS
     context_menu->addMenu(settings_menu);
     settings_menu->addAction("Show/hide grid lines");
     settings_menu->addAction("Show/hide axis legends");
+    settings_menu->addAction("Show/hide axes");
     settings_menu->addSeparator();
     settings_menu->addAction("Preferences");
 
@@ -295,6 +308,10 @@ namespace OpenMS
       else if (result->text() == "Show/hide axis legends")
       {
         emit changeLegendVisibility();
+      }
+      else if (result->text() == "Show/hide axes")
+      {
+        showAxes(!isAxesShown());
       }
       else if (result->text() == "Layer" || result->text() == "Visible layer data")
       {

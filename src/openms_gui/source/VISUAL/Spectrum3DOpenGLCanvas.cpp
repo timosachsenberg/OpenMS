@@ -227,8 +227,11 @@ namespace OpenMS
       {
         glCallList(gridlines_);
       }
-      glCallList(axes_);
-      glCallList(axes_ticks_);
+      if (canvas_3d_.axes_shown_)
+      {
+        glCallList(axes_);
+        glCallList(axes_ticks_);
+      }
       drawAxesLegend();
       if (canvas_3d_.action_mode_ == SpectrumCanvas::AM_ZOOM || canvas_3d_.action_mode_ == SpectrumCanvas::AM_TRANSLATE)
       {
@@ -259,55 +262,58 @@ namespace OpenMS
       font.setPixelSize(10);
     }
 
-    //RT numbers
-    if (grid_rt_.size() > 0)
+    if (canvas_3d_.axes_shown_)
     {
-      for (Size i = 0; i < grid_rt_[0].size(); i++)
+      //RT numbers
+      if (grid_rt_.size() > 0)
       {
-        text = QString::number(grid_rt_[0][i]);
-        renderText(-corner_ - 15.0, -corner_ - 5.0, -near_ - 2 * corner_ - scaledRT(grid_rt_[0][i]), text, font);
+        for (Size i = 0; i < grid_rt_[0].size(); i++)
+        {
+          text = QString::number(grid_rt_[0][i]);
+          renderText(-corner_ - 15.0, -corner_ - 5.0, -near_ - 2 * corner_ - scaledRT(grid_rt_[0][i]), text, font);
+        }
       }
-    }
-    if (zoom_ < 3.0 && grid_rt_.size() >= 2)
-    {
-      for (Size i = 0; i < grid_rt_[1].size(); i++)
+      if (zoom_ < 3.0 && grid_rt_.size() >= 2)
       {
-        text = QString::number(grid_rt_[1][i]);
-        renderText(-corner_ - 15.0, -corner_ - 5.0, -near_ - 2 * corner_ - scaledRT(grid_rt_[1][i]), text, font);
+        for (Size i = 0; i < grid_rt_[1].size(); i++)
+        {
+          text = QString::number(grid_rt_[1][i]);
+          renderText(-corner_ - 15.0, -corner_ - 5.0, -near_ - 2 * corner_ - scaledRT(grid_rt_[1][i]), text, font);
+        }
       }
-    }
-    if (zoom_ < 2.0 && grid_rt_.size() >= 3)
-    {
-      for (Size i = 0; i < grid_rt_[2].size(); i++)
+      if (zoom_ < 2.0 && grid_rt_.size() >= 3)
       {
-        text = QString::number(grid_rt_[2][i]);
-        renderText(-corner_ - 15.0, -corner_ - 5.0, -near_ - 2 * corner_ - scaledRT(grid_rt_[2][i]), text, font);
+        for (Size i = 0; i < grid_rt_[2].size(); i++)
+        {
+          text = QString::number(grid_rt_[2][i]);
+          renderText(-corner_ - 15.0, -corner_ - 5.0, -near_ - 2 * corner_ - scaledRT(grid_rt_[2][i]), text, font);
+        }
       }
-    }
 
-    //m/z numbers
-    if (grid_mz_.size() > 0)
-    {
-      for (Size i = 0; i < grid_mz_[0].size(); i++)
+      //m/z numbers
+      if (grid_mz_.size() > 0)
       {
-        text = QString::number(grid_mz_[0][i]);
-        renderText(-corner_ - text.length() + scaledMZ(grid_mz_[0][i]), -corner_ - 5.0, -near_ - 2 * corner_ + 15.0, text, font);
+        for (Size i = 0; i < grid_mz_[0].size(); i++)
+        {
+          text = QString::number(grid_mz_[0][i]);
+          renderText(-corner_ - text.length() + scaledMZ(grid_mz_[0][i]), -corner_ - 5.0, -near_ - 2 * corner_ + 15.0, text, font);
+        }
       }
-    }
-    if (zoom_ < 3.0 && grid_mz_.size() >= 2)
-    {
-      for (Size i = 0; i < grid_mz_[1].size(); i++)
+      if (zoom_ < 3.0 && grid_mz_.size() >= 2)
       {
-        text = QString::number(grid_mz_[1][i]);
-        renderText(-corner_ - text.length() + scaledMZ(grid_mz_[1][i]), -corner_ - 5.0, -near_ - 2 * corner_ + 15.0, text, font);
+        for (Size i = 0; i < grid_mz_[1].size(); i++)
+        {
+          text = QString::number(grid_mz_[1][i]);
+          renderText(-corner_ - text.length() + scaledMZ(grid_mz_[1][i]), -corner_ - 5.0, -near_ - 2 * corner_ + 15.0, text, font);
+        }
       }
-    }
-    if (zoom_ < 2.0 && grid_mz_.size() >= 3)
-    {
-      for (Size i = 0; i < grid_mz_[2].size(); i++)
+      if (zoom_ < 2.0 && grid_mz_.size() >= 3)
       {
-        text = QString::number(grid_mz_[2][i]);
-        renderText(-corner_ - text.length() + scaledMZ(grid_mz_[2][i]), -corner_ - 5.0, -near_ - 2 * corner_ + 15.0, text, font);
+        for (Size i = 0; i < grid_mz_[2].size(); i++)
+        {
+          text = QString::number(grid_mz_[2][i]);
+          renderText(-corner_ - text.length() + scaledMZ(grid_mz_[2][i]), -corner_ - 5.0, -near_ - 2 * corner_ + 15.0, text, font);
+        }
       }
     }
 
@@ -328,10 +334,14 @@ namespace OpenMS
           font.setPixelSize(10);
         }
 
-        for (Size i = 0; i < grid_intensity_[0].size(); i++)
+        // draw numbers on intensity axis
+        if (canvas_3d_.axes_shown_)
         {
-          text = QString::number(grid_intensity_[0][i]);
-          renderText(-corner_ - text.length() - width_ / 200.0 - 5.0, -corner_ + (2.0 * grid_intensity_[0][i]), -near_ - 2 * corner_, text, font);
+          for (Size i = 0; i < grid_intensity_[0].size(); i++)
+          {
+            text = QString::number(grid_intensity_[0][i]);
+            renderText(-corner_ - text.length() - width_ / 200.0 - 5.0, -corner_ + (2.0 * grid_intensity_[0][i]), -near_ - 2 * corner_, text, font);
+          }
         }
         break;
 
@@ -365,29 +375,31 @@ namespace OpenMS
           font.setPixelSize(10);
         }
 
-
-        if (zoom_ < 3.0 && grid_intensity_.size() >= 2)
+        if (canvas_3d_.axes_shown_)
         {
-          for (Size i = 0; i < grid_intensity_[0].size(); i++)
+          if (zoom_ < 3.0 && grid_intensity_.size() >= 2)
           {
-            double intensity = (double)grid_intensity_[0][i] / pow(10.0, expo);
-            text = QString("%1").arg(intensity, 0, 'f', 1);
-            renderText(-corner_ - text.length() - width_ / 200.0 - 5.0, -corner_ + scaledIntensity(grid_intensity_[0][i], canvas_3d_.current_layer_), -near_ - 2 * corner_, text, font);
+            for (Size i = 0; i < grid_intensity_[0].size(); i++)
+            {
+              double intensity = (double)grid_intensity_[0][i] / pow(10.0, expo);
+              text = QString("%1").arg(intensity, 0, 'f', 1);
+              renderText(-corner_ - text.length() - width_ / 200.0 - 5.0, -corner_ + scaledIntensity(grid_intensity_[0][i], canvas_3d_.current_layer_), -near_ - 2 * corner_, text, font);
+            }
+            for (Size i = 0; i < grid_intensity_[1].size(); i++)
+            {
+              double intensity = (double)grid_intensity_[1][i] / pow(10.0, expo);
+              text = QString("%1").arg(intensity, 0, 'f', 1);
+              renderText(-corner_ - text.length() - width_ / 200.0 - 5.0, -corner_ + scaledIntensity(grid_intensity_[1][i], canvas_3d_.current_layer_), -near_ - 2 * corner_, text, font);
+            }
           }
-          for (Size i = 0; i < grid_intensity_[1].size(); i++)
+          if (width_ > 800 && height_ > 600 && zoom_ < 2.0 && grid_intensity_.size() >= 3)
           {
-            double intensity = (double)grid_intensity_[1][i] / pow(10.0, expo);
-            text = QString("%1").arg(intensity, 0, 'f', 1);
-            renderText(-corner_ - text.length() - width_ / 200.0 - 5.0, -corner_ + scaledIntensity(grid_intensity_[1][i], canvas_3d_.current_layer_), -near_ - 2 * corner_, text, font);
-          }
-        }
-        if (width_ > 800 && height_ > 600 && zoom_ < 2.0 && grid_intensity_.size() >= 3)
-        {
-          for (Size i = 0; i < grid_intensity_[2].size(); i++)
-          {
-            double intensity = (double)grid_intensity_[2][i] / pow(10.0, expo);
-            text = QString("%1").arg(intensity, 0, 'f', 1);
-            renderText(-corner_ - text.length() - width_ / 200.0 - 5.0, -corner_ + scaledIntensity(grid_intensity_[2][i], canvas_3d_.current_layer_), -near_ - 2 * corner_, text, font);
+            for (Size i = 0; i < grid_intensity_[2].size(); i++)
+            {
+              double intensity = (double)grid_intensity_[2][i] / pow(10.0, expo);
+              text = QString("%1").arg(intensity, 0, 'f', 1);
+              renderText(-corner_ - text.length() - width_ / 200.0 - 5.0, -corner_ + scaledIntensity(grid_intensity_[2][i], canvas_3d_.current_layer_), -near_ - 2 * corner_, text, font);
+            }
           }
         }
         break;
