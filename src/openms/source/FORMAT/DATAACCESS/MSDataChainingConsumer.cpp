@@ -27,32 +27,60 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
+// --------------------------------------------------------------------------
+// $Maintainer: Hannes Roest $
+// $Authors: Hannes Roest $
+// --------------------------------------------------------------------------
 
-#include <OpenMS/CHEMISTRY/EmpiricalFormula.h>
-#include <OpenMS/CHEMISTRY/ElementDB.h>
-#include <iostream>
+#include <OpenMS/FORMAT/DATAACCESS/MSDataChainingConsumer.h>
 
-using namespace OpenMS;
-using namespace std;
-
-Int main()
+namespace OpenMS
 {
-  EmpiricalFormula methanol("CH3OH"), water("H2O");
 
-  EmpiricalFormula sum = methanol + water;
+  MSDataChainingConsumer::MSDataChainingConsumer() {}
 
-  const Element * carbon = ElementDB::getInstance()->getElement("Carbon");
+  MSDataChainingConsumer::MSDataChainingConsumer(std::vector<Interfaces::IMSDataConsumer<> *> consumers) :
+    consumers_(consumers)
+  {}
 
-  cout << sum << " "
-       << sum.getNumberOf(carbon) << " "
-       << sum.getAverageWeight() << endl;
+  MSDataChainingConsumer::~MSDataChainingConsumer() {}
 
-  IsotopeDistribution iso_dist = sum.getIsotopeDistribution(3);
-
-  for (IsotopeDistribution::ConstIterator it = iso_dist.begin(); it != iso_dist.end(); ++it)
+  void MSDataChainingConsumer::appendConsumer(Interfaces::IMSDataConsumer<> * consumer)
   {
-    cout << it->first << " " << it->second << endl;
+    consumers_.push_back(consumer);
   }
 
-  return 0;
-} //end of main
+  void MSDataChainingConsumer::setExperimentalSettings(const ExperimentalSettings & settings)
+  {
+    for (Size i = 0; i < consumers_.size(); i++)
+    {
+      consumers_[i]->setExperimentalSettings(settings);
+    }
+  }
+
+  void MSDataChainingConsumer::setExpectedSize(Size s_size, Size c_size) 
+  {
+    for (Size i = 0; i < consumers_.size(); i++)
+    {
+      consumers_[i]->setExpectedSize(s_size, c_size);
+    }
+  }
+
+  void MSDataChainingConsumer::consumeSpectrum(SpectrumType & s)
+  {
+    for (Size i = 0; i < consumers_.size(); i++)
+    {
+      consumers_[i]->consumeSpectrum(s);
+    }
+  }
+
+  void MSDataChainingConsumer::consumeChromatogram(ChromatogramType & c)
+  {
+    for (Size i = 0; i < consumers_.size(); i++)
+    {
+      consumers_[i]->consumeChromatogram(c);
+    }
+  }
+
+} //end namespace OpenMS
+
