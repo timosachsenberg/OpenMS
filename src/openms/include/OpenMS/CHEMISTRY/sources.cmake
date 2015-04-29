@@ -15,6 +15,7 @@ ModificationDefinition.h
 ModificationDefinitionsSet.h
 ModificationsDB.h
 ModifierRep.h
+NASequence.h
 PepIterator.h
 Residue.h
 ResidueDB.h

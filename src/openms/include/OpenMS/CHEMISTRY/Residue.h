@@ -374,6 +374,9 @@ public:
       ZIon,            // C-alpha/carbonyl carbon bond
       ZIonPlusOne,            // C-alpha/carbonyl carbon bond
       ZIonPlusTwo,            // C-alpha/carbonyl carbon bond
+      DIon,             //D ion, added for nucleic acid support
+      WIon,             //W ion, added for nucleic acid support
+      AminusB,        //A ion with base loss, added for nucleic acid support
       SizeOfResidueType
 
       /// @todo add c+1, z+1, z+2 ion types (Andreas)
