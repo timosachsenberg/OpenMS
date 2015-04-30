@@ -26,6 +26,7 @@ MetaboliteSpectralMatcher
 MRMPairFinder
 MSSimulator
 NucleotideID
+NucleotideIDAMSDBCreator
 OpenMSInfo
 PeakPickerIterative
 QCCalculator
