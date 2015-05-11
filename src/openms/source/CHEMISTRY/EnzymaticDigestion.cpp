@@ -43,8 +43,8 @@ using namespace std;
 
 namespace OpenMS
 {
-  const string EnzymaticDigestion::NamesOfEnzymes[] = {"Trypsin", "Trypsin/P"};
-  const string EnzymaticDigestion::NamesOfSpecificity[] = {"full", "semi", "none"};
+  const std::string EnzymaticDigestion::NamesOfEnzymes[] = {"Trypsin", "Trypsin/P"};
+  const std::string EnzymaticDigestion::NamesOfSpecificity[] = {"full", "semi", "none"};
 
 
   EnzymaticDigestion::EnzymaticDigestion() :
@@ -209,6 +209,7 @@ namespace OpenMS
                ((iterator + 1) == protein.end() || *(iterator + 1) != 'P');
       }
       break;
+
     case ENZYME_TRYPSIN_P:
       if (use_log_model_)
       {
@@ -217,9 +218,10 @@ namespace OpenMS
       else
       {
         // R or K at the end,  presence of P does not matter
-        return (*iterator == 'R' || *iterator == 'K');
+        return *iterator == 'R' || *iterator == 'K';
       }
       break;
+
     default:
       return false;
     }
@@ -232,7 +234,7 @@ namespace OpenMS
     case ENZYME_TRYPSIN:
       if (use_log_model_)
       {
-	//TODO: throw not implemented exception
+        //TODO: throw not implemented exception
       }
       else // naive digestion
       {
@@ -441,12 +443,12 @@ namespace OpenMS
         mc_iterators.push_back(end);
       }
       // store begin and (one after) end position of subsequence
-      if (end - begin >= min_length)
+      if (static_cast<Size>(end - begin) >= min_length)
         output.push_back(make_pair(begin, end));
       begin = end;
     }
     // add last sequence
-    if (end - begin >= min_length)
+    if (static_cast<Size>(end - begin) >= min_length)
       output.push_back(make_pair(begin, end));
 
     if (missed_cleavages != 0)
@@ -463,9 +465,9 @@ namespace OpenMS
       for (SignedSize i = 1; i < count; ++i)
       {
         if (i > missed_cleavages_)
-	{
+        {
           break;
-	}
+        }
         sum += count - i;
       }
 
@@ -476,7 +478,7 @@ namespace OpenMS
         vector<String::const_iterator>::const_iterator e = b + (i + 1);
         while (e != mc_iterators.end())
         {
-          if (*e - *b >= min_length)
+          if (static_cast<Size>(*e - *b) >= min_length)
             output.push_back(make_pair(*b, *e));
           ++b;
           ++e;

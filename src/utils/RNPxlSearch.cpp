@@ -45,6 +45,9 @@
 #include <OpenMS/CHEMISTRY/EnzymaticDigestion.h>
 #include <OpenMS/DATASTRUCTURES/ListUtilsIO.h>
 
+#include <OpenMS/ANALYSIS/RNPXL/RNPxlReport.h>
+#include <OpenMS/ANALYSIS/RNPXL/RNPxlMarkerIonExtractor.h>
+#include <OpenMS/ANALYSIS/RNPXL/HyperScore.h>
 #include <OpenMS/CHEMISTRY/ModificationsDB.h>
 #include <OpenMS/CHEMISTRY/ResidueDB.h>
 #include <OpenMS/CHEMISTRY/ResidueModification.h>
@@ -68,7 +71,7 @@
 
 #include <map>
 #include <algorithm>
- 
+
 #ifdef _OPENMP
 #include <omp.h>
 #define NUMBER_OF_THREADS (omp_get_num_threads())
@@ -78,7 +81,6 @@
 
 using namespace OpenMS;
 using namespace std;
-
 /*
   TODO:
     proper C-term N-term handling of terminal modifications that can be at every amino acid
@@ -97,275 +99,7 @@ using namespace std;
     move predicate member functions to class
 */
 
-struct MarkerIonExtractor
-{
-  typedef map<String, vector<pair<double, double> > > MarkerIonsType;
-  static MarkerIonsType extractMarkerIons(const PeakSpectrum& s, const double marker_tolerance)
-  {
-    MarkerIonsType marker_ions;
-    marker_ions["A"].push_back(make_pair(136.06231, 0.0));
-    marker_ions["A"].push_back(make_pair(330.06033, 0.0));
-    marker_ions["C"].push_back(make_pair(112.05108, 0.0));
-    marker_ions["C"].push_back(make_pair(306.04910, 0.0));
-    marker_ions["G"].push_back(make_pair(152.05723, 0.0));
-    marker_ions["G"].push_back(make_pair(346.05525, 0.0));
-    marker_ions["U"].push_back(make_pair(113.03509, 0.0));
-    marker_ions["U"].push_back(make_pair(307.03311, 0.0));
 
-    PeakSpectrum spec(s);
-    Normalizer normalizer;
-    normalizer.filterSpectrum(spec);
-    spec.sortByPosition();
-
-    // for each nucleotide with marker ions
-    for (Map<String, vector<pair<double, double> > >::iterator it = marker_ions.begin(); it != marker_ions.end(); ++it)
-    {
-      // for each marker ion of the current nucleotide
-      for (Size i = 0; i != it->second.size(); ++i)
-      {
-        double mz = it->second[i].first;
-        double max_intensity = 0;
-        for (PeakSpectrum::ConstIterator sit = spec.begin(); sit != spec.end(); ++sit)
-        {
-          if (sit->getMZ() + marker_tolerance < mz)
-          {
-            continue;
-          }
-          if (mz < sit->getMZ() - marker_tolerance)
-          {
-            break;
-          }
-          if (fabs(mz - sit->getMZ()) < marker_tolerance)
-          {
-            if (max_intensity < sit->getIntensity())
-            {
-              max_intensity = sit->getIntensity();
-            }
-          }
-        }
-        it->second[i].second = max_intensity;
-      }
-    }
-    return marker_ions;
-  }
-};
-
-struct RNPxlReportRow
-{
-  bool no_id;
-  double rt;
-  double original_mz;
-  String accessions;
-  String RNA;
-  String peptide;
-  Int charge;
-  double score;
-  double peptide_weight;
-  double RNA_weight;
-  double xl_weight;
-  double abs_prec_error;
-  double rel_prec_error;
-  MarkerIonExtractor::MarkerIonsType marker_ions;
-  double m_H;
-  double m_2H;
-  double m_3H;
-  double m_4H;
-
-  String getString(String separator)
-  {
-    StringList sl;
-
-    // rt mz
-    sl << String::number(rt, 2) << String::number(original_mz, 4);
-
-    // id if available
-    if (no_id)
-    {
-      sl << "" << "" << "" << "" << "" << "" << "" << "";
-    }
-    else
-    {
-      sl << accessions << RNA << peptide << String(charge) << String(score)
-         << String::number(peptide_weight, 4) << String::number(RNA_weight, 4) << String::number(peptide_weight + RNA_weight, 4);
-    }
-
-    // marker ions
-    for (Map<String, vector<pair<double, double> > >::const_iterator it = marker_ions.begin(); it != marker_ions.end(); ++it)
-    {
-      for (Size i = 0; i != it->second.size(); ++i)
-      {
-        sl << String::number(it->second[i].second * 100.0, 2);
-      }
-    }
-
-    // id error and multiple charged mass
-    if (no_id)
-    {
-      sl << "" << ""
-         << "" << "" << "" << "";
-    }
-    else
-    {
-      // error
-      sl << String::number(abs_prec_error, 4)
-         << String::number(rel_prec_error, 1);
-
-      // weight
-      sl << String::number(m_H, 4)
-         << String::number(m_2H, 4)
-         << String::number(m_3H, 4)
-         << String::number(m_4H, 4);
-    }
-    return ListUtils::concatenate(sl, separator);
-  }
-
-};
-
-
-
-struct RNPxlReportRowHeader
-{
-  String getString(String separator)
-  {
-    StringList sl;
-    sl << "#RT" << "original m/z" << "proteins" << "RNA" << "peptide" << "charge" << "score"
-       << "peptide weight" << "RNA weight" << "cross-link weight";
-
-    // marker ion fields
-    MarkerIonExtractor::MarkerIonsType marker_ions = MarkerIonExtractor::extractMarkerIons(PeakSpectrum(), 0.0); // call only to generate header entries
-    for (MarkerIonExtractor::MarkerIonsType::const_iterator it = marker_ions.begin(); it != marker_ions.end(); ++it)
-    {
-      for (Size i = 0; i != it->second.size(); ++i)
-      {
-        sl << String(it->first + "_" + it->second[i].first);
-      }
-    }
-    sl << "abs prec. error Da" << "rel. prec. error ppm" << "M+H" << "M+2H" << "M+3H" << "M+4H";
-    return ListUtils::concatenate(sl, separator);
-  }
-
-};
-
-// create report
-vector<RNPxlReportRow> annotateRNPxlInformation_(const PeakMap& spectra, vector<PeptideIdentification>& peptide_ids, double marker_ions_tolerance)
-{
-  map<Size, Size> map_spectra_to_id;
-  for (Size i = 0; i != peptide_ids.size(); ++i)
-  {
-    OPENMS_PRECONDITION(!peptide_ids[i].getHits().empty(), "Error: no empty peptide ids allowed.");
-    Size scan_index = (unsigned int)peptide_ids[i].getMetaValue("scan_index");
-    map_spectra_to_id[scan_index] = i;
-  }
-
-  vector<RNPxlReportRow> csv_rows;
-
-  for (PeakMap::ConstIterator s_it = spectra.begin(); s_it != spectra.end(); ++s_it)
-  {
-    int scan_index = s_it - spectra.begin();
-    vector<Precursor> precursor = s_it->getPrecursors();
-
-    // there should only one precursor and MS2 should contain at least a few peaks to be considered (e.g. at least for every AA in the peptide)
-    if (s_it->getMSLevel() == 2 && precursor.size() == 1)
-    {
-      Size charge = precursor[0].getCharge();
-      double mz = precursor[0].getMZ();
-      MarkerIonExtractor::MarkerIonsType marker_ions = MarkerIonExtractor::extractMarkerIons(*s_it, marker_ions_tolerance);
-
-      double rt = s_it->getRT();
-
-      RNPxlReportRow row;
-
-      // case 1: no peptide identification: store rt, mz, charge and marker ion intensities
-      if (map_spectra_to_id.find(scan_index) == map_spectra_to_id.end())
-      {	   
-        row.no_id = true;
-        row.rt = rt;
-        row.original_mz = mz;
-	row.charge = charge;
-        row.marker_ions = marker_ions;
-        csv_rows.push_back(row);
-        continue;
-      }
-
-      PeptideIdentification& pi = peptide_ids[map_spectra_to_id[scan_index]];
-      vector<PeptideHit>& phs = pi.getHits();
-
-      // case 2: identification data present for spectrum
-      PeptideHit& ph = phs[0];
-      const AASequence& sequence = ph.getSequence();
-      double peptide_weight = sequence.getMonoWeight();
-      String rna_name = ph.getMetaValue("RNPxl:RNA");
-      double rna_weight = ph.getMetaValue("RNPxl:RNA_MASS_z0");
-
-      // crosslink weight for different charge states
-      double weight_z1 = (peptide_weight + rna_weight + 1.0 * Constants::PROTON_MASS_U);
-      double weight_z2 = (peptide_weight + rna_weight + 2.0 * Constants::PROTON_MASS_U) / 2.0;
-      double weight_z3 = (peptide_weight + rna_weight + 3.0 * Constants::PROTON_MASS_U) / 3.0;
-      double weight_z4 = (peptide_weight + rna_weight + 4.0 * Constants::PROTON_MASS_U) / 4.0;
-
-      double xl_weight = peptide_weight + rna_weight;
-      double theo_mz = (xl_weight + static_cast<double>(charge) * Constants::PROTON_MASS_U) / (double)charge;
-      double absolute_difference = theo_mz - mz;
-      double ppm_difference =  absolute_difference / theo_mz * 1e6;
-
-      String protein_accessions;
-      set<String> accs = ph.extractProteinAccessions();
-
-      // concatenate set into String
-      for (set<String>::const_iterator a_it = accs.begin(); a_it != accs.end(); ++a_it)
-      {
-        if (a_it != accs.begin())
-        {
-          protein_accessions += ",";
-        }
-        protein_accessions += *a_it;
-      }
-
-      row.no_id = false;
-      row.rt = rt;
-      row.original_mz = mz;
-      row.accessions = protein_accessions;
-      row.RNA = rna_name;
-      row.peptide = sequence.toString();
-      row.charge = charge;
-      row.score = ph.getScore();
-      row.peptide_weight = peptide_weight;
-      row.RNA_weight = rna_weight;
-      row.xl_weight = peptide_weight + rna_weight;
-
-      ph.setMetaValue("RNPxl:peptide_mass_z0", DataValue(peptide_weight));
-      ph.setMetaValue("RNPxl:xl_mass_z0", xl_weight);
-
-      for (MarkerIonExtractor::MarkerIonsType::const_iterator it = marker_ions.begin(); it != marker_ions.end(); ++it)
-      {
-        for (Size i = 0; i != it->second.size(); ++i)
-        {
-          ph.setMetaValue(it->first + "_" + it->second[i].first, static_cast<double>(it->second[i].second * 100.0));
-        }
-      }
-
-      row.marker_ions = marker_ions;
-      row.abs_prec_error = absolute_difference;
-      row.rel_prec_error = ppm_difference;
-      row.m_H = weight_z1;
-      row.m_2H = weight_z2;
-      row.m_3H = weight_z3;
-      row.m_4H = weight_z4;
-
-      ph.setMetaValue("RNPxl:Da difference", (double)absolute_difference);
-      ph.setMetaValue("RNPxl:ppm difference", (double)ppm_difference);
-      ph.setMetaValue("RNPxl:z1 mass", (double)weight_z1);
-      ph.setMetaValue("RNPxl:z2 mass", (double)weight_z2);
-      ph.setMetaValue("RNPxl:z3 mass", (double)weight_z3);
-      ph.setMetaValue("RNPxl:z4 mass", (double)weight_z4);
-
-      csv_rows.push_back(row);
-
-    }
-  }
-
-  return csv_rows;
-}
 
 struct PeptideHitSequenceLessComparator
 {
@@ -375,6 +109,7 @@ struct PeptideHitSequenceLessComparator
 
     return false;
   }
+
 };
 
 class RNPxlSearch :
@@ -494,9 +229,9 @@ protected:
 
     bool operator<(const IndexedString& other) const
     {
-      if (end-begin < other.end-other.begin) return true;
+      if (end - begin < other.end - other.begin) return true;
 
-      if (end-begin > other.end-other.begin) return false;
+      if (end - begin > other.end - other.begin) return false;
 
       // same size
       String::const_iterator b = begin;
@@ -505,6 +240,7 @@ protected:
       for (; b != end; ++b, ++bo)
       {
         if (*b < *bo) return true;
+
         if (*b > *bo) return false;
       }
 
@@ -515,6 +251,7 @@ protected:
     {
       return String(begin, end);
     }
+
   };
 
   // Slimmer structure as storing all scored candidates in PeptideHit objects takes too much space
@@ -529,6 +266,7 @@ protected:
     {
       return a.score > b.score;
     }
+
   };
 
   vector<ResidueModification> getModifications_(StringList modNames)
@@ -548,7 +286,7 @@ protected:
     return modifications;
   }
 
-  // check if for minimum size
+  // check for minimum size
   class HasInvalidPeptideLengthPredicate
   {
 public:
@@ -586,13 +324,13 @@ private:
     {
       double current_mz = old_spectrum[current_peak].getPosition()[0];
 
-      for (Int q = max_charge; q >= min_charge; --q)     // important: test charge hypothesis from high to low
+      for (Int q = max_charge; q >= min_charge; --q) // important: test charge hypothesis from high to low
       {
         // try to extend isotopes from mono-isotopic peak
         // if extension larger then min_isopeaks possible:
         //   - save charge q in mono_isotopic_peak[]
         //   - annotate all isotopic peaks with feature number
-        if (features[current_peak] == -1)     // only process peaks which have no assigned feature number
+        if (features[current_peak] == -1) // only process peaks which have no assigned feature number
         {
           bool has_min_isopeaks = true;
           vector<Size> extensions;
@@ -601,7 +339,7 @@ private:
             double expected_mz = current_mz + i * Constants::C13C12_MASSDIFF_U / q;
             Size p = old_spectrum.findNearest(expected_mz);
             double tolerance_dalton = fragment_unit_ppm ? fragment_tolerance * old_spectrum[p].getPosition()[0] * 1e-6 : fragment_tolerance;
-            if (fabs(old_spectrum[p].getPosition()[0] - expected_mz) > tolerance_dalton)     // test for missing peak
+            if (fabs(old_spectrum[p].getPosition()[0] - expected_mz) > tolerance_dalton) // test for missing peak
             {
               if (i < min_isopeaks)
               {
@@ -696,68 +434,6 @@ private:
     in.sortByPosition();
   }
 
-  double logfactorial(UInt x)
-  {
-    UInt y;
-
-    if (x < 2)
-      return 1;
-    else
-    {
-      double z = 0;
-      for (y = 2; y <= x; y++)
-      {
-        z = log((double)y) + z;
-      }
-
-      return z;
-    }
-  }
-
-  double computeHyperScore(double fragment_mass_tolerance, bool fragment_mass_tolerance_unit_ppm, const MSSpectrum<Peak1D>& exp_spectrum, const MSSpectrum<RichPeak1D>& theo_spectrum)
-  {
-    double dot_product = 0.0;
-    UInt y_ion_count = 0;
-    UInt b_ion_count = 0;
-
-    for (MSSpectrum<RichPeak1D>::ConstIterator theo_peak_it = theo_spectrum.begin(); theo_peak_it != theo_spectrum.end(); ++theo_peak_it)
-    {
-      const double& theo_mz = theo_peak_it->getMZ();
-
-      double max_dist_dalton = fragment_mass_tolerance_unit_ppm ? theo_mz * fragment_mass_tolerance * 1e-6 : fragment_mass_tolerance;
-
-      // iterate over peaks in experimental spectrum in given fragment tolerance around theoretical peak
-      Size index = exp_spectrum.findNearest(theo_mz);
-      double exp_mz = exp_spectrum[index].getMZ();
-
-      // found peak match
-      if (std::abs(theo_mz - exp_mz) < max_dist_dalton)
-      {
-        dot_product += exp_spectrum[index].getIntensity();
-        if (theo_peak_it->getMetaValue("IonName").toString()[0] == 'y')
-        {
-          ++y_ion_count;
-        }
-        else
-        {
-          ++b_ion_count;
-        }
-      }
-    }
-
-    if (dot_product > 1e-1)
-    {
-      double yFact = logfactorial(y_ion_count);
-      double bFact = logfactorial(b_ion_count);
-      double hyperScore = log(dot_product) + yFact + bFact;
-      return hyperScore;
-    }
-    else
-    {
-      return 0;
-    }
-  }
-
   void preprocessSpectra_(PeakMap& exp, double fragment_mass_tolerance, bool fragment_mass_tolerance_unit_ppm)
   {
     // filter MS2 map
@@ -823,49 +499,49 @@ private:
       {
         // create empty PeptideIdentification object and fill meta data
         PeptideIdentification pi;
-	pi.setMetaValue("scan_index", static_cast<unsigned int>(scan_index));
+        pi.setMetaValue("scan_index", static_cast<unsigned int>(scan_index));
         pi.setScoreType("hyperscore");
         pi.setHigherScoreBetter(true);
         pi.setRT(exp[scan_index].getRT());
         pi.setMZ(exp[scan_index].getPrecursors()[0].getMZ());
         Size charge = exp[scan_index].getPrecursors()[0].getCharge();
 
-	// create full peptide hit structure from annotated hits
-	vector<PeptideHit> phs;
-	for (vector<AnnotatedHit>::const_iterator a_it = annotated_hits[scan_index].begin(); a_it != annotated_hits[scan_index].end(); ++a_it)
-	{
-	  PeptideHit ph;
-	  ph.setCharge(charge);
+        // create full peptide hit structure from annotated hits
+        vector<PeptideHit> phs;
+        for (vector<AnnotatedHit>::const_iterator a_it = annotated_hits[scan_index].begin(); a_it != annotated_hits[scan_index].end(); ++a_it)
+        {
+          PeptideHit ph;
+          ph.setCharge(charge);
 
-	  // get unmodified string
+          // get unmodified string
           AASequence aas = AASequence::fromString(a_it->sequence.getString());
 
-	  // reapply modifications (because for memory reasons we only stored the index and recreation is fast)
+          // reapply modifications (because for memory reasons we only stored the index and recreation is fast)
           vector<AASequence> all_modified_peptides;
           ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications.begin(), fixed_modifications.end(), aas);
           ModifiedPeptideGenerator::applyVariableModifications(variable_modifications.begin(), variable_modifications.end(), aas, max_variable_mods_per_peptide, all_modified_peptides);
 
-	  // reannotate much more memory heavy AASequence object
-	  ph.setSequence(all_modified_peptides[a_it->peptide_mod_index]);
-	  ph.setScore(a_it->score);
+          // reannotate much more memory heavy AASequence object
+          ph.setSequence(all_modified_peptides[a_it->peptide_mod_index]);
+          ph.setScore(a_it->score);
 
-	  // determine RNA modification from index in map
-    std::map<String, std::set<String> >::const_iterator mod_combinations_it = mm.mod_combinations.begin();
-	  std::advance(mod_combinations_it, a_it->rna_mod_index);
-    ph.setMetaValue(String("RNPxl:RNA"), *mod_combinations_it->second.begin()); // return first nucleotide formula matching the index of the empirical formula
-    ph.setMetaValue(String("RNPxl:RNA_MASS_z0"), EmpiricalFormula(mod_combinations_it->first).getMonoWeight()); // RNA uncharged mass via empirical formula
-	  phs.push_back(ph);
-	}
+          // determine RNA modification from index in map
+          std::map<String, std::set<String> >::const_iterator mod_combinations_it = mm.mod_combinations.begin();
+          std::advance(mod_combinations_it, a_it->rna_mod_index);
+          ph.setMetaValue(String("RNPxl:RNA"), *mod_combinations_it->second.begin()); // return first nucleotide formula matching the index of the empirical formula
+          ph.setMetaValue(String("RNPxl:RNA_MASS_z0"), EmpiricalFormula(mod_combinations_it->first).getMonoWeight()); // RNA uncharged mass via empirical formula
+          phs.push_back(ph);
+        }
 
-	pi.setHits(phs);
-	pi.assignRanks();
+        pi.setHits(phs);
+        pi.assignRanks();
 
 #ifdef _OPENMP
 #pragma omp critical (peptide_ids_access)
 #endif
         {
           peptide_ids.push_back(pi);
-	}
+        }
       }
     }
 
@@ -873,9 +549,8 @@ private:
     protein_ids = vector<ProteinIdentification>(1);
     protein_ids[0].setDateTime(DateTime::now());
     protein_ids[0].setSearchEngine("RNPxlSearch");
-    protein_ids[0].setSearchEngineVersion(VersionInfo::getVersion());    
+    protein_ids[0].setSearchEngineVersion(VersionInfo::getVersion());
   }
-
 
   ExitCodes main_(int, const char**)
   {
@@ -942,7 +617,7 @@ private:
     bool cysteine_adduct = getFlag_("RNPxl:CysteineAdduct");
 
     RNPxlModificationMassesResult mm = RNPxlModificationsGenerator::initModificationMassesRNA(target_nucleotides, mappings, restrictions, modifications, sequence_restriction, cysteine_adduct, max_nucleotide_length);
-    mm.mod_masses[""] = 0;    // insert "null" modification otherwise unmodified peptide will not be searched
+    mm.mod_masses[""] = 0; // insert "null" modification otherwise unmodified peptide will not be searched
     mm.mod_combinations[""].insert("none");
 
     // load MS2 map
@@ -982,7 +657,7 @@ private:
 
         double precursor_mz = precursor[0].getMZ();
         double precursor_mass = (double) precursor_charge * precursor_mz - (double) precursor_charge * Constants::PROTON_MASS_U;
-     
+
         if (getFlag_("RNPxl:filter_fractional_mass"))
         {
           if (precursor_mass < 1750.0 && precursor_mass - floor(precursor_mass) < 0.2)
@@ -991,8 +666,8 @@ private:
             continue;
           }
         }
-     
-       
+
+
         if (precursor_mass < small_peptide_mass_filter_threshold)
         {
           small_peptide_mass_filtered++;
@@ -1039,7 +714,7 @@ private:
 #pragma omp atomic
 #endif
       ++count_proteins;
-      
+
       IF_MASTERTHREAD
       {
         progresslogger.setProgress((SignedSize)fasta_index * NUMBER_OF_THREADS);
@@ -1084,7 +759,7 @@ private:
         vector<AASequence> all_modified_peptides;
 
         // no critial section is needed despite ResidueDB not beeing thread sage.
-	// It is only written to on introduction of novel modified residues. These residues have been already added above (single thread context).
+        // It is only written to on introduction of novel modified residues. These residues have been already added above (single thread context).
         {
           AASequence aas = AASequence::fromString(String(cit->first, cit->second));
           ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications.begin(), fixed_modifications.end(), aas);
@@ -1100,7 +775,7 @@ private:
           MSSpectrum<RichPeak1D> theo_spectrum = MSSpectrum<RichPeak1D>();
 
           // iterate over all RNA sequences, calculate peptide mass and generate complete loss spectrum only once as this can potentially be reused
-	  Size rna_mod_index = 0;
+          Size rna_mod_index = 0;
           for (std::map<String, double>::const_iterator rna_mod_it = mm.mod_masses.begin(); rna_mod_it != mm.mod_masses.end(); ++rna_mod_it, ++rna_mod_index)
           {
             double current_peptide_mass = current_peptide_mass_without_RNA + rna_mod_it->second; // add RNA mass
@@ -1114,7 +789,7 @@ private:
               low_it = multimap_mass_2_scan_index.lower_bound(current_peptide_mass - 0.5 * current_peptide_mass * precursor_mass_tolerance * 1e-6);
               up_it = multimap_mass_2_scan_index.upper_bound(current_peptide_mass + 0.5 * current_peptide_mass * precursor_mass_tolerance * 1e-6);
             }
-            else    // Dalton
+            else // Dalton
             {
               low_it = multimap_mass_2_scan_index.lower_bound(current_peptide_mass - 0.5 * precursor_mass_tolerance);
               up_it = multimap_mass_2_scan_index.upper_bound(current_peptide_mass + 0.5 * precursor_mass_tolerance);
@@ -1134,7 +809,7 @@ private:
               const Size& scan_index = low_it->second;
               const MSSpectrum<Peak1D>& exp_spectrum = spectra[scan_index];
 
-              double score = computeHyperScore(fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, exp_spectrum, theo_spectrum);
+              double score = HyperScore::compute(fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, exp_spectrum, theo_spectrum);
 
               // no good hit
               if (score < 1.0)
@@ -1143,12 +818,12 @@ private:
               }
 
               // add peptide hit
-	      AnnotatedHit ah;
+              AnnotatedHit ah;
               ah.sequence.begin = cit->first;
-	      ah.sequence.end = cit->second;
-	      ah.peptide_mod_index = mod_pep_idx;
+              ah.sequence.end = cit->second;
+              ah.peptide_mod_index = mod_pep_idx;
               ah.score = score;
-	      ah.rna_mod_index = rna_mod_index;
+              ah.rna_mod_index = rna_mod_index;
 #ifdef _OPENMP
 #pragma omp critical (annotated_hits_access)
 #endif
@@ -1174,7 +849,7 @@ private:
     progresslogger.endProgress();
 
     // annotate RNPxl related information to hits and create report
-    vector<RNPxlReportRow> csv_rows = annotateRNPxlInformation_(spectra, peptide_ids, marker_ions_tolerance);
+    vector<RNPxlReportRow> csv_rows = RNPxlReport::annotate(spectra, peptide_ids, marker_ions_tolerance);
 
     // save report
     TextFile csv_file;
