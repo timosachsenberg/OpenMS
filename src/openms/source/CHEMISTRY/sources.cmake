@@ -17,6 +17,7 @@ ModificationDefinition.cpp
 ModificationDefinitionsSet.cpp
 ModificationsDB.cpp
 ModifierRep.cpp
+NASequence.cpp
 PepIterator.cpp
 Residue.cpp
 ResidueDB.cpp
