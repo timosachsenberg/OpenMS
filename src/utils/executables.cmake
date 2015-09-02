@@ -28,6 +28,7 @@ MRMPairFinder
 MSSimulator
 NucleotideID
 NucleotideIDAMSDBCreator
+NucSpectrumGen
 OpenMSInfo
 PeakPickerIterative
 QCCalculator
