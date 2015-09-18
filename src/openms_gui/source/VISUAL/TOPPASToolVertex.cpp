@@ -33,14 +33,16 @@
 // --------------------------------------------------------------------------
 
 #include <OpenMS/VISUAL/TOPPASToolVertex.h>
-#include <OpenMS/VISUAL/TOPPASMergerVertex.h>
-#include <OpenMS/VISUAL/TOPPASInputFileListVertex.h>
-#include <OpenMS/VISUAL/DIALOGS/TOPPASToolConfigDialog.h>
-#include <OpenMS/VISUAL/TOPPASScene.h>
-#include <OpenMS/VISUAL/TOPPASOutputFileListVertex.h>
-#include <OpenMS/SYSTEM/File.h>
+
 #include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/FORMAT/ParamXMLFile.h>
+#include <OpenMS/SYSTEM/File.h>
+#include <OpenMS/VISUAL/TOPPASInputFileListVertex.h>
+#include <OpenMS/VISUAL/TOPPASMergerVertex.h>
+#include <OpenMS/VISUAL/TOPPASOutputFileListVertex.h>
+#include <OpenMS/VISUAL/TOPPASScene.h>
+#include <OpenMS/VISUAL/DIALOGS/TOPPASToolConfigDialog.h>
+#include <OpenMS/VISUAL/MISC/GUIHelpers.h>
 
 #include <QtGui/QGraphicsScene>
 #include <QtGui/QMessageBox>
@@ -48,12 +50,7 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QDir>
 #include <QtCore/QRegExp>
-#include <QtGui/QImage>
 
-#include <QDesktopServices>
-#include <QUrl>
-#include <QMessageBox>
-#include <QCoreApplication>
 #include <QSvgRenderer>
 
 namespace OpenMS
@@ -152,6 +149,7 @@ namespace OpenMS
       arguments << "-type";
       arguments << type_.toQString();
     }
+    // allow for update using old parameters
     if (old_ini_file != "")
     {
       if (!File::exists(old_ini_file))
@@ -164,6 +162,7 @@ namespace OpenMS
       arguments << old_ini_file;
     }
 
+    // actually request the INI
     QProcess p;
     p.start(program, arguments);
     if (!p.waitForFinished(-1))
@@ -181,8 +180,12 @@ namespace OpenMS
 
     ParamXMLFile paramFile;
     paramFile.load(String(ini_file).c_str(), tmp_param);
-    param_ = tmp_param.copy(name_ + ":1:", true);
+    // remember the parameters of this tool
+    param_ = tmp_param.copy(name_ + ":1:", true); // get first instance (we never use more -- this is a legacy layer in paramXML)
+    param_.setValue("no_progress", "true"); // by default, we do not want each tool to report loading/status statistics (would clutter the log window)
+    // the user is free however, to re-enable it for individual nodes
 
+    // write to disk to see if anything has changed
     writeParam_(param_, ini_file);
     bool changed = false;
     if (old_ini_file != "")
@@ -541,7 +544,6 @@ namespace OpenMS
     round_counter_ = 0; // once round_counter_ reaches round_total_, we are done
 
     QStringList shared_args;
-    shared_args << "-no_progress";
     if (type_ != "")
       shared_args << "-type" << type_.toQString();
 
@@ -1085,25 +1087,7 @@ namespace OpenMS
   void TOPPASToolVertex::openContainingFolder()
   {
     QString path = getFullOutputDirectory().toQString();
-#if defined(__APPLE__)
-    QProcess* p = new QProcess();
-    p->setProcessChannelMode(QProcess::ForwardedChannels);
-    QStringList app_args;
-    app_args.append(path);
-    p->start("/usr/bin/open", app_args);
-    if (!p->waitForStarted())
-    {
-      // execution failed
-      QMessageBox::warning(0, "Open Folder Error", "The folder " + path + " could not be opened!");
-      LOG_ERROR << "Failed to open folder " << path.toStdString() << std::endl;
-      LOG_ERROR << p->errorString().toStdString() << std::endl;
-    }
-#else
-    if (!QDir(path).exists() || (!QDesktopServices::openUrl(QUrl("file:///" + path, QUrl::TolerantMode))))
-    {
-      QMessageBox::warning(0, "Open Folder Error", "The folder " + path + " could not be opened!");
-    }
-#endif
+    GUIHelpers::openFolder(path);
   }
 
   String TOPPASToolVertex::getFullOutputDirectory() const

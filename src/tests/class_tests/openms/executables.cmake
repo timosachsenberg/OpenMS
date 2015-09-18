@@ -86,6 +86,7 @@ set(metadata_executables_list
   MassAnalyzer_test
   MetaInfoDescription_test
   MetaInfoInterface_test
+  MetaInfoInterfaceUtils_test
   MetaInfoRegistry_test
   MetaInfo_test
   Modification_test
@@ -206,6 +207,7 @@ set(format_executables_list
   PepNovoOutfile_test
   PepXMLFileMascot_test
   PepXMLFile_test
+  PercolatorOutfile_test
   ProtXMLFile_test
   SVOutStream_test
   SemanticValidator_test
@@ -342,6 +344,8 @@ set(chemistry_executables_list
   Element_test
   EmpiricalFormula_test
   EnzymaticDigestion_test
+  Enzyme_test
+  EnzymesDB_test
   FastaIteratorIntern_test
   FastaIterator_test
   IsotopeDistribution_test
@@ -389,6 +393,7 @@ set(analysis_executables_list
   ConsensusIDAlgorithmPEPIons_test
   ConsensusIDAlgorithmPEPMatrix_test
   ConsensusIDAlgorithmRanks_test
+  ConsensusIDAlgorithmWorst_test
   ConsensusMapNormalizerAlgorithmThreshold_test
   ConsensusMapNormalizerAlgorithmMedian_test
   ConsensusMapNormalizerAlgorithmQuantile_test

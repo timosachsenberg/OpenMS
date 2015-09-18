@@ -655,6 +655,18 @@ set_tests_properties("TOPP_IDFileConverter_10_out1" PROPERTIES DEPENDS "TOPP_IDF
 add_test("TOPP_IDFileConverter_11" ${TOPP_BIN_PATH}/IDFileConverter -test -in ${DATA_DIR_TOPP}/IDFileConverter_11_input.tsv -out IDFileConverter_11_output.tmp -out_type idXML)
 add_test("TOPP_IDFileConverter_11_out1" ${DIFF} -in1 IDFileConverter_11_output.tmp -in2 ${DATA_DIR_TOPP}/IDFileConverter_11_output.idXML)
 set_tests_properties("TOPP_IDFileConverter_11_out1" PROPERTIES DEPENDS "TOPP_IDFileConverter_11")
+# Percolator .psms to idXML (score: q-value)
+add_test("TOPP_IDFileConverter_12" ${TOPP_BIN_PATH}/IDFileConverter -test -in ${DATA_DIR_TOPP}/IDFileConverter_12_input.psms -out IDFileConverter_12_output.tmp -out_type idXML -score_type qvalue)
+add_test("TOPP_IDFileConverter_12_out1" ${DIFF} -in1 IDFileConverter_12_output.tmp -in2 ${DATA_DIR_TOPP}/IDFileConverter_12_output.idXML -whitelist "IdentificationRun date")
+set_tests_properties("TOPP_IDFileConverter_12_out1" PROPERTIES DEPENDS "TOPP_IDFileConverter_12")
+# Percolator .psms to idXML (score: PEP)
+add_test("TOPP_IDFileConverter_13" ${TOPP_BIN_PATH}/IDFileConverter -test -in ${DATA_DIR_TOPP}/IDFileConverter_12_input.psms -out IDFileConverter_13_output.tmp -out_type idXML -score_type PEP)
+add_test("TOPP_IDFileConverter_13_out1" ${DIFF} -in1 IDFileConverter_13_output.tmp -in2 ${DATA_DIR_TOPP}/IDFileConverter_13_output.idXML -whitelist "IdentificationRun date")
+set_tests_properties("TOPP_IDFileConverter_13_out1" PROPERTIES DEPENDS "TOPP_IDFileConverter_13")
+# Percolator .psms to idXML (score: raw score)
+add_test("TOPP_IDFileConverter_14" ${TOPP_BIN_PATH}/IDFileConverter -test -in ${DATA_DIR_TOPP}/IDFileConverter_12_input.psms -out IDFileConverter_14_output.tmp -out_type idXML -score_type score)
+add_test("TOPP_IDFileConverter_14_out1" ${DIFF} -in1 IDFileConverter_14_output.tmp -in2 ${DATA_DIR_TOPP}/IDFileConverter_14_output.idXML -whitelist "IdentificationRun date")
+set_tests_properties("TOPP_IDFileConverter_14_out1" PROPERTIES DEPENDS "TOPP_IDFileConverter_14")
 
 #------------------------------------------------------------------------------
 # IDFilter tests
@@ -1400,8 +1412,9 @@ set_tests_properties("TOPP_IDPosteriorErrorProbability_5_out1" PROPERTIES DEPEND
 add_test("TOPP_IDPosteriorErrorProbability_6" ${TOPP_BIN_PATH}/IDPosteriorErrorProbability -test -in ${DATA_DIR_TOPP}/IDPosteriorErrorProbability_Mascot_input2.idXML -out IDPosteriorErrorProbability_output_6.tmp -split_charge)
 add_test("TOPP_IDPosteriorErrorProbability_6_out1" ${DIFF} -in1 IDPosteriorErrorProbability_output_6.tmp -in2 ${DATA_DIR_TOPP}/IDPosteriorErrorProbability_Mascot_output2.idXML)
 set_tests_properties("TOPP_IDPosteriorErrorProbability_6_out1" PROPERTIES DEPENDS "TOPP_IDPosteriorErrorProbability_6")
-# with "ignore_bad_data" (no check for correctness of output?):
+# with "ignore_bad_data" (no check for correctness of output, bc of unresolved platform specific errors):
 add_test("TOPP_IDPosteriorErrorProbability_7" ${TOPP_BIN_PATH}/IDPosteriorErrorProbability -test -in ${DATA_DIR_TOPP}/IDPosteriorErrorProbability_bad_data.idXML -out IDPosteriorErrorProbability_bad_data_output.tmp -ignore_bad_data)
+# add_test("TOPP_IDPosteriorErrorProbability_7_out1" ${DIFF} -in1 IDPosteriorErrorProbability_bad_data_output.tmp -in2 ${DATA_DIR_TOPP}/IDPosteriorErrorProbability_bad_data_out.idXML)
 # with "prob_correct":
 add_test("TOPP_IDPosteriorErrorProbability_8" ${TOPP_BIN_PATH}/IDPosteriorErrorProbability -test -in ${DATA_DIR_TOPP}/IDPosteriorErrorProbability_OMSSA_input.idXML -out IDPosteriorErrorProbability_output_8.tmp -prob_correct)
 add_test("TOPP_IDPosteriorErrorProbability_8_out1" ${DIFF} -in1 IDPosteriorErrorProbability_output_8.tmp -in2 ${DATA_DIR_TOPP}/IDPosteriorErrorProbability_prob_correct_output.idXML)
@@ -1541,7 +1554,7 @@ set_tests_properties("TOPP_PeptideIndexer_10_out" PROPERTIES DEPENDS "TOPP_Pepti
 # empty FASTA
 add_test("TOPP_PeptideIndexer_11" ${TOPP_BIN_PATH}/PeptideIndexer -test -fasta ${DATA_DIR_TOPP}/degenerate_cases/empty.fasta -in ${DATA_DIR_TOPP}/PeptideIndexer_1.idXML -out PeptideIndexer_11_out.tmp.idXML)
 set_tests_properties("TOPP_PeptideIndexer_11" PROPERTIES WILL_FAIL 1)
-# with "annotate_proteins":
+# with "annotate_proteins" (target/decoy):
 add_test("TOPP_PeptideIndexer_12" ${TOPP_BIN_PATH}/PeptideIndexer -test -fasta ${DATA_DIR_TOPP}/PeptideIndexer_1.fasta -in ${DATA_DIR_TOPP}/PeptideIndexer_1.idXML -out PeptideIndexer_12_out.tmp.idXML -allow_unmatched -enzyme:specificity none -annotate_proteins)
 add_test("TOPP_PeptideIndexer_12_out" ${DIFF} -in1 PeptideIndexer_12_out.tmp.idXML -in2 ${DATA_DIR_TOPP}/PeptideIndexer_12_out.idXML )
 set_tests_properties("TOPP_PeptideIndexer_12_out" PROPERTIES DEPENDS "TOPP_PeptideIndexer_12")
@@ -1549,6 +1562,21 @@ set_tests_properties("TOPP_PeptideIndexer_12_out" PROPERTIES DEPENDS "TOPP_Pepti
 add_test("TOPP_PeptideIndexer_13" ${TOPP_BIN_PATH}/PeptideIndexer -test -fasta ${DATA_DIR_TOPP}/PeptideIndexer_1.fasta -in ${DATA_DIR_TOPP}/degenerate_cases/empty.idXML -out PeptideIndexer_13_out.tmp.idXML)
 add_test("TOPP_PeptideIndexer_13_out" ${DIFF} -in1 PeptideIndexer_13_out.tmp.idXML -in2 ${DATA_DIR_TOPP}/degenerate_cases/empty.idXML )
 set_tests_properties("TOPP_PeptideIndexer_13_out" PROPERTIES DEPENDS "TOPP_PeptideIndexer_13")
+# allow mismatches (supported in full_tolerant_search mode only)
+# -- first test without mismatches
+add_test("TOPP_PeptideIndexer_14" ${TOPP_BIN_PATH}/PeptideIndexer -test -fasta ${DATA_DIR_TOPP}/PeptideIndexer_1.fasta -in ${DATA_DIR_TOPP}/PeptideIndexer_14.idXML -out PeptideIndexer_14_out.tmp.idXML -mismatches_max 0 -full_tolerant_search -allow_unmatched)
+add_test("TOPP_PeptideIndexer_14_out" ${DIFF} -in1 PeptideIndexer_14_out.tmp.idXML -in2 ${DATA_DIR_TOPP}/PeptideIndexer_14_out.idXML )
+set_tests_properties("TOPP_PeptideIndexer_14_out" PROPERTIES DEPENDS "TOPP_PeptideIndexer_14")
+# -- and now with mismatches allowed
+add_test("TOPP_PeptideIndexer_15" ${TOPP_BIN_PATH}/PeptideIndexer -test -fasta ${DATA_DIR_TOPP}/PeptideIndexer_1.fasta -in ${DATA_DIR_TOPP}/PeptideIndexer_14.idXML -out PeptideIndexer_15_out.tmp.idXML -mismatches_max 1 -full_tolerant_search -allow_unmatched)
+add_test("TOPP_PeptideIndexer_15_out" ${DIFF} -in1 PeptideIndexer_15_out.tmp.idXML -in2 ${DATA_DIR_TOPP}/PeptideIndexer_15_out.idXML )
+set_tests_properties("TOPP_PeptideIndexer_15_out" PROPERTIES DEPENDS "TOPP_PeptideIndexer_15")
+add_test("TOPP_PeptideIndexer_16" ${TOPP_BIN_PATH}/PeptideIndexer -test -fasta ${DATA_DIR_TOPP}/PeptideIndexer_1.fasta -in ${DATA_DIR_TOPP}/PeptideIndexer_14.idXML -out PeptideIndexer_16_out.tmp.idXML -mismatches_max 2 -full_tolerant_search -allow_unmatched)
+add_test("TOPP_PeptideIndexer_16_out" ${DIFF} -in1 PeptideIndexer_16_out.tmp.idXML -in2 ${DATA_DIR_TOPP}/PeptideIndexer_16_out.idXML )
+set_tests_properties("TOPP_PeptideIndexer_16_out" PROPERTIES DEPENDS "TOPP_PeptideIndexer_16")
+add_test("TOPP_PeptideIndexer_17" ${TOPP_BIN_PATH}/PeptideIndexer -test -fasta ${DATA_DIR_TOPP}/PeptideIndexer_1.fasta -in ${DATA_DIR_TOPP}/PeptideIndexer_14.idXML -out PeptideIndexer_17_out.tmp.idXML -mismatches_max 3 -full_tolerant_search)
+add_test("TOPP_PeptideIndexer_17_out" ${DIFF} -in1 PeptideIndexer_17_out.tmp.idXML -in2 ${DATA_DIR_TOPP}/PeptideIndexer_17_out.idXML )
+set_tests_properties("TOPP_PeptideIndexer_17_out" PROPERTIES DEPENDS "TOPP_PeptideIndexer_17")
 
 if(WITH_GUI)
   #------------------------------------------------------------------------------

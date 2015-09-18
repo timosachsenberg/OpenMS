@@ -23,10 +23,12 @@ LowMemPeakPickerHiRes_RandomAccess
 MapAlignmentEvaluation
 MassCalculator
 MetaboliteSpectralMatcher
+MetaProSIP
 MRMPairFinder
 MSSimulator
 NucleotideID
 NucleotideIDAMSDBCreator
+NucSpectrumGen
 OpenMSInfo
 PeakPickerIterative
 QCCalculator
