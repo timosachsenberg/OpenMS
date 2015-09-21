@@ -195,7 +195,7 @@ protected:
      *
      * @return true if isotope distribution looks like an average peptide
      */
-    bool averagineSimilarityFilter(MultiplexPeakPattern pattern, const std::vector<double>& intensities_actual, int peaks_found_in_all_peptides_spline, double mz) const;
+    bool averagineSimilarityFilter(MultiplexPeakPattern pattern, const std::vector<double>& intensities_actual, int peaks_found_in_all_peptides_spline, double mz, String type_m="peptide") const;
 
     /**
      * @brief blacklist peaks
@@ -240,7 +240,7 @@ protected:
      *
      * @return similarity (+1 best, -1 worst)
      */
-    double getAveragineSimilarity(std::vector<double> pattern, double m) const;
+    double getAveragineSimilarity(std::vector<double> pattern, double m, String type_m="peptide") const;
 
     /**
     * @brief centroided experimental data
