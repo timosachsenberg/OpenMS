@@ -163,6 +163,7 @@ private:
   double averagine_similarity_scaling_;
   bool knock_out_;
   String type_m_;
+  Int unit_charge_;
 
   // section "labels"
   map<String, double> label_massshift_;
@@ -228,6 +229,9 @@ public:
       defaults.setValidStrings("knock_out", ListUtils::create<String>("true,false"));
       defaults.setValue("type_m","peptide","The type of averagine to use, currently RNA, DNA or peptide");
       defaults.setValidStrings("type_m", ListUtils::create<String>("RNA,peptide,DNA"));
+      defaults.setValue("unit_charge",1,"1 for positive -1 for negative");
+      defaults.setMinInt("unit_charge",-1);
+      defaults.setMaxInt("unit_charge",1);
     }
 
     if (section == "labels")
@@ -294,7 +298,7 @@ public:
     charge_max_ = charge_max_temp;
     if (charge_min_ > charge_max_)
     {
-      swap(charge_min_, charge_max_);
+      swap(charge_min_, charge_max_); //TODO warn the user about this
     }
 
     // get isotopes per peptide range
@@ -319,6 +323,7 @@ public:
     missed_cleavages_ = getParam_().getValue("algorithm:missed_cleavages");
     knock_out_ = (getParam_().getValue("algorithm:knock_out") == "true");
     type_m_ = getParam_().getValue("algorithm:type_m");
+    unit_charge_ = getParam_().getValue("algorithm:unit_charge");
   }
 
   /**
@@ -894,7 +899,7 @@ public:
           feature_handle.setMZ(sum_intensity_mz[peptide] / sum_intensity[peptide]);
           feature_handle.setRT(sum_intensity_rt[peptide] / sum_intensity[peptide]);
           feature_handle.setIntensity(peptide_intensities[peptide]);
-          feature_handle.setCharge(patterns[pattern].getCharge());
+          feature_handle.setCharge(patterns[pattern].getCharge() * unit_charge_);
           feature_handle.setMapIndex(peptide);
           //feature_handle.setUniqueId(&UniqueIdInterface::setUniqueId);    // TODO: Do we need to set unique ID?
           consensus_map.getFileDescriptions()[peptide].size++;
@@ -904,7 +909,7 @@ public:
           feature.setMZ(sum_intensity_mz[peptide] / sum_intensity[peptide]);
           feature.setRT(sum_intensity_rt[peptide] / sum_intensity[peptide]);
           feature.setIntensity(peptide_intensities[peptide]);
-          feature.setCharge(patterns[pattern].getCharge());
+          feature.setCharge(patterns[pattern].getCharge() * unit_charge_);
           feature.setOverallQuality(1 - 1 / points.size());
           for (unsigned peak = 0; peak < isotopes_per_peptide_max_; ++peak)
           {
