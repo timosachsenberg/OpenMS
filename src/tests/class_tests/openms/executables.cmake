@@ -216,6 +216,7 @@ set(format_executables_list
   SequestInfile_test
   SequestOutfile_test
   SpecArrayFile_test
+  SwathMapMassCorrection_test
   SwathFile_test
   SwathFileConsumer_test
   SwathWindowLoader_test
@@ -233,6 +234,7 @@ set(format_executables_list
   MSDataCachedConsumer_test
   MSDataTransformingConsumer_test
   MSDataChainingConsumer_test
+  SpectrumAccessQuadMZTransforming_test
 )
 
 set(math_executables_list
@@ -286,13 +288,15 @@ set(filtering_executables_list
   MassTraceDetection_test
   MorphologicalFilter_test
   MultiplexClustering_test
+  MultiplexDeltaMasses_test
+  MultiplexDeltaMassesGenerator_test
   MultiplexFiltering_test
   MultiplexFilteringCentroided_test
   MultiplexFilteringProfile_test
   MultiplexFilterResult_test
   MultiplexFilterResultPeak_test
   MultiplexFilterResultRaw_test
-  MultiplexPeakPattern_test
+  MultiplexIsotopicPeakPattern_test
   NLargest_test
   NeutralLossDiffFilter_test
   NeutralLossMarker_test
@@ -457,6 +461,8 @@ set(analysis_executables_list
   PILISCrossValidation_test
   PILISNeutralLossModel_test
   PeakIntensityPredictor_test
+  PScore_test
+  HyperScore_test
   PoseClusteringAffineSuperimposer_test
   PoseClusteringShiftSuperimposer_test
   PrecursorIonSelectionPreprocessing_test
@@ -477,6 +483,7 @@ set(analysis_executables_list
   TransformationDescription_test
   TransformationModel_test
   TransformationModelBSpline_test
+  TransformationModelLowess_test
   TransformationModelInterpolated_test
   TransformationModelLinear_test
 )

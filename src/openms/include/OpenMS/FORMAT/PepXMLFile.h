@@ -81,7 +81,11 @@ public:
         @exception Exception::FileNotFound is thrown if the file could not be opened
         @exception Exception::ParseError is thrown if an error occurs during parsing
     */
-    void load(const String& filename, std::vector<ProteinIdentification>& proteins, std::vector<PeptideIdentification>& peptides, const String& experiment_name, const SpectrumMetaDataLookup& lookup);
+    void load(const String& filename,
+              std::vector<ProteinIdentification>& proteins,
+              std::vector<PeptideIdentification>& peptides,
+              const String& experiment_name,
+              const SpectrumMetaDataLookup& lookup);
 
     /**
         @brief @a load function with empty defaults for some parameters (see above)
@@ -89,7 +93,10 @@ public:
         @exception Exception::FileNotFound is thrown if the file could not be opened
         @exception Exception::ParseError is thrown if an error occurs during parsing
     */
-    void load(const String& filename, std::vector<ProteinIdentification>& proteins, std::vector<PeptideIdentification>& peptides, const String& experiment_name = "");
+    void load(const String& filename,
+              std::vector<ProteinIdentification>& proteins,
+              std::vector<PeptideIdentification>& peptides,
+              const String& experiment_name = "");
 
     /**
         @brief Stores idXML as PepXML file
@@ -244,8 +251,8 @@ private:
     /// Search parameters of the current identification run
     ProteinIdentification::SearchParameters params_;
 
-    /// Enzyme associated with the current identification run
-    ProteinIdentification::DigestionEnzyme enzyme_;
+    /// Enzyme name associated with the current identification run
+    String enzyme_;
 
     /// PeptideIdentification instance currently being processed
     PeptideIdentification current_peptide_;

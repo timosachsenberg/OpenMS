@@ -894,7 +894,7 @@ def testDataValue():
     assert a.toStringList() == [b"1.0"]
     assert a.valueType() == pyopenms.DataType.STRING_LIST
 
-    assert pyopenms.MSSpectrum().getMetaValue("nonexisingkey") is None
+    assert pyopenms.MSSpectrum().getMetaValue(b"nonexisingkey") is None
 
 @report
 def testAdduct():
@@ -1678,10 +1678,10 @@ def testAScore():
     ff = pyopenms.AScore()
 
     hit = pyopenms.PeptideHit()
-    richspectrum = pyopenms.RichMSSpectrum()
+    spectrum = pyopenms.MSSpectrum()
 
-    ff.compute(hit, richspectrum, 5.0, 1)
-    ff.computeCumulativeScore(1,1,0.5)
+    ff.compute(hit, spectrum, 5.0, 1)
+    # ff.computeCumulativeScore(1,1,0.5)
 
 @report
 def testIDRipper():
@@ -3287,9 +3287,9 @@ def testPeptideEvidence():
     assert pe.getProteinAccession() == b"B_id"
 
     pe.setAABefore(b'B')
-    assert pe.getAABefore() == b"B"
+    assert pe.getAABefore() == 'B'
     pe.setAAAfter(b'C')
-    assert pe.getAAAfter() == b'C'
+    assert pe.getAAAfter() == 'C'
 
     pe.setStart(5)
     assert pe.getStart() == 5
@@ -3556,7 +3556,6 @@ def testProteinHit():
 def testProteinIdentification():
     """
     @tests:
-     ProteinIdentification.DigestionEnzyme
      ProteinIdentification.PeakMassType
      ProteinIdentification.__init__
      ProteinIdentification.clearMetaInfo
@@ -3593,18 +3592,6 @@ def testProteinIdentification():
 
     assert isinstance(pyopenms.ProteinIdentification.PeakMassType.MONOISOTOPIC, int)
     assert isinstance(pyopenms.ProteinIdentification.PeakMassType.AVERAGE, int)
-
-    assert isinstance(pyopenms.ProteinIdentification.DigestionEnzyme.TRYPSIN,
-            int)
-    assert isinstance(pyopenms.ProteinIdentification.DigestionEnzyme.PEPSIN_A, int)
-    assert isinstance(pyopenms.ProteinIdentification.DigestionEnzyme.PROTEASE_K,
-            int)
-    assert isinstance(pyopenms.ProteinIdentification.DigestionEnzyme.CHYMOTRYPSIN,
-            int)
-    assert isinstance(pyopenms.ProteinIdentification.DigestionEnzyme.NO_ENZYME, int)
-    assert isinstance(pyopenms.ProteinIdentification.DigestionEnzyme.UNKNOWN_ENZYME,
-            int)
-
 
 @report
 def testRichPeak():
