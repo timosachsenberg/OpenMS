@@ -57,7 +57,6 @@
 #include <OpenMS/VISUAL/APPLICATIONS/MISC/QApplicationTOPP.h>
 #include <OpenMS/SYSTEM/StopWatch.h>
 
-
 using namespace OpenMS;
 using namespace std;
 
@@ -66,6 +65,9 @@ using namespace std;
 #include <map>
 #include <vector>
 
+#include <stdlib.h> 
+
+
 #ifdef OPENMS_WINDOWSPLATFORM
 #   ifndef _WIN32_WINNT
 #       define _WIN32_WINNT 0x0501 // Win XP (and above)
@@ -73,159 +75,162 @@ using namespace std;
 #   include <Windows.h>
 #endif
 
-//-------------------------------------------------------------
-// command line name of this tool
-//-------------------------------------------------------------
-const char* tool_name = "TOPPView";
-
-//-------------------------------------------------------------
-// description of the usage of this TOPP tool
-//-------------------------------------------------------------
-
-void print_usage()
+class TOPPView :
+  public TOPPBase
 {
-  cerr << endl
-       << tool_name << " -- A viewer for mass spectrometry data." << endl
-       << endl
-       << "Usage:" << endl
-       << " " << tool_name << " [options] [files]" << endl
-       << endl
-       << "Options are:" << endl
-       << "  --help           Shows this help" << endl
-       << "  -ini <File>      Sets the INI file (default: ~/.TOPPView.ini)" << endl
-       << endl
-       << "Hints:" << endl
-       << " - To open several files in one window put a '+' in between the files." << endl
-       << " - '@bw' after a map file displays the dots in a white to black gradient." << endl
-       << " - '@bg' after a map file displays the dots in a grey to black gradient." << endl
-       << " - '@b'  after a map file displays the dots in black." << endl
-       << " - '@r'  after a map file displays the dots in red." << endl
-       << " - '@g'  after a map file displays the dots in green." << endl
-       << " - '@m'  after a map file displays the dots in magenta." << endl
-       << " - Example: 'TOPPView 1.mzML + 2.mzML @bw + 3.mzML @bg'" << endl
-       << endl;
-}
+public:
+  TOPPView() :
+    TOPPBase("TOPPView", "A viewer for mass spectrometry data.", false)
+  {
+  }
+protected:
+  void registerOptionsAndFlags_()
+  {
+    registerInputFileList_("in", "<file>", StringList(), "input file");
+    setValidFormats_("in", ListUtils::create<String>("mzML,featureXML,idXML,consensusXML"));
+  }
+
+  ExitCodes main_(int argc, const char ** argv)
+  {
+    try
+    {
+      QApplicationTOPP a(argc, const_cast<char**>(argv));
+      a.connect(&a, SIGNAL(lastWindowClosed()), &a, SLOT(quit()));
+
+      //set plastique style unless windows / mac style is available
+      if (QStyleFactory::keys().contains("windowsxp", Qt::CaseInsensitive))
+      {
+        a.setStyle("windowsxp");
+      }
+      else if (QStyleFactory::keys().contains("macintosh", Qt::CaseInsensitive))
+      {
+        a.setStyle("macintosh");
+      }
+      else if (QStyleFactory::keys().contains("plastique", Qt::CaseInsensitive))
+      {
+        a.setStyle("plastique");
+      }
+
+      TOPPViewBase* mw = new TOPPViewBase();
+      a.connect(&a, SIGNAL(fileOpen(QString)), mw, SLOT(loadFile(QString)));
+      mw->show();
+
+      // Create the splashscreen that is displayed while the application loads
+      QSplashScreen* splash_screen = new QSplashScreen(QPixmap(":/TOPPView_Splashscreen.png"));
+      splash_screen->show();
+      splash_screen->showMessage("Loading parameters");
+      QApplication::processEvents();
+      StopWatch stop_watch;
+      stop_watch.start();
+
+      //load command line files
+      StringList in_files = getStringList_("in");
+      if (!in_files.empty())
+      {
+        mw->loadFiles(in_files, splash_screen);
+      }
+
+      // We are about to show the application.
+      // Proper time to  remove the splashscreen, if at least 1.5 seconds have passed...
+      while (stop_watch.getClockTime() < 1.5) /*wait*/
+      {
+      }
+      stop_watch.stop();
+      splash_screen->close();
+      delete splash_screen;
+
+#ifdef OPENMS_WINDOWSPLATFORM
+      FreeConsole(); // get rid of console window at this point (we will not see any console output from this point on)
+      AttachConsole(-1); // if the parent is a console, reattach to it - so we can see debug output - a normal user will usually not use cmd.exe to start a GUI)
+#endif
+
+      int result = a.exec();
+      delete(mw);
+      if (!result) return EXECUTION_OK;
+      return UNKNOWN_ERROR;
+    }
+    //######################## ERROR HANDLING #################################
+    catch (Exception::UnableToCreateFile& e)
+    {
+      cout << String("Error: Unable to write file (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
+    }
+    catch (Exception::FileNotFound& e)
+    {
+      cout << String("Error: File not found (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
+    }
+    catch (Exception::FileNotReadable& e)
+    {
+      cout << String("Error: File not readable (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
+    }
+    catch (Exception::FileEmpty& e)
+    {
+      cout << String("Error: File empty (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
+    }
+    catch (Exception::ParseError& e)
+    {
+      cout << String("Error: Unable to read file (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
+    }
+    catch (Exception::InvalidValue& e)
+    {
+      cout << String("Error: Invalid value (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
+    }
+    catch (Exception::BaseException& e)
+    {
+      cout << String("Error: Unexpected error (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
+    }
+
+    return UNKNOWN_ERROR;
+  }
+};
 
 int main(int argc, const char** argv)
 {
-  //list of all the valid options
-  Map<String, String> valid_options, valid_flags, option_lists;
-  valid_flags["--help"] = "help";
-  valid_options["-ini"] = "ini";
-
+  // parse command line into param object and reformat it for CTD support
   Param param;
+  Map<String, String> valid_options, valid_flags, option_lists;
+  
+  valid_options["-ini"] = "ini";
+  valid_options["-in"] = "in";
+  valid_options["--help"] = "help";
+  valid_options["--helphelp"] = "helphelp";
+  valid_options["-write_ini"] = "write_ini";
+  valid_options["-write_ctd"] = "write_ctd";
+  valid_options["-write_wsdl"] = "write_wsdl";
   param.parseCommandLine(argc, argv, valid_options, valid_flags, option_lists);
 
-  // '--help' given
-  if (param.exists("help"))
+  // check if tool was called without parameter names (e.g. from explorer, file manager)
+  if (argc > 1 && !param.exists("in") && !param.exists("write_ctd") && !param.exists("ini") 
+    && !param.exists("help") && !param.exists("helphelp") && !param.exists("write_ini") && !param.exists("write_wsdl"))
   {
-    print_usage();
-    return 0;
-  }
-
-  // test if unknown options were given
-  if (param.exists("unknown"))
-  {
-    // if TOPPView is packed as Mac OS X bundle it will get a -psn_.. parameter by default from the OS
-    // if this is the only unknown option it will be ignored .. maybe this should be solved directly
-    // in Param.h
-    if (!(param.getValue("unknown").toString().hasSubstring("-psn") && !param.getValue("unknown").toString().hasSubstring(", ")))
+    // test if unknown options were given
+    if (param.exists("unknown"))
     {
-      cout << "Unknown option(s) '" << param.getValue("unknown").toString() << "' given. Aborting!" << endl;
-      print_usage();
-      return 1;
-    }
-  }
-
-  try
-  {
-    QApplicationTOPP a(argc, const_cast<char**>(argv));
-    a.connect(&a, SIGNAL(lastWindowClosed()), &a, SLOT(quit()));
-
-    //set plastique style unless windows / mac style is available
-    if (QStyleFactory::keys().contains("windowsxp", Qt::CaseInsensitive))
-    {
-      a.setStyle("windowsxp");
-    }
-    else if (QStyleFactory::keys().contains("macintosh", Qt::CaseInsensitive))
-    {
-      a.setStyle("macintosh");
-    }
-    else if (QStyleFactory::keys().contains("plastique", Qt::CaseInsensitive))
-    {
-      a.setStyle("plastique");
+      // if TOPPView is packed as Mac OS X bundle it will get a -psn_.. parameter by default from the OS
+      // if this is the only unknown option it will be ignored .. maybe this should be solved directly
+      // in Param.h
+      if (!(param.getValue("unknown").toString().hasSubstring("-psn") && !param.getValue("unknown").toString().hasSubstring(", ")))
+      {
+        cout << "Unknown option(s) '" << param.getValue("unknown").toString() << "' given. Aborting!" << endl;
+        return 1;
+      }
     }
 
-    TOPPViewBase* mw = new TOPPViewBase();
-    a.connect(&a, SIGNAL(fileOpen(QString)), mw, SLOT(loadFile(QString)));
-    mw->show();
+    // now try to make plain command line string compatible with TOPP tool cmd line options
+    // prepend -in to command line arguments
+    int newc = argc + 1;
+    char **newv = (char **)calloc((newc + 1), sizeof(*newv)); // newc + 1 for terminating 0
+    memmove(newv + 2, argv + 1, sizeof(*newv) * (argc - 1)); // copy all arguments except the filename to newv[2..newc]
+    memmove(newv, argv, sizeof(*newv)); // copy filename (first argument)
+    char* in_string = "-in";
+    newv[1] = in_string;
+    newv[newc] = 0; // terminating 0
 
-    // Create the splashscreen that is displayed while the application loads
-    QSplashScreen* splash_screen = new QSplashScreen(QPixmap(":/TOPPView_Splashscreen.png"));
-    splash_screen->show();
-    splash_screen->showMessage("Loading parameters");
-    QApplication::processEvents();
-    StopWatch stop_watch;
-    stop_watch.start();
-
-    if (param.exists("ini"))
-    {
-      mw->loadPreferences((String)param.getValue("ini"));
-    }
-
-    //load command line files
-    if (param.exists("misc"))
-    {
-      mw->loadFiles(param.getValue("misc"), splash_screen);
-    }
-
-    // We are about to show the application.
-    // Proper time to  remove the splashscreen, if at least 1.5 seconds have passed...
-    while (stop_watch.getClockTime() < 1.5) /*wait*/
-    {
-    }
-    stop_watch.stop();
-    splash_screen->close();
-    delete splash_screen;
-
-#ifdef OPENMS_WINDOWSPLATFORM
-    FreeConsole(); // get rid of console window at this point (we will not see any console output from this point on)
-    AttachConsole(-1); // if the parent is a console, reattach to it - so we can see debug output - a normal user will usually not use cmd.exe to start a GUI)
-#endif
-
-    int result = a.exec();
-    delete(mw);
-    return result;
+    TOPPView tool;
+    return static_cast<int>(tool.main(newc, (const char **)newv));
   }
-  //######################## ERROR HANDLING #################################
-  catch (Exception::UnableToCreateFile& e)
+  else
   {
-    cout << String("Error: Unable to write file (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
+    TOPPView tool;
+    return static_cast<int>(tool.main(argc, argv));
   }
-  catch (Exception::FileNotFound& e)
-  {
-    cout << String("Error: File not found (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
-  }
-  catch (Exception::FileNotReadable& e)
-  {
-    cout << String("Error: File not readable (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
-  }
-  catch (Exception::FileEmpty& e)
-  {
-    cout << String("Error: File empty (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
-  }
-  catch (Exception::ParseError& e)
-  {
-    cout << String("Error: Unable to read file (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
-  }
-  catch (Exception::InvalidValue& e)
-  {
-    cout << String("Error: Invalid value (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
-  }
-  catch (Exception::BaseException& e)
-  {
-    cout << String("Error: Unexpected error (") << e.what() << ")" << endl << "Code location: " << e.getFile() << ":" << e.getLine() << endl;
-  }
-
-  return 1;
 }

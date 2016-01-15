@@ -156,6 +156,7 @@ namespace OpenMS
 #ifdef WITH_GUI
     tools_map["ExecutePipeline"] = Internal::ToolDescription("ExecutePipeline", "Misc");
     tools_map["Resampler"] = Internal::ToolDescription("Resampler", "Signal processing and preprocessing");
+    tools_map["TOPPView"] = Internal::ToolDescription("TOPPView", "Misc");
 #endif
 
     // INTERNAL tools

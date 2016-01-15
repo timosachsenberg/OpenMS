@@ -46,6 +46,7 @@
 #include <OpenMS/SYSTEM/FileWatcher.h>
 #include <OpenMS/VISUAL/SpectraViewWidget.h>
 #include <OpenMS/VISUAL/SpectraIdentificationViewWidget.h>
+#include <OpenMS/APPLICATIONS/TOPPBase.h>
 
 #include <OpenMS/VISUAL/TOPPViewBehaviorInterface.h>
 #include <OpenMS/VISUAL/TOPPViewSpectraViewBehavior.h>
