@@ -339,6 +339,7 @@ protected:
 
   Param algo_params_; // parameters for PeptideAndProteinQuant algorithm
   ProteinIdentification proteins_; // protein inference results (proteins)
+  vector<ProteinIdentification> proteins_complete_; // all protein identification runs
   vector<PeptideIdentification> peptides_; // protein inference res. (peptides)
   ConsensusMap::FileDescriptions files_; // information about files involved
   bool spectral_counting_; // quantification based on spectral counting?
@@ -353,6 +354,8 @@ protected:
     setValidFormats_("out", ListUtils::create<String>("csv"));
     registerOutputFile_("peptide_out", "<file>", "", "Output file for peptide abundances", false);
     setValidFormats_("peptide_out", ListUtils::create<String>("csv"));
+    registerOutputFile_("out_mzTab", "<file>", "", "Output file (mzTab)", false);
+    setValidFormats_("out_mzTab", ListUtils::create<String>("tsv"));
 
     // algorithm parameters:
     addEmptyLine_();
@@ -658,12 +661,13 @@ protected:
     String in = getStringOption_("in");
     String out = getStringOption_("out");
     String peptide_out = getStringOption_("peptide_out");
+    String out_mzTab = getStringOption_("out_mzTab");
 
-    if (out.empty() && peptide_out.empty())
+    if (out.empty() && peptide_out.empty() && out_mzTab.empty())
     {
       throw Exception::RequiredParameterNotGiven(__FILE__, __LINE__,
                                                  __PRETTY_FUNCTION__,
-                                                 "out/peptide_out");
+                                                 "out/peptide_out/out_mzTab");
     }
 
     String protein_groups = getStringOption_("protein_groups");
@@ -677,6 +681,7 @@ protected:
         throw Exception::MissingInformation(__FILE__, __LINE__, __PRETTY_FUNCTION__, "No information on indistinguishable protein groups found in file '" + protein_groups + "'");
       }
       proteins_ = proteins[0]; // inference data is attached to first ID run
+      proteins_complete_ = proteins;
     }
 
     PeptideAndProteinQuant quantifier;
