@@ -42,6 +42,7 @@ MsInspectFile.cpp
 MzDataFile.cpp
 MzTab.cpp
 MzTabFile.cpp
+MzTabHelper.cpp
 MzMLFile.cpp
 MzXMLFile.cpp
 OMSSACSVFile.cpp

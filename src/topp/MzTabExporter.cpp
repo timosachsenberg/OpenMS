@@ -47,6 +47,7 @@
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/MzIdentMLFile.h>
 #include <OpenMS/CHEMISTRY/ModificationsDB.h>
+#include <OpenMS/FORMAT/MzTabHelper.h>
 #include <OpenMS/FORMAT/MzTabFile.h>
 #include <OpenMS/FORMAT/MzTab.h>
 

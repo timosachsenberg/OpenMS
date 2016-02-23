@@ -44,6 +44,8 @@
 #include <OpenMS/FORMAT/SVOutStream.h>
 #include <cmath>
 
+#include <OpenMS/APPLICATIONS/ToolHandler.h>
+
 using namespace OpenMS;
 using namespace std;
 
@@ -682,6 +684,7 @@ protected:
       }
       proteins_ = proteins[0]; // inference data is attached to first ID run
       proteins_complete_ = proteins;
+      
     }
 
     PeptideAndProteinQuant quantifier;
@@ -709,6 +712,8 @@ protected:
     }
     else if (in_type == FileTypes::IDXML)
     {
+      // quantitative information from spectral counting
+      
       spectral_counting_ = true;
       vector<ProteinIdentification> proteins;
       vector<PeptideIdentification> peptides;
