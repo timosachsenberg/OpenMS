@@ -1011,17 +1011,15 @@ protected:
       // export identification data from idXML
       if (in_type == FileTypes::IDXML)
       {
-        String document_id;
         vector<ProteinIdentification> prot_ids;
         vector<PeptideIdentification> pep_ids;
-        IdXMLFile().load(in, prot_ids, pep_ids, document_id);
+        IdXMLFile().load(in, prot_ids, pep_ids);
         mztab = exportIdentificationsToMzTab(prot_ids, pep_ids, in); 
       }
 
       // export identification data from mzIdentML
       if (in_type == FileTypes::MZIDENTML)
       {
-        String document_id;
         vector<ProteinIdentification> prot_ids;
         vector<PeptideIdentification> pep_ids;
         MzIdentMLFile().load(in, prot_ids, pep_ids);
