@@ -43,6 +43,23 @@
 #include <OpenMS/METADATA/PeptideEvidence.h>
 #include <OpenMS/CHEMISTRY/ModificationsDB.h>
 
+#include <OpenMS/DATASTRUCTURES/StringListUtils.h>
+#include <OpenMS/MATH/MISC/MathFunctions.h>
+#include <OpenMS/FORMAT/FileHandler.h>
+#include <OpenMS/FORMAT/FileTypes.h>
+#include <OpenMS/KERNEL/ConsensusMap.h>
+#include <OpenMS/FORMAT/ConsensusXMLFile.h>
+#include <OpenMS/METADATA/MetaInfoInterfaceUtils.h>
+#include <OpenMS/METADATA/ProteinIdentification.h>
+#include <OpenMS/METADATA/ProteinHit.h>
+#include <OpenMS/METADATA/PeptideEvidence.h>
+#include <OpenMS/FORMAT/IdXMLFile.h>
+#include <OpenMS/FORMAT/MzIdentMLFile.h>
+#include <OpenMS/CHEMISTRY/ModificationsDB.h>
+#include <OpenMS/FORMAT/MzTabHelper.h>
+#include <OpenMS/FORMAT/MzTabFile.h>
+#include <OpenMS/FORMAT/MzTab.h>
+
 #include <OpenMS/FORMAT/SVOutStream.h>
 #include <OpenMS/CONCEPT/Exception.h>
 #include <map>
@@ -93,6 +110,19 @@ namespace OpenMS
     static std::map<Size, MzTabModificationMetaData> generateMzTabStringFromVariableModifications(const std::vector<String>& mods);
     
     static std::map<Size, MzTabModificationMetaData> generateMzTabStringFromFixedModifications(const std::vector<String>& mods);
+    
+    /**
+      @brief Generate MzTab style list of PTMs from AASequence object. 
+      All passed fixed modifications are not reported (as suggested by the standard for the PRT and PEP section).
+      In contrast, all modifications are reported in the PSM section (see standard document for details).
+    */
+    static MzTabModificationList extractModificationListFromAASequence(const AASequence& aas, const std::vector<String>& fixed_mods);
+    
+    static MzTab exportFeatureMapToMzTab(const FeatureMap& feature_map, const String& filename);
+    
+    static MzTab exportIdentificationsToMzTab(const std::vector<ProteinIdentification>& prot_ids, const std::vector<PeptideIdentification>& peptide_ids, const String& filename);
+    
+    static MzTab exportConsensusMapToMzTab(const ConsensusMap& consensus_map, const String& filename);
 
   };
 
