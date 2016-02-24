@@ -29,11 +29,19 @@
 //
 // --------------------------------------------------------------------------
 // $Maintainer: Timo Sachsenberg $
-// $Authors: Timo Sachsenberg $
+// $Authors: Timo Sachsenberg, Lars Nilse $
 // --------------------------------------------------------------------------
 
 #ifndef OPENMS_FORMAT_MZTABHELPER_H
 #define OPENMS_FORMAT_MZTABHELPER_H
+
+#include <OpenMS/FORMAT/MzTabFile.h>
+#include <OpenMS/FORMAT/MzTab.h>
+#include <OpenMS/METADATA/MetaInfoInterfaceUtils.h>
+#include <OpenMS/METADATA/ProteinIdentification.h>
+#include <OpenMS/METADATA/ProteinHit.h>
+#include <OpenMS/METADATA/PeptideEvidence.h>
+#include <OpenMS/CHEMISTRY/ModificationsDB.h>
 
 #include <OpenMS/FORMAT/SVOutStream.h>
 #include <OpenMS/CONCEPT/Exception.h>
@@ -42,9 +50,6 @@
 #include <list>
 #include <algorithm>
 #include <OpenMS/KERNEL/StandardTypes.h>
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnon-virtual-dtor"
 
 namespace OpenMS
 {
@@ -56,16 +61,41 @@ namespace OpenMS
 
   class OPENMS_DLLAPI MzTabHelper
   {
-public:
+  public:
     /// Default constructor
     MzTabHelper();
 
     /// Destructor
     virtual ~MzTabHelper();
+    
+    /**
+      @brief Gets peptide_evidences with data from internal structures adds their info to an MzTabPSMSectionRow (pre- or unfilled)
+
+      @param peptide_evidences Vector of PeptideEvidence holding internal data.
+      @param row Pre- or unfilled MzTabPSMSectionRow to be filled with the data.
+      @param rows Vector of MzTabPSMSectionRow to add the differently updated rows to.
+    */
+    static void addPepEvidenceToRows(const std::vector<PeptideEvidence>& peptide_evidences, MzTabPSMSectionRow& row, MzTabPSMSectionRows& rows);
+    
+    /**
+      @brief Inserts values from MetaInfoInterface objects matching a (precalculated or filtered) set of keys to optional columns of an MzTab row.
+  
+      @param keys Only values matching those keys will be extracted from the object inheriting from MetaInfoInterface.
+      @param opt A vector of optional columns to add to.
+      @param id The identifier for this optional value according to the mzTab standard (like global, MS_Run, assay, etc.)
+      @param meta The object holding the MetaInformation (like PeptideHit, ProteinHit, etc.)
+      @return void: Only updates the values of the columns in opt
+    */
+    static void addMetaInfoToOptionalColumns(const std::set<String>& keys, std::vector<MzTabOptionalColumnEntry>& opt, const String id, const MetaInfoInterface meta);
+    
+    static std::map<Size, MzTabModificationMetaData> generateMzTabStringFromModifications(const std::vector<String>& mods);
+    
+    static std::map<Size, MzTabModificationMetaData> generateMzTabStringFromVariableModifications(const std::vector<String>& mods);
+    
+    static std::map<Size, MzTabModificationMetaData> generateMzTabStringFromFixedModifications(const std::vector<String>& mods);
+
   };
 
 } // namespace OpenMS
-
-#pragma clang diagnostic pop
 
 #endif // OPENMS_FORMAT_MZTABHELPER_H

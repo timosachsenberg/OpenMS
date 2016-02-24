@@ -29,7 +29,7 @@
 //
 // --------------------------------------------------------------------------
 // $Maintainer: Timo Sachsenberg $
-// $Authors: Timo Sachsenberg $
+// $Authors: Timo Sachsenberg, Lars Nilse $
 // --------------------------------------------------------------------------
 
 #include <OpenMS/FORMAT/MzTabHelper.h>
@@ -46,5 +46,169 @@ namespace OpenMS
   {
 
   }
+  
+  void addPepEvidenceToRows(const std::vector<PeptideEvidence>& peptide_evidences, MzTabPSMSectionRow& row, MzTabPSMSectionRows& rows)
+  {
+    if (!peptide_evidences.empty())
+    {
+      for (Size i = 0; i != peptide_evidences.size(); ++i)
+      {
+        // get AABefore and AAAfter as well as start and end for all pep evidences
+
+        // pre/post
+        // from spec: Amino acid preceding the peptide (coming from the PSM) in the protein
+        // sequence. If unknown “null” MUST be used, if the peptide is N-terminal “-“
+        // MUST be used.
+        if (peptide_evidences[i].getAABefore() == PeptideEvidence::UNKNOWN_AA)
+        {
+          row.pre = MzTabString("null");
+        }
+        else if (peptide_evidences[i].getAABefore() == PeptideEvidence::N_TERMINAL_AA)
+        {
+          row.pre = MzTabString("-");
+        }
+        else
+        {
+          row.pre = MzTabString(String(peptide_evidences[i].getAABefore()));
+        }
+
+        if (peptide_evidences[i].getAAAfter() == PeptideEvidence::UNKNOWN_AA)
+        {
+          row.post = MzTabString("null");
+        }
+        else if (peptide_evidences[i].getAAAfter() == PeptideEvidence::C_TERMINAL_AA)
+        {
+          row.post = MzTabString("-");
+        }
+        else
+        {
+          row.post = MzTabString(String(peptide_evidences[i].getAAAfter()));
+        }
+
+        // start/end
+        if (peptide_evidences[i].getStart() == PeptideEvidence::UNKNOWN_POSITION)
+        {
+          row.start = MzTabString("null");
+        }
+        else
+        {
+          row.start = MzTabString(String(peptide_evidences[i].getStart() + 1)); // counting in mzTab starts at 1
+        }
+
+        if (peptide_evidences[i].getEnd() == PeptideEvidence::UNKNOWN_POSITION)
+        {
+          row.end = MzTabString("null");
+        }
+        else
+        {
+          row.end = MzTabString(String(peptide_evidences[i].getEnd() + 1)); // counting in mzTab starts at 1
+        }
+
+        row.accession = MzTabString(peptide_evidences[i].getProteinAccession());
+
+        rows.push_back(row);
+      }
+    }
+    else
+    { // report without pep evidence information
+      row.pre = MzTabString("null");
+      row.post = MzTabString("null");
+      row.start = MzTabString("null");
+      row.end = MzTabString("null");
+      rows.push_back(row);
+    }
+  }
+  
+  void addMetaInfoToOptionalColumns(const std::set<String>& keys, std::vector<MzTabOptionalColumnEntry>& opt, const String id, const MetaInfoInterface meta)
+  {
+    for (std::set<String>::const_iterator sit = keys.begin(); sit != keys.end(); ++sit)
+    {
+      const String& key = *sit;
+      MzTabOptionalColumnEntry opt_entry;
+      opt_entry.first = String("opt_") + id + String("_") + String(key).substitute(' ','_');
+      if (meta.metaValueExists(key))
+      {
+        opt_entry.second = MzTabString(meta.getMetaValue(key).toString().substitute(' ','_'));
+      } // otherwise it is default ("null")
+      opt.push_back(opt_entry);
+    }
+  }
+
+  std::map<Size, MzTabModificationMetaData> generateMzTabStringFromModifications(const std::vector<String>& mods)
+  {
+    std::map<Size, MzTabModificationMetaData> mods_mztab;
+    for (std::vector<String>::const_iterator sit = mods.begin(); sit != mods.end(); ++sit)
+    {
+      Size index = (sit - mods.begin()) + 1;
+      MzTabModificationMetaData mod;
+      MzTabParameter mp;
+      mp.setCVLabel("UNIMOD");
+      ModificationsDB* mod_db = ModificationsDB::getInstance();
+      // MzTab standard is to just report Unimod accession.
+      ResidueModification m = mod_db->getModification(*sit);
+      String unimod_accession = m.getUniModAccession();
+      mp.setAccession(unimod_accession.toUpper());
+      mp.setName(m.getId());
+      mod.modification = mp;
+
+      if (m.getTermSpecificity() == ResidueModification::C_TERM)
+      {
+        mod.position = MzTabString("Any C-term");
+      }
+      else if (m.getTermSpecificity() == ResidueModification::N_TERM)
+      {
+        mod.position = MzTabString("Any N-term");
+      }
+      else if (m.getTermSpecificity() == ResidueModification::ANYWHERE)
+      {
+        mod.position = MzTabString("Anywhere");
+      }
+      else if (m.getTermSpecificity() == ResidueModification::PROTEIN_C_TERM)
+      {
+        mod.position = MzTabString("Protein C-term");
+      }
+      else if (m.getTermSpecificity() == ResidueModification::PROTEIN_N_TERM)
+      {
+        mod.position = MzTabString("Protein N-term");
+      }
+
+      mod.site = MzTabString(m.getOrigin());
+      mods_mztab[index] = mod;
+    }
+    return mods_mztab;
+  }
+
+  std::map<Size, MzTabModificationMetaData> generateMzTabStringFromVariableModifications(const std::vector<String>& mods)
+  {
+    if (mods.empty())
+    {
+      std::map<Size, MzTabModificationMetaData> mods_mztab;
+      MzTabModificationMetaData mod_mtd;
+      mod_mtd.modification.fromCellString("[MS, MS:1002454, No variable modifications searched, ]");
+      mods_mztab.insert(std::make_pair(1, mod_mtd));
+      return mods_mztab;
+    }
+    else
+    {
+      return generateMzTabStringFromModifications(mods);
+    }
+  }
+
+  std::map<Size, MzTabModificationMetaData> generateMzTabStringFromFixedModifications(const std::vector<String>& mods)
+  {
+    if (mods.empty())
+    {
+      std::map<Size, MzTabModificationMetaData> mods_mztab;
+      MzTabModificationMetaData mod_mtd;
+      mod_mtd.modification.fromCellString("[MS, MS:1002453, No fixed modifications searched, ]");
+      mods_mztab.insert(std::make_pair(1, mod_mtd));
+      return mods_mztab;
+    }
+    else
+    {
+      return generateMzTabStringFromModifications(mods);
+    }
+  }
+
 
 }
