@@ -693,6 +693,8 @@ namespace OpenMS
 
   std::ostream& operator<<(std::ostream& os, const AASequence& peptide)
   {
+    os << ".";
+
     if (peptide.n_term_mod_ != 0)
     {
       os << "(" << peptide.n_term_mod_->getId() << ")";
@@ -746,6 +748,8 @@ namespace OpenMS
       }
     }
 
+    os << ".";
+
     if (peptide.c_term_mod_ != 0)
     {
       os << "(" << peptide.c_term_mod_->getId() << ")";
@@ -755,7 +759,7 @@ namespace OpenMS
 
 
   String::ConstIterator AASequence::parseModRoundBrackets_(
-    const String::ConstIterator str_it, const String& str, AASequence& aas)
+    const String::ConstIterator str_it, const String& str, AASequence& aas, bool dot_notation, bool dot_terminal)
   {
     OPENMS_PRECONDITION(*str_it == '(', "Modification must start with '('.");
     String::ConstIterator mod_start = str_it;
@@ -783,15 +787,28 @@ namespace OpenMS
     }
     if (std::distance(mod_end, str.end()) == 1) // end of peptide -> C-terminal mod.?
     {
-      try
+      if (dot_notation)
       {
-        const ResidueModification* term_mod =
-          &(mod_db->getTerminalModification(mod, ResidueModification::C_TERM));
-        aas.c_term_mod_ = term_mod;
-        return mod_end;
+        if (dot_terminal)
+        {
+          const ResidueModification* term_mod =
+            &(mod_db->getTerminalModification(mod, ResidueModification::C_TERM));
+          aas.c_term_mod_ = term_mod;
+          return mod_end;
+        }
       }
-      catch (Exception::ElementNotFound& /* e */)
-      { // just do nothing, the mod is presumably a non-terminal one
+      else // old ambigous notation: Modification might be at last one or at C-term
+      {
+        try
+        {
+          const ResidueModification* term_mod =
+            &(mod_db->getTerminalModification(mod, ResidueModification::C_TERM));
+          aas.c_term_mod_ = term_mod;
+          return mod_end;
+        }
+        catch (Exception::ElementNotFound& /* e */)
+        { // just do nothing, the mod is presumably a non-terminal one
+        }
       }
     }
     aas.peptide_.back() = ResidueDB::getInstance()->
@@ -922,10 +939,21 @@ namespace OpenMS
     peptide.trim();
     if (peptide.empty()) return;
 
+    // detect if this is the new notation containing dots for terminus and track if last char denoted a terminus
+    bool dot_terminal(false), dot_notation(false);
+
     static ResidueDB* rdb = ResidueDB::getInstance();
     for (String::ConstIterator str_it = peptide.begin();
          str_it != peptide.end(); ++str_it)
     {
+      // skip (optional) terminal delimiters
+      if (*str_it == '.') 
+      {
+        dot_notation = true;
+        dot_terminal = true;
+        continue;
+      }
+
       const Residue* r = rdb->getResidue(*str_it); // "isalpha" check not needed
       if (r)
       {
@@ -933,7 +961,7 @@ namespace OpenMS
       }
       else if (*str_it == '(')
       {
-        str_it = parseModRoundBrackets_(str_it, peptide, aas);
+        str_it = parseModRoundBrackets_(str_it, peptide, aas, dot_notation, dot_terminal);
       }
       else if (*str_it == '[')
       {
@@ -955,6 +983,7 @@ namespace OpenMS
               "Cannot convert string to amino acid sequence: unexpected character '" + String(*str_it) + "'");
         }
       }
+      dot_terminal = false; // previous char was no dot
     }
   }
 
