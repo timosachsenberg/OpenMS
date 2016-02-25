@@ -38,6 +38,7 @@
 #include <OpenMS/FORMAT/ConsensusXMLFile.h>
 #include <OpenMS/FORMAT/FeatureXMLFile.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
+#include <OpenMS/FORMAT/MzTabHelper.h>
 #include <OpenMS/FORMAT/MzTabFile.h>
 #include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/FORMAT/FileTypes.h>
@@ -684,6 +685,11 @@ protected:
       }
       proteins_ = proteins[0]; // inference data is attached to first ID run
       proteins_complete_ = proteins;
+      
+      // TEST (START)
+      MzTab mztab;
+      mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups); 
+      // TEST (END)
       
     }
 

@@ -35,6 +35,7 @@
 #ifndef OPENMS_FORMAT_MZTABHELPER_H
 #define OPENMS_FORMAT_MZTABHELPER_H
 
+#include <OpenMS/FORMAT/MzTabHelper.h>
 #include <OpenMS/FORMAT/MzTabFile.h>
 #include <OpenMS/FORMAT/MzTab.h>
 #include <OpenMS/METADATA/MetaInfoInterfaceUtils.h>
@@ -43,22 +44,11 @@
 #include <OpenMS/METADATA/PeptideEvidence.h>
 #include <OpenMS/CHEMISTRY/ModificationsDB.h>
 
-#include <OpenMS/DATASTRUCTURES/StringListUtils.h>
-#include <OpenMS/MATH/MISC/MathFunctions.h>
 #include <OpenMS/FORMAT/FileHandler.h>
-#include <OpenMS/FORMAT/FileTypes.h>
 #include <OpenMS/KERNEL/ConsensusMap.h>
 #include <OpenMS/FORMAT/ConsensusXMLFile.h>
-#include <OpenMS/METADATA/MetaInfoInterfaceUtils.h>
-#include <OpenMS/METADATA/ProteinIdentification.h>
-#include <OpenMS/METADATA/ProteinHit.h>
-#include <OpenMS/METADATA/PeptideEvidence.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/MzIdentMLFile.h>
-#include <OpenMS/CHEMISTRY/ModificationsDB.h>
-#include <OpenMS/FORMAT/MzTabHelper.h>
-#include <OpenMS/FORMAT/MzTabFile.h>
-#include <OpenMS/FORMAT/MzTab.h>
 
 #include <OpenMS/FORMAT/SVOutStream.h>
 #include <OpenMS/CONCEPT/Exception.h>
