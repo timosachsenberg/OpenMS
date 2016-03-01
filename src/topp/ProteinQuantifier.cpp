@@ -38,8 +38,8 @@
 #include <OpenMS/FORMAT/ConsensusXMLFile.h>
 #include <OpenMS/FORMAT/FeatureXMLFile.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
-#include <OpenMS/FORMAT/MzTabHelper.h>
 #include <OpenMS/FORMAT/MzTabFile.h>
+#include <OpenMS/FORMAT/MzTabHelper.h>
 #include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/FORMAT/FileTypes.h>
 #include <OpenMS/FORMAT/SVOutStream.h>
@@ -688,7 +688,11 @@ protected:
       
       // TEST (START)
       MzTab mztab;
-      mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups); 
+      mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups);
+      if (!out_mzTab.empty())
+      {
+        MzTabFile().store(out_mzTab, mztab);
+      }
       // TEST (END)
       
     }
