@@ -36,7 +36,7 @@ if [ $ENABLE_STYLE_TESTING == "On" ]; then
   git clone git://github.com/danmar/cppcheck.git
   pushd cppcheck
   git checkout 1.72
-  CXX=clang++ make SRCDIR=build CFGDIR=`pwd`/cfg HAVE_RULES=yes -j4
+  make -j4
   popd
 else
   # regular builds .. get the search engine executables via githubs SVN interface (as git doesn't allow single folder checkouts)
