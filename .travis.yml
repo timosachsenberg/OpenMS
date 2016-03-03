@@ -35,6 +35,7 @@ addons:
          - doxygen 
          - graphviz
          - libpcre3-dev
+         - cppcheck
          
 before_script:
   ./tools/travis/cibuild.before.sh
