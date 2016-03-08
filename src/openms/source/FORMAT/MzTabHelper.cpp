@@ -869,6 +869,12 @@ namespace OpenMS
     return mztab;
   }
 
-
+  void MzTabHelper::appendQuants(MzTab& mztab)
+  {
+    std::cout << "\n*** Appending Quants ***\n\n";
+    
+    MzTabProteinSectionRows rows = mztab.getProteinSectionRows();
+    std::cout << "number of rows: " << rows.size() << "\n";
+  }
 
 }

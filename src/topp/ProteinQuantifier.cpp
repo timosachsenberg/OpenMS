@@ -672,7 +672,7 @@ protected:
                                                  __PRETTY_FUNCTION__,
                                                  "out/peptide_out/out_mzTab");
     }
-
+    
     String protein_groups = getStringOption_("protein_groups");
     if (!protein_groups.empty()) // read protein inference data
     {
@@ -685,16 +685,7 @@ protected:
       }
       proteins_ = proteins[0]; // inference data is attached to first ID run
       proteins_complete_ = proteins;
-      
-      // TEST (START)
-      MzTab mztab;
-      mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups);
-      if (!out_mzTab.empty())
-      {
-        MzTabFile().store(out_mzTab, mztab);
-      }
-      // TEST (END)
-      
+            
     }
 
     PeptideAndProteinQuant quantifier;
@@ -756,9 +747,21 @@ protected:
     }
 
     quantifier.quantifyPeptides(peptides_); // quantify on peptide level
-    if (!out.empty()) // quantify on protein level
+    
+    if (!out.empty() || !out_mzTab.empty()) // quantify on protein level
     {
       quantifier.quantifyProteins(proteins_);
+      
+      // Test mzTab output (START)
+      MzTab mztab;
+      mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups);
+      MzTabHelper::appendQuants(mztab);
+      if (!out_mzTab.empty())
+      {
+        MzTabFile().store(out_mzTab, mztab);
+      }
+      // Test mzTab output (END)
+     
     }
 
     // output:
