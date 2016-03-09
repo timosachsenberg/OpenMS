@@ -869,12 +869,19 @@ namespace OpenMS
     return mztab;
   }
 
-  void MzTabHelper::appendQuants(MzTab& mztab)
+  void MzTabHelper::appendQuants(MzTab& mztab, const PeptideAndProteinQuant::PeptideQuant& peptide_quants, const PeptideAndProteinQuant::ProteinQuant& protein_quants)
   {
     std::cout << "\n*** Appending Quants ***\n\n";
     
     MzTabProteinSectionRows rows = mztab.getProteinSectionRows();
     std::cout << "number of rows: " << rows.size() << "\n";
+    
+    // loop over protein quants
+    for (PeptideAndProteinQuant::ProteinQuant::const_iterator q_it = protein_quants.begin(); q_it != protein_quants.end(); ++q_it)
+    {
+      
+    }
+    
   }
 
 }

@@ -750,18 +750,7 @@ protected:
     
     if (!out.empty() || !out_mzTab.empty()) // quantify on protein level
     {
-      quantifier.quantifyProteins(proteins_);
-      
-      // Test mzTab output (START)
-      MzTab mztab;
-      mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups);
-      MzTabHelper::appendQuants(mztab);
-      if (!out_mzTab.empty())
-      {
-        MzTabFile().store(out_mzTab, mztab);
-      }
-      // Test mzTab output (END)
-     
+      quantifier.quantifyProteins(proteins_);     
     }
 
     // output:
@@ -789,6 +778,18 @@ protected:
       writeComments_(output);
       writeProteinTable_(output, quantifier.getProteinResults());
       outstr.close();
+    }
+    if (!out_mzTab.empty())
+    {
+      // Test mzTab output (START)
+      MzTab mztab;
+      mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups);
+      MzTabHelper::appendQuants(mztab, quantifier.getPeptideResults(), quantifier.getProteinResults());
+      if (!out_mzTab.empty())
+      {
+        MzTabFile().store(out_mzTab, mztab);
+      }
+      // Test mzTab output (END)
     }
 
     writeStatistics_(quantifier.getStatistics());

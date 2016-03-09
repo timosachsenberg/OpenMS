@@ -49,6 +49,7 @@
 #include <OpenMS/FORMAT/ConsensusXMLFile.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/MzIdentMLFile.h>
+#include <OpenMS/ANALYSIS/QUANTITATION/PeptideAndProteinQuant.h>
 
 #include <OpenMS/FORMAT/SVOutStream.h>
 #include <OpenMS/CONCEPT/Exception.h>
@@ -119,7 +120,7 @@ namespace OpenMS
   
       @param mztab  MzTab object to be appended
     */
-    static void appendQuants(MzTab& mztab);
+    static void appendQuants(MzTab& mztab, const PeptideAndProteinQuant::PeptideQuant& peptide_quants, const PeptideAndProteinQuant::ProteinQuant& protein_quants);
 
   };
 
