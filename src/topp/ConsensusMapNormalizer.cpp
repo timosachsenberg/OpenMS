@@ -103,64 +103,9 @@ public:
   }
 
 protected:
-/*
-#' SVT Imputation
-#'
-#' Imputation using Singular Value Thresholding a la Cai, Candes, Shen.
-#' @param x a data frame or matrix with size n1 x n2 where each row represents a different record
-#' @param lambda the penalty on the singular values
-#' @param stepsize optional.  If not provided, uses 1.2 * (n1 * n2) / (number of missing elements)
-#' @param threshold convergence threshold
-#' @param max.iters maximum number of iterations.  Note that each iteration will require computing
-#'   an SVD
-#' @param verbose if TRUE print status updates
-#' @references A Singular Value Thresholding Algorithm for Matrix Completion. Cai, Candes, Shen. 
-#' @examples
-#'   x = matrix(rnorm(100),10,10)
-#'   x.missing = x > 1
-#'   x[x.missing] = NA
-#'   SVTImpute(x, 3)
-#' @export
-SVTImpute = function(x, lambda, stepsize, threshold = 1e-3, max.iters = 10, verbose=F) {
-  prelim = impute.prelim(x, byrow=F)
-  if (prelim$numMissing == 0) return (x)
-  missing.matrix = prelim$missing.matrix
 
-  x.zeroimpute = x
-  x.zeroimpute[missing.matrix] = 0
-  x.zeroimpute.norm = norm(x.zeroimpute, "F")
-
-  if (missing(stepsize)) stepsize = min(1.2 * length(x) / sum(missing.matrix), 1.9)
-  k = ceiling(lambda / ( stepsize * norm(x.zeroimpute, "F")))
-
-  Y = k*stepsize*x.zeroimpute
-
-  for (iter in 1:max.iters) {
-    if (verbose) print(paste("Begin iteration", iter))
-    y.svd = svd(Y)
-    lambda.indices = which(y.svd$d < lambda)
-    if(length(lambda.indices) > 0) {
-      d.augmented = c(y.svd$d[-lambda.indices] - lambda, 
-                      rep(0, length(lambda.indices)))
-    } else {
-      d.augmented = y.svd$d - lambda
-    }
-    X.k = (y.svd$u %*% diag(d.augmented) %*% t(y.svd$v))
-    X.k.temp = X.k; X.k.temp[missing.matrix] = 0
-    if (norm(X.k.temp - x.zeroimpute, "F") / x.zeroimpute.norm < threshold) {
-      if (verbose) print(paste("Converging on iteration", iter))
-      break
-    }
-    Y[!missing.matrix] = Y[!missing.matrix] + stepsize*(x[!missing.matrix] - X.k[!missing.matrix])
-    Y[missing.matrix] = 0
-  }
-
-  return( list(
-    x=X.k,
-    missing.matrix = missing.matrix
-  ))
-}
-*/
+  // Imputation using Singular Value Thresholding a la Cai, Candes, Shen.
+  // see "A Singular Value Thresholding Algorithm for Matrix Completion. Cai, Candes, Shen."
   static void imputeSVTSingleLambda_(MatrixXd & X, double lambda, Size max_iter = 1000, double stepsize = 0, double threshold = 1e-5)
   {
     // replace missing values by zeros to generate matrix Z
@@ -199,8 +144,6 @@ SVTImpute = function(x, lambda, stepsize, threshold = 1e-3, max.iters = 10, verb
     // iterate max_iter times  
     for (Size i = 0; i != max_iter; ++i)
     { 
-      //cout << "Begin iteration: " << i << endl;
-
       // perform SVD on Y
       JacobiSVD<MatrixXd> svd(Y, ComputeThinU | ComputeThinV); 
       VectorXd sigma = svd.singularValues();
@@ -234,11 +177,13 @@ SVTImpute = function(x, lambda, stepsize, threshold = 1e-3, max.iters = 10, verb
     X = X_k;
   }
 
-  static double imputeSVTChooseLambda_(MatrixXd & m, Size max_iter = 1000, double min = 0, double max = 1000, double step = 10)
+  // return pair of best (lambda, rmse)
+  static pair<double, double> imputeSVTChooseLambda_(MatrixXd & m, Size max_iter = 1000, double min = 1, double max = 10, double step = 1, bool log_step = true)
   {
     // find best lambda
+
     // 1. randomly erase 1/3 of valid entries and calculate error for different lambdas
-    vector<pair<int, int> > valid_values;
+    vector<pair<int, int> > available;
     for (int i = 0; i < m.cols(); ++i)
     {
       for (int j = 0; j < m.rows(); ++j)
@@ -246,29 +191,31 @@ SVTImpute = function(x, lambda, stepsize, threshold = 1e-3, max.iters = 10, verb
         double v = m(j, i);
         if (!std::isnan(v) && v != 0)
         {
-          valid_values.push_back(make_pair(j, i)); 
+          available.push_back(make_pair(j, i)); 
         }
       }
     }
 
-    // no imputation possible as no valid values given - return zeros
-    if (valid_values.empty()) 
+    // no imputation possible as only na  values present - return zeros
+    if (available.empty())
     {
       m.setZero();
+      return make_pair(0, 0);
     }
 
-    std::random_shuffle(valid_values.begin(), valid_values.end());
+    // create random subsample of available values for validation 
+    vector<pair<int, int> > available_sub(available);
+    random_shuffle(available_sub.begin(), available_sub.end());
+    available_sub.resize(available_sub.size() / 3);
 
-    valid_values.resize(valid_values.size() / 3);
-   
     MatrixXd sample(m);
-    for (Size i = 0; i != valid_values.size(); ++i)
+    for (vector<pair<int, int> >::const_iterator it = available_sub.begin(); it != available_sub.end(); ++it)
     {
-      sample(valid_values[i].first, valid_values[i].second) = 0; // artifically zero out valid value
+      sample(it->first, it->second) = 0; // artifically zero out 1/3 of valid value
     }
 
     double best_rmse(std::numeric_limits<double>::max());
-    double best_lambda(min);
+    double best_lambda(0);
     MatrixXd best_matrix(m);
     imputeSVTSingleLambda_(best_matrix, 0); // generate a valid matrix
 
@@ -276,29 +223,34 @@ SVTImpute = function(x, lambda, stepsize, threshold = 1e-3, max.iters = 10, verb
     for (double l = min; l <= max; l += step)
     { 
       // impute using current lambda
-      MatrixXd m_imputed(m);
-      imputeSVTSingleLambda_(m_imputed, l);
+      MatrixXd m_imputed(sample);
+
+      double current_lambda = log_step ? pow(10, l) : l;
+
+      imputeSVTSingleLambda_(m_imputed, current_lambda, max_iter);
 
       // calculate RMSE on zero-ed out values
       double se(0); // sum of squared errors
-      for (Size i = 0; i != valid_values.size(); ++i)
+      for (vector<pair<int, int> >::const_iterator it = available_sub.begin(); it != available_sub.end(); ++it)
       {
-        double error = m_imputed(valid_values[i].first, valid_values[i].second) - m(valid_values[i].first, valid_values[i].second);
+        double error = m_imputed(it->first, it->second) - m(it->first, it->second);
         se += error * error;
       }
 
-      double rmse = sqrt(se / valid_values.size());
+      double rmse = sqrt(se / available_sub.size());
 
+      // store better lambda
       if (rmse < best_rmse)
       {
         best_rmse = rmse;
-        best_lambda = l;
-        best_matrix = m_imputed;
+        best_lambda = current_lambda;
       }
     }
 
-    m = best_matrix;
-    return best_rmse;
+    // apply best lambda to full matrix
+    imputeSVTSingleLambda_(m, best_lambda, max_iter);
+
+    return make_pair(best_lambda, best_rmse);
   }
 
   void imputeSVT_(ConsensusMap & cm)
@@ -335,16 +287,17 @@ SVTImpute = function(x, lambda, stepsize, threshold = 1e-3, max.iters = 10, verb
       }
     }
 
-    cout << "Imputing missing values: " << missing << endl;
+    cout << "Imputing values: " << missing << " of " << m.cols() * m.rows() 
+         << " missing (" << 100.0 * missing / (m.cols() * m.rows()) << "%)" << endl;
 
-    double rmse = imputeSVTChooseLambda_(m); 
+    pair<double, double> lambda_rmse = imputeSVTChooseLambda_(m);
 
-    cout << "Imputation finished. RMSE of log10 values: " << rmse << endl;
+    cout << "Best lambda: " << lambda_rmse.first << " with RMSE: " << pow(10, lambda_rmse.second) << endl;
 
     // copy back to consensus map
     for (Size j = 0; j != cm.size(); ++j)
     {
-      // current consensus feature had missing values
+      // current consensus feature had missing values so we fill in the imputed ones
       if (row_to_missing_column.find(j) != row_to_missing_column.end())
       {
         const set<Size> & missing = row_to_missing_column[j];
@@ -361,7 +314,6 @@ SVTImpute = function(x, lambda, stepsize, threshold = 1e-3, max.iters = 10, verb
         }
       }
     }
-       
   }
 
   void registerOptionsAndFlags_()
@@ -372,7 +324,7 @@ SVTImpute = function(x, lambda, stepsize, threshold = 1e-3, max.iters = 10, verb
     setValidFormats_("out", ListUtils::create<String>("consensusXML"));
     addEmptyLine_();
     registerStringOption_("algorithm_type", "<type>", "robust_regression", "The normalization algorithm that is applied. 'robust_regression' scales each map by a fator computed from the ratios of non-differential background features (as determined by the ratio_threshold parameter), 'quantile' performs quantile normalization, 'median' scales all maps to the same median intensity, 'median_shift' shifts the median instead of scaling (WARNING: if you have regular, log-normal MS data, 'median_shift' is probably the wrong choice. Use only if you know what you're doing!)", false, false);
-    setValidStrings_("algorithm_type", ListUtils::create<String>("robust_regression,median,median_shift,quantile"));
+    setValidStrings_("algorithm_type", ListUtils::create<String>("robust_regression,median,median_shift,quantile,none"));
     registerDoubleOption_("ratio_threshold", "<ratio>", 0.67, "Only for 'robust_regression': the parameter is used to distinguish between non-outliers (ratio_threshold < intensity ratio < 1/ratio_threshold) and outliers.", false);
     setMinFloat_("ratio_threshold", 0.001);
     setMaxFloat_("ratio_threshold", 1.0);
@@ -426,6 +378,15 @@ SVTImpute = function(x, lambda, stepsize, threshold = 1e-3, max.iters = 10, verb
         LOG_WARN << endl << "NOTE: Accession / description filtering is not supported in quantile normalization mode. Ignoring filters." << endl << endl;
       }
       ConsensusMapNormalizerAlgorithmQuantile::normalizeMaps(map);
+    }
+    else if (algo_type == "none") // disable normalization, i.e.: only impute value
+    {
+      if (imputation_method == "none")
+      {
+        LOG_WARN << endl << "NOTE: Neither normalization nor imputation method provided. No calculations performed." << endl << endl;
+        infile.store(out, map);
+        return EXECUTION_OK;
+      }
     }
     else
     {
