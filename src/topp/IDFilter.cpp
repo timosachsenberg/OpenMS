@@ -211,6 +211,10 @@ protected:
     registerFlag_("remove_decoys", "Remove proteins according to the information in the user parameters. Usually used in combination with 'delete_unreferenced_peptide_hits'.");
     registerFlag_("delete_unreferenced_peptide_hits", "Peptides not referenced by any protein are deleted in the IDs. Usually used in combination with 'score:prot' or 'thresh:prot'.");
 
+    // reannoate the original mzML file (Note: other file formats should not be supported in order to properly trace evidences to the output format)
+    registerTOPPSubsection_("md", "Meta data related filtering");
+    registerInputFileList_("md:reannotate_spectrafiles", "<file>", StringList(), "mzML file names annotated to the meta information.\n", false, false);
+    setValidFormats_("md:reannotate_spectrafiles", ListUtils::create<String>("mzML"));
   }
 
 
@@ -227,7 +231,6 @@ protected:
     Size n_prot_hits = IDFilter::countHits(proteins);
     Size n_pep_ids = peptides.size();
     Size n_pep_hits = IDFilter::countHits(peptides);
-
 
     // Filtering peptide identification according to set criteria
 
@@ -551,6 +554,16 @@ protected:
              << IDFilter::countHits(proteins) << " protein hit(s),\n"
              << peptides.size() << " peptide identification(s) with "
              << IDFilter::countHits(peptides) << " peptides hit(s)." << endl;
+
+    // reannotate spectra files if specified by the user
+    StringList spectrafiles = getStringList_("md:reannotate_spectrafiles");
+    if (!spectrafiles.empty())
+    {
+      for (Size i = 0; i < proteins.size(); ++i)
+      { 
+        proteins[i].setPrimaryMSRunPath(spectrafiles);
+      }
+    }
 
     IdXMLFile().store(outputfile_name, proteins, peptides);
 
