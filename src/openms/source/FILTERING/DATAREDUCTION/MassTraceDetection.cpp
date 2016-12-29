@@ -393,10 +393,11 @@ namespace OpenMS
               // Update the m/z variance dynamically
               if (reestimate_mt_sd_)           //  && (down_hitting_peak+1 > min_flank_scans))
               {
-                // if (ftl_t > min_fwhm_scans)
-                {
-                  updateWeightedSDEstimateRobust(next_peak, centroid_mz, ftl_sd, intensity_so_far);
-                }
+                updateWeightedSDEstimateRobust(next_peak, centroid_mz, ftl_sd, intensity_so_far);
+          
+                // limit sd (might grow indefinitly)
+                const double sd_limit = ((centroid_mz / 1e6) * 1.5 * mass_error_ppm_);
+                if (ftl_sd > sd_limit) ftl_sd = sd_limit;
               }
 
               ++down_hitting_peak;
@@ -469,10 +470,11 @@ namespace OpenMS
               // Update the m/z variance dynamically
               if (reestimate_mt_sd_)           //  && (up_hitting_peak+1 > min_flank_scans))
               {
-                // if (ftl_t > min_fwhm_scans)
-                {
-                  updateWeightedSDEstimateRobust(next_peak, centroid_mz, ftl_sd, intensity_so_far);
-                }
+                updateWeightedSDEstimateRobust(next_peak, centroid_mz, ftl_sd, intensity_so_far);
+
+                // limit sd (might grow indefinitly)
+                const double sd_limit = ((centroid_mz / 1e6) * 1.5 * mass_error_ppm_);
+                if (ftl_sd > sd_limit) ftl_sd = sd_limit;
               }
 
               ++up_hitting_peak;
