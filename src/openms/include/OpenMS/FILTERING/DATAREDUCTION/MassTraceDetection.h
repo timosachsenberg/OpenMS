@@ -89,8 +89,8 @@ public:
     /** @name Main computation methods
     */
 
-    /// Main method of MassTraceDetection. Extracts mass traces of a @ref MSExperiment and gathers them into a vector container.
-    void run(const MSExperiment<Peak1D> &, std::vector<MassTrace> &);
+    /// Main method of MassTraceDetection. Extracts mass traces of a @ref MSExperiment.
+    void run(const MSExperiment<Peak1D> &, std::vector<MassTrace> &, const Size max_traces = 0);
 
     /// Invokes the run method (see above) on merely a subregion of a @ref MSExperiment map.
     void run(MSExperiment<Peak1D>::ConstAreaIterator & begin, MSExperiment<Peak1D>::ConstAreaIterator & end, std::vector<MassTrace> & found_masstraces);
@@ -109,7 +109,9 @@ private:
               const Size peak_count, 
               const MSExperiment<Peak1D> & work_exp,
               const std::vector<Size>& spec_offsets,
-              std::vector<MassTrace> & found_masstraces);
+              std::vector<MassTrace> & found_masstraces,
+              const Size max_traces = 0
+              );
 
     // parameter stuff
     double mass_error_ppm_;

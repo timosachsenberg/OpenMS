@@ -108,7 +108,7 @@ protected:
     double mz_wiggle_rMAD;
   };
 
-  static void printQuantiles_(const vector<double>& v, const String& header, double& median, double& mad_l, double& mad_r)
+  static void calculateQuantiles_(const vector<double>& v, const String& header, double& median, double& mad_l, double& mad_r)
   {
     vector<double> ints(v);
     std::sort(ints.begin(), ints.end());
@@ -153,7 +153,7 @@ protected:
       }
     }
     double median, t2, rMAD;
-    printQuantiles_(ints, "MS run intensities: ", median, t2, rMAD);
+    calculateQuantiles_(ints, "MS run intensities: ", median, t2, rMAD);
 
     // collect intensities from potential isotopic pairs
     vector<double> iso_ints;
@@ -223,10 +223,10 @@ protected:
       }
       peak_map[i].select(indices); // filter all without isotopic peak
     }
-
-    printQuantiles_(iso_ints, "MS run isotopic intensities: ", median, t2, rMAD);
-
+    calculateQuantiles_(iso_ints, "MS run isotopic intensities: ", median, t2, rMAD);
+/* TODO: IFDEF
     MzMLFile().store("filtered.mzML", peak_map);
+*/
   }
 
   static MassTracesStatistics_ getMassTraceStatistics_(const FeatureMap & feature_map)
@@ -248,13 +248,13 @@ protected:
     MassTracesStatistics_ stats;
 
     double t1,t2,t3;
-    printQuantiles_(stats_sd, "Mass trace sd m/z: ", t1, t2, t3);
-    printQuantiles_(stats_sd_ppm, "Mass trace sd ppm: ", stats.sd_ppm_median, stats.sd_ppm_lMAD, stats.sd_ppm_rMAD);
-    printQuantiles_(stats_fwhm, "Mass trace FWHM: ", t1, t2, t3);
-    printQuantiles_(stats_mz_wiggle, "Mass trace m/z wiggle in fwhm: ", stats.mz_wiggle_median, stats.mz_wiggle_lMAD, stats.mz_wiggle_rMAD);
-    printQuantiles_(stats_int_wiggle, "Mass trace int wiggle in fwhm: ", t1, t2, t3);
-    printQuantiles_(stats_fwhm_high_int_frac, "High intensity peak fraction outside of FWHM: ", t1, t2, t3);
-    printQuantiles_(stats_fwhm_ints, "Mass trace FWHM border intensities: ", t1, t2, t3);
+    calculateQuantiles_(stats_sd, "Mass trace sd m/z: ", t1, t2, t3);
+    calculateQuantiles_(stats_sd_ppm, "Mass trace sd ppm: ", stats.sd_ppm_median, stats.sd_ppm_lMAD, stats.sd_ppm_rMAD);
+    calculateQuantiles_(stats_fwhm, "Mass trace FWHM: ", t1, t2, t3);
+    calculateQuantiles_(stats_mz_wiggle, "Mass trace m/z wiggle in fwhm: ", stats.mz_wiggle_median, stats.mz_wiggle_lMAD, stats.mz_wiggle_rMAD);
+    calculateQuantiles_(stats_int_wiggle, "Mass trace int wiggle in fwhm: ", t1, t2, t3);
+    calculateQuantiles_(stats_fwhm_high_int_frac, "High intensity peak fraction outside of FWHM: ", t1, t2, t3);
+    calculateQuantiles_(stats_fwhm_ints, "Mass trace FWHM border intensities: ", t1, t2, t3);
 
     return stats;
   }
@@ -288,6 +288,143 @@ protected:
     feature_map.updateRanges();
     map_removed.updateRanges();
     FeatureXMLFile().store("removed.featureXML", map_removed);
+  }
+
+  void estimateTraceParameters(MSExperiment<> ms_peakmap)
+  {    
+    Param com_param = getParam_().copy("algorithm:common:", true);
+    writeDebug_("Common parameters passed to both sub-algorithms (mtd and epd)", com_param, 3);
+
+    Param mtd_param = getParam_().copy("algorithm:mtd:", true);
+    writeDebug_("Parameters passed to MassTraceDetection", mtd_param, 3);
+
+    Param epd_param = getParam_().copy("algorithm:epd:", true);
+    writeDebug_("Parameters passed to ElutionPeakDetection", epd_param, 3);
+
+    bool use_epd = epd_param.getValue("enabled").toBool();
+    double start_fwhm = (double) com_param.getValue("chrom_fwhm");
+
+    //-------------------------------------------------------------
+    // configure and run MTD
+    //-------------------------------------------------------------
+    MassTraceDetection mt_ext;
+    mtd_param.insert("", com_param);
+    mtd_param.remove("chrom_fwhm");
+    mt_ext.setParameters(mtd_param);
+
+    double start_sd_ppm = (double)mtd_param.getValue("mass_error_ppm");
+
+    // filter peakmap todo: rename
+    getPeakMapStatistics_(ms_peakmap, start_sd_ppm);
+
+    vector<MassTrace> m_traces;
+    mt_ext.run(ms_peakmap, m_traces, 1000);
+
+    // 1a. run: estimate ppm error
+    double median_sd_ppm, median_fwhm;
+    double t2,t3;
+
+    if (use_epd)
+    {
+      ElutionPeakDetection ep_det;
+
+      Param p_epd = ElutionPeakDetection().getDefaults();
+      p_epd.setValue("max_fwhm", 1e10);
+      p_epd.setValue("chrom_fwhm", start_fwhm);
+      ep_det.setParameters(p_epd);
+
+      std::vector<MassTrace> split_mtraces;
+      ep_det.detectPeaks(m_traces, split_mtraces);
+      swap(split_mtraces, m_traces);
+    }
+
+    LOG_INFO << "Using " << m_traces.size() << " mass traces for parameter estimation." << endl;  
+
+    std::vector<double> stats_sd, stats_sd_ppm, stats_fwhm;
+
+    for (Size i = 0; i < m_traces.size(); ++i)
+    {
+      MassTrace & m = m_traces[i];
+
+      if (m.getSize() == 0) continue;
+
+      m.updateMeanMZ();
+      m.updateWeightedMZsd();
+
+      // SD absolute and ppm on full trace
+      double sd = m.getCentroidSD();
+      double sd_ppm = sd / m.getCentroidMZ() * 1e6;
+      stats_sd.push_back(sd);
+      stats_sd_ppm.push_back(sd_ppm);
+
+      // FWHM
+      double fwhm = m.estimateFWHM(use_epd);
+      stats_fwhm.push_back(fwhm);
+    }
+
+    calculateQuantiles_(stats_sd_ppm, "Mass trace sd ppm: ", median_sd_ppm, t2, t3);
+    calculateQuantiles_(stats_fwhm, "Mass trace FWHM: ", median_fwhm, t2, t3);
+
+    // 1b. improve ppm estimate by narrowing tolerance window
+    if (median_sd_ppm < start_sd_ppm) 
+    {
+      // limit median to 1 ppb (to cope with simulated data)
+      if (median_sd_ppm < 1e-3) median_sd_ppm = 1e-3;
+
+      // filter peakmap todo: rename
+      getPeakMapStatistics_(ms_peakmap, median_sd_ppm);
+
+      stats_sd.clear();
+      stats_sd_ppm.clear();
+      stats_fwhm.clear();
+      m_traces.clear();
+
+      mtd_param.setValue("mass_error_ppm", median_sd_ppm);
+      mt_ext.setParameters(mtd_param);
+      mt_ext.run(ms_peakmap, m_traces, 1000);
+
+      if (use_epd)
+      {
+        ElutionPeakDetection ep_det;
+
+        Param p_epd = ElutionPeakDetection().getDefaults();
+        p_epd.setValue("max_fwhm", 1e10);
+        p_epd.setValue("chrom_fwhm", median_fwhm);
+        ep_det.setParameters(p_epd);
+
+        std::vector<MassTrace> split_mtraces;
+        ep_det.detectPeaks(m_traces, split_mtraces);
+        swap(split_mtraces, m_traces);
+      }
+
+      std::vector<double> stats_sd, stats_sd_ppm, stats_fwhm;
+
+      for (Size i = 0; i < m_traces.size(); ++i)
+      {
+        MassTrace & m = m_traces[i];
+
+        if (m.getSize() == 0) continue;
+
+        m.updateMeanMZ();
+        m.updateWeightedMZsd();
+
+        // SD absolute and ppm on full trace
+        double sd = m.getCentroidSD();
+        double sd_ppm = sd / m.getCentroidMZ() * 1e6;
+        stats_sd.push_back(sd);
+        stats_sd_ppm.push_back(sd_ppm);
+
+        // FWHM
+        double fwhm = m.estimateFWHM(use_epd);
+        stats_fwhm.push_back(fwhm);
+      }
+
+      // print some stats about standard deviation of mass traces
+      calculateQuantiles_(stats_sd_ppm, "Mass trace sd ppm: ", median_sd_ppm, t2, t3);
+      calculateQuantiles_(stats_fwhm, "Mass trace FWHM: ", median_fwhm, t2, t3);
+    }
+
+    LOG_INFO << "Paramter estimated (sd ppm / chrom FWHM): " << median_sd_ppm << " / " << median_fwhm << endl;
   }
  
   void registerOptionsAndFlags_()
@@ -379,12 +516,13 @@ protected:
     //-------------------------------------------------------------
     // configure and run MTD
     //-------------------------------------------------------------
-    getPeakMapStatistics_(ms_peakmap, mtd_param.getValue("mass_error_ppm"));
-
     MassTraceDetection mt_ext;
     mtd_param.insert("", com_param);
     mtd_param.remove("chrom_fwhm");
     mt_ext.setParameters(mtd_param);
+
+    estimateTraceParameters(ms_peakmap);
+
     vector<MassTrace> m_traces;
     mt_ext.run(ms_peakmap, m_traces);
 

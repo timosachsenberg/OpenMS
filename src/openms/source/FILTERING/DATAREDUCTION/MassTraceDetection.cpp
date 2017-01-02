@@ -194,8 +194,7 @@ namespace OpenMS
     return;
   }
 
-
-  void MassTraceDetection::run(const MSExperiment<Peak1D>& input_exp, std::vector<MassTrace>& found_masstraces)
+  void MassTraceDetection::run(const MSExperiment<Peak1D>& input_exp, std::vector<MassTrace>& found_masstraces, const Size max_traces)
   {
     // make sure the output vector is empty
     found_masstraces.clear();
@@ -257,7 +256,7 @@ namespace OpenMS
     // Step 2: start extending mass traces beginning with the apex peak (go
     // through all peaks in order of decreasing intensity)
     // *********************************************************************
-    run_(chrom_apices, total_peak_count, work_exp, spec_offsets, found_masstraces);
+    run_(chrom_apices, total_peak_count, work_exp, spec_offsets, found_masstraces, max_traces);
 
     return;
   } // end of MassTraceDetection::run
@@ -266,7 +265,8 @@ namespace OpenMS
                                 const Size total_peak_count, 
                                 const MSExperiment<Peak1D>& work_exp, 
                                 const std::vector<Size>& spec_offsets,
-                                std::vector<MassTrace>& found_masstraces)
+                                std::vector<MassTrace>& found_masstraces,
+                                const Size max_traces)
   {
     boost::dynamic_bitset<> peak_visited(total_peak_count);
     Size trace_number(1);
@@ -297,6 +297,9 @@ namespace OpenMS
     this->startProgress(0, total_peak_count, "mass trace detection");
     Size peaks_detected(0);
 
+    Size peaks_conflict(0);
+    Size no_peak(0);
+
     for (MapIdxSortedByInt::const_reverse_iterator m_it = chrom_apices.rbegin(); m_it != chrom_apices.rend(); ++m_it)
     {
       Size apex_scan_idx(m_it->second.first);
@@ -306,6 +309,8 @@ namespace OpenMS
       {
         continue;
       }
+
+      //std::cout << "New apex: " << std::endl;
 
       Peak2D apex_peak;
       apex_peak.setRT(work_exp[apex_scan_idx].getRT());
@@ -398,6 +403,7 @@ namespace OpenMS
                 // limit sd (might grow indefinitly)
                 const double sd_limit = ((centroid_mz / 1e6) * 1.5 * mass_error_ppm_);
                 if (ftl_sd > sd_limit) ftl_sd = sd_limit;
+               // std::cout << "down: " << ftl_sd << std::endl;
               }
 
               ++down_hitting_peak;
@@ -405,6 +411,8 @@ namespace OpenMS
             }
             else
             {
+              if ((next_down_peak_mz < right_bound) || (next_down_peak_mz > left_bound)) ++no_peak;
+              if (peak_visited[spec_offsets[trace_down_idx - 1] + next_down_peak_idx]) ++peaks_conflict;
               ++conseq_missed_peak_down;
             }
 
@@ -475,6 +483,7 @@ namespace OpenMS
                 // limit sd (might grow indefinitly)
                 const double sd_limit = ((centroid_mz / 1e6) * 1.5 * mass_error_ppm_);
                 if (ftl_sd > sd_limit) ftl_sd = sd_limit;
+               // std::cout << "up: " << ftl_sd << std::endl;
               }
 
               ++up_hitting_peak;
@@ -484,6 +493,8 @@ namespace OpenMS
             else
             {
               ++conseq_missed_peak_up;
+              if ((next_up_peak_mz < right_bound) || (next_up_peak_mz > left_bound)) ++no_peak;
+              if (peak_visited[spec_offsets[trace_up_idx - 1] + next_up_peak_idx]) ++peaks_conflict;
             }
 
           }
@@ -508,8 +519,6 @@ namespace OpenMS
               toggle_up = false;
             }
           }
-
-
         }
 
       }
@@ -532,7 +541,7 @@ namespace OpenMS
         // mark all peaks as visited
         for (Size i = 0; i < gathered_idx.size(); ++i)
         {
-          peak_visited[spec_offsets[gathered_idx[i].first] +  gathered_idx[i].second] = true;
+          peak_visited[spec_offsets[gathered_idx[i].first] + gathered_idx[i].second] = true;
         }
 
         // create new MassTrace object and store collected peaks from list current_trace
@@ -550,8 +559,15 @@ namespace OpenMS
 
         peaks_detected += new_trace.getSize();
         this->setProgress(peaks_detected);
+
+        // check if we already reached the (optional) maximum number of traces
+        if (max_traces > 0 && found_masstraces.size() == max_traces) break;
       }
     }
+
+    std::cout << "no peak encountered: " << no_peak << std::endl;
+    std::cout << "visited peak encountered: " << peaks_conflict << std::endl;
+    std::cout << "detected / total peaks in map: " << peaks_detected << "\t" << total_peak_count << std::endl;
 
     this->endProgress();
 
