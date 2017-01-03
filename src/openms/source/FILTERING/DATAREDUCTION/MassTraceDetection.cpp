@@ -310,8 +310,6 @@ namespace OpenMS
         continue;
       }
 
-      //std::cout << "New apex: " << std::endl;
-
       Peak2D apex_peak;
       apex_peak.setRT(work_exp[apex_scan_idx].getRT());
       apex_peak.setMZ(work_exp[apex_scan_idx][apex_peak_idx].getMZ());
@@ -320,7 +318,7 @@ namespace OpenMS
       Size trace_up_idx(apex_scan_idx);
       Size trace_down_idx(apex_scan_idx);
 
-      std::list<PeakType> current_trace;
+      std::list<PeakType> current_trace; // TODO: make this a deque
       current_trace.push_back(apex_peak);
       std::vector<double> fwhms_mz; // peak-FWHM meta values of collected peaks
 
@@ -331,8 +329,9 @@ namespace OpenMS
 
       updateIterativeWeightedMeanMZ(apex_peak.getMZ(), apex_peak.getIntensity(), centroid_mz, prev_counter, prev_denom);
 
-      std::vector<std::pair<Size, Size> > gathered_idx;
+      std::deque<std::pair<Size, Size> > gathered_idx;
       gathered_idx.push_back(std::make_pair(apex_scan_idx, apex_peak_idx));
+
       if (fwhm_meta_idx != -1)
       {
         fwhms_mz.push_back(work_exp[apex_scan_idx].getFloatDataArrays()[fwhm_meta_idx][apex_peak_idx]);
@@ -393,7 +392,7 @@ namespace OpenMS
               }
               // Update the m/z mean of the current trace as we added a new peak
               updateIterativeWeightedMeanMZ(next_down_peak_mz, next_down_peak_int, centroid_mz, prev_counter, prev_denom);
-              gathered_idx.push_back(std::make_pair(trace_down_idx - 1, next_down_peak_idx));
+              gathered_idx.push_front(std::make_pair(trace_down_idx - 1, next_down_peak_idx));
 
               // Update the m/z variance dynamically
               if (reestimate_mt_sd_)           //  && (down_hitting_peak+1 > min_flank_scans))
@@ -536,22 +535,63 @@ namespace OpenMS
       bool max_trace_criteria = (max_trace_length_ < 0.0 || rt_range < max_trace_length_);
       if (rt_range >= min_trace_length_ && max_trace_criteria && mt_quality >= min_sample_rate_)
       {
-        // std::cout << "T" << trace_number << "\t" << mt_quality << std::endl;
-
-        // mark all peaks as visited
-        for (Size i = 0; i < gathered_idx.size(); ++i)
-        {
-          peak_visited[spec_offsets[gathered_idx[i].first] + gathered_idx[i].second] = true;
-        }
-
         // create new MassTrace object and store collected peaks from list current_trace
         MassTrace new_trace(current_trace);
         new_trace.updateWeightedMeanRT();
         new_trace.updateWeightedMeanMZ();
         if (!fwhms_mz.empty()) new_trace.fwhm_mz_avg = Math::median(fwhms_mz.begin(), fwhms_mz.end());
         new_trace.setQuantMethod(quant_method_);
-        //new_trace.setCentroidSD(ftl_sd);
         new_trace.updateWeightedMZsd();
+
+        // determine trace peaks outside of FWHM
+        // these don't contribute to the quantification value and can be safely optimized
+        new_trace.estimateFWHM(false);
+        std::pair<Size, Size> fwhm_idx = new_trace.getFWHMborders();
+
+        MassTrace opt_trace = new_trace;
+        double best_quality = opt_trace.getCentroidSD(); // TODO
+        Size best_left(0), best_right(new_trace.getSize() - 1);
+#ifdef DEBUG_MTD_SLOW
+        std::cout << "Optimizing: " << best_quality << " at m/z " << new_trace.getCentroidMZ() << " rt: " << new_trace.getCentroidRT() << std::endl;
+        std::cout << "left idx: " << fwhm_idx.first << " right: " << fwhm_idx.second << std::endl;
+        std::cout << "size: " << new_trace.getSize() << std::endl;
+#endif
+        for (int left = 0; left <= (int) fwhm_idx.first - 1; ++left) // TODO: can be most likely be calculated more efficient ;)
+        {
+          for (Size right = new_trace.getSize() - 1; right >= fwhm_idx.second + 1; --right)
+          {  
+            std::vector<Peak2D> opt;          
+            for (int i = left; i <= (int)right; ++i)
+            {
+              opt.push_back(new_trace[i]);
+            } 
+             
+            MassTrace t(opt);
+            t.updateWeightedMeanRT();
+            t.updateWeightedMeanMZ();
+            t.updateWeightedMZsd();
+            double quality = t.getCentroidSD(); // TODO: maybe something more elaborate ;
+            if (quality < best_quality)
+            {
+#ifdef DEBUG_MTD_SLOW
+              std::cout << "  improved to: " << quality << " left idx: " << left << " right: " << right  << std::endl;
+              std::cout << "  rt: " << t[0].getRT() << " " << t[t.getSize() - 1].getRT() << " size: " << t.getSize() << std::endl;
+#endif
+              opt_trace = t;
+              best_left = left;
+              best_right = right;
+              best_quality = quality;
+            }
+          }
+        }
+
+        // mark all peaks as visited
+        new_trace = opt_trace;
+        for (Size i = best_left; i <= best_right; ++i)
+        {          
+          peak_visited[spec_offsets[gathered_idx[i].first] + gathered_idx[i].second] = true;
+        }
+
         new_trace.setLabel("T" + String(trace_number));
         ++trace_number;
 

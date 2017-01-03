@@ -259,33 +259,57 @@ protected:
     return stats;
   }
 
+  // filter out mass traces that have unrealistic statistical properties
   static void filterMassTracesByStatistics_(FeatureMap & feature_map, const MassTracesStatistics_& stats)
   {
-    //copy all properties
+    // copy all properties
     FeatureMap map_sm = feature_map;
     FeatureMap map_removed = feature_map;
     map_sm.clear(false);
-    map_removed.clear(false); //TODO debug
-    Size filtered(0);
+    map_removed.clear(false); //TODO make optional in debug mode
+    Size filtered_SD_ppm(0), filtered_mz_wiggle(0), filtered_int_wiggle(0), filtered_high_int_frac(0);
     for (FeatureMap::Iterator fm_it = feature_map.begin(); fm_it != feature_map.end(); ++fm_it)
     {
-      if ((double)fm_it->getMetaValue("SD_ppm") <= stats.sd_ppm_median + 5.0 * stats.sd_ppm_rMAD &&
-          (double)fm_it->getMetaValue("mz_wiggle") <= stats.mz_wiggle_median + 5.0 * stats.mz_wiggle_rMAD &&
-          (double)fm_it->getMetaValue("int_wiggle") < 1.0 &&
-          (double)fm_it->getMetaValue("fwhm_high_int_frac") < 0.5)
+      // Note: add small value to MAD to cope with simulated 0 mass error features (numerical)
+      if ((double)fm_it->getMetaValue("SD_ppm") > stats.sd_ppm_median + 5.0 * stats.sd_ppm_rMAD + 1e-6)
       {
-        map_sm.push_back(*fm_it);
+        ++filtered_SD_ppm;
+        map_removed.push_back(*fm_it);
+      }
+      else if ((double)fm_it->getMetaValue("mz_wiggle") > stats.mz_wiggle_median + 5.0 * stats.mz_wiggle_rMAD + 1e-6)
+      {
+        ++filtered_mz_wiggle;
+        map_removed.push_back(*fm_it);
+      }
+      else if ((double)fm_it->getMetaValue("int_wiggle") >= 1)
+      {
+        ++filtered_int_wiggle;
+        map_removed.push_back(*fm_it);
+      }
+      else if ((double)fm_it->getMetaValue("fwhm_high_int_frac") > 0.5)
+      {
+        ++filtered_high_int_frac;
+        map_removed.push_back(*fm_it);
       }
       else
       {
-        map_removed.push_back(*fm_it);
-        ++filtered;
+        map_sm.push_back(*fm_it);
       }
     }
-    LOG_INFO << "Detected and filtered: " << filtered << " outliers (> 5MAD)." << std::endl;
-    LOG_INFO << "Mass traces: " << map_sm.size() << std::endl;
+
+    double filtered = filtered_SD_ppm + filtered_mz_wiggle + filtered_int_wiggle + filtered_high_int_frac; 
+
+    LOG_INFO << "Removed Mass Traces: " << filtered << std::endl;
+    LOG_INFO << "High mass error (> 5 MAD): " << filtered_SD_ppm << std::endl;
+    LOG_INFO << "High local mass fluctuation (> 5 MAD): " << filtered_mz_wiggle << std::endl;
+    LOG_INFO << "High local intensity fluctuation (every peak): " << filtered_int_wiggle << std::endl;
+    LOG_INFO << "High amount of high intensity peaks outside of FWHM (> 50 %): " << filtered_high_int_frac << std::endl;
+    LOG_INFO << "Retained Mass traces: " << map_sm.size() << std::endl;
+
     feature_map = map_sm;
     feature_map.updateRanges();
+
+    // TODO: make optional in debug mode
     map_removed.updateRanges();
     FeatureXMLFile().store("removed.featureXML", map_removed);
   }
@@ -424,7 +448,7 @@ protected:
       calculateQuantiles_(stats_fwhm, "Mass trace FWHM: ", median_fwhm, t2, t3);
     }
 
-    LOG_INFO << "Paramter estimated (sd ppm / chrom FWHM): " << median_sd_ppm << " / " << median_fwhm << endl;
+    LOG_INFO << "Parameter estimated (sd ppm / chrom FWHM): " << median_sd_ppm << " / " << median_fwhm << endl;
   }
  
   void registerOptionsAndFlags_()
@@ -691,9 +715,9 @@ protected:
         if (mz_wiggle.size() > 1) sd_mz_wiggle = Math::sd(mz_wiggle.begin(), mz_wiggle.end());
         stats_mz_wiggle.push_back(sd_mz_wiggle);
 
-        if (fwhm_idx.second - fwhm_idx.first >= 2) 
+        if (fwhm_idx.second - fwhm_idx.first >= 1) 
         {
-          int_wiggle /= (fwhm_idx.second - fwhm_idx.first - 1.0);
+          int_wiggle /= (fwhm_idx.second - fwhm_idx.first);
         }
         stats_int_wiggle.push_back(int_wiggle);
 
