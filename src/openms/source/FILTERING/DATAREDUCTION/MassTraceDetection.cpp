@@ -302,8 +302,8 @@ namespace OpenMS
 
     for (MapIdxSortedByInt::const_reverse_iterator m_it = chrom_apices.rbegin(); m_it != chrom_apices.rend(); ++m_it)
     {
-      Size apex_scan_idx(m_it->second.first);
-      Size apex_peak_idx(m_it->second.second);
+      const Size & apex_scan_idx(m_it->second.first);
+      const Size & apex_peak_idx(m_it->second.second);
 
       if (peak_visited[spec_offsets[apex_scan_idx] + apex_peak_idx])
       {
@@ -318,7 +318,7 @@ namespace OpenMS
       Size trace_up_idx(apex_scan_idx);
       Size trace_down_idx(apex_scan_idx);
 
-      std::list<PeakType> current_trace; // TODO: make this a deque
+      std::deque<PeakType> current_trace; // TODO: make this a deque
       current_trace.push_back(apex_peak);
       std::vector<double> fwhms_mz; // peak-FWHM meta values of collected peaks
 
@@ -371,8 +371,8 @@ namespace OpenMS
             double next_down_peak_mz = spec_trace_down[next_down_peak_idx].getMZ();
             double next_down_peak_int = spec_trace_down[next_down_peak_idx].getIntensity();
 
-            double right_bound = centroid_mz + 3 * ftl_sd;
-            double left_bound = centroid_mz - 3 * ftl_sd;
+            const double right_bound(centroid_mz + 3 * ftl_sd);
+            const double left_bound(centroid_mz - 3 * ftl_sd);
 
             if ((next_down_peak_mz <= right_bound) &&
                 (next_down_peak_mz >= left_bound) &&
@@ -453,8 +453,8 @@ namespace OpenMS
             double next_up_peak_mz = spec_trace_up[next_up_peak_idx].getMZ();
             double next_up_peak_int = spec_trace_up[next_up_peak_idx].getIntensity();
 
-            double right_bound = centroid_mz + 3 * ftl_sd;
-            double left_bound = centroid_mz - 3 * ftl_sd;
+            const double right_bound(centroid_mz + 3 * ftl_sd);
+            const double left_bound(centroid_mz - 3 * ftl_sd);
 
             if ((next_up_peak_mz <= right_bound) &&
                 (next_up_peak_mz >= left_bound) &&
@@ -545,7 +545,7 @@ namespace OpenMS
 
         // determine trace peaks outside of FWHM
         // these don't contribute to the quantification value and can be safely optimized
-        new_trace.estimateFWHM(false);
+        new_trace.estimateFWHM(false, down_hitting_peak + 1); // start estimation at apex point
         std::pair<Size, Size> fwhm_idx = new_trace.getFWHMborders();
 
         MassTrace opt_trace = new_trace;

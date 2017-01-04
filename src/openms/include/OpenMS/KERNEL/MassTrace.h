@@ -82,8 +82,8 @@ public:
     MassTrace();
 
     /// Detailed constructor 
-    /// (useful, since Mass Traces are commonly assembled by prepending and appending -- which is faster using lists)
-    MassTrace(const std::list<PeakType>& trace_peaks);
+    /// (useful, since Mass Traces are commonly assembled by prepending and appending -- which is faster using deques)
+    MassTrace(const std::deque<PeakType>& trace_peaks);
 
     /// Detailed constructor for vector
     MassTrace(const std::vector<PeakType>& trace_peaks);
@@ -261,8 +261,9 @@ public:
     Size findMaxByIntPeak(bool use_smoothed_ints = false) const;
 
     /// Estimate FWHM of chromatographic peak in seconds (based on either raw or smoothed intensities).
+    /// Half maximum is searched starting  from a seed. If none is provided, the maximum intensity peak is used.
     /// stores result internally, use getFWHM().
-    double estimateFWHM(bool use_smoothed_ints = false);
+    double estimateFWHM(bool use_smoothed_ints = false, int seed = -1);
 
     /// determine if area or median is used for quantification
     void setQuantMethod(MT_QUANTMETHOD method);

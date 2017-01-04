@@ -75,7 +75,7 @@ END_SECTION
 
 
 std::vector<PeakType> peak_vec;
-std::list<PeakType> peak_lst;
+std::deque<PeakType> peak_lst;
 
 PeakType tmp_peak0 = fillPeak(152.22, 230.10223, 542.0);
 peak_vec.push_back(tmp_peak0);
@@ -119,11 +119,11 @@ std::cout << sr << "\n" << sm << "\n" << si << "\n\n";
 // detailed constructors test
 /////////////////////////////////////////////////////////////
 
-START_SECTION((MassTrace(const std::list<PeakType>& trace_peaks)))
+START_SECTION((MassTrace(const std::deque<PeakType>& trace_peaks)))
 {
   MassTrace tmp_mt(peak_lst);
 
-  std::list<PeakType>::const_iterator l_it = peak_lst.begin();
+  std::deque<PeakType>::const_iterator l_it = peak_lst.begin();
 
   for (MassTrace::const_iterator m_it = tmp_mt.begin(); m_it != tmp_mt.end(); ++m_it)
   {

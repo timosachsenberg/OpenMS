@@ -64,7 +64,7 @@ namespace OpenMS
   {
   }
 
-  MassTrace::MassTrace(const std::list<PeakType>& trace_peaks) :
+  MassTrace::MassTrace(const std::deque<PeakType>& trace_peaks) :
     fwhm_mz_avg(0),
     trace_peaks_(),
     centroid_mz_(),
@@ -222,9 +222,9 @@ namespace OpenMS
     return max_idx;
   }
 
-  double MassTrace::estimateFWHM(bool use_smoothed_ints)
+  double MassTrace::estimateFWHM(bool use_smoothed_ints, int seed)
   {
-    Size max_idx(this->findMaxByIntPeak(use_smoothed_ints));
+    Size max_idx = seed == -1 ? findMaxByIntPeak(use_smoothed_ints) : seed;
 
     std::vector<double> tmp_ints;
 
