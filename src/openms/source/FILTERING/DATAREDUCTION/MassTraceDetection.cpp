@@ -548,36 +548,53 @@ namespace OpenMS
         new_trace.estimateFWHM(false, down_hitting_peak + 1); // start estimation at apex point
         std::pair<Size, Size> fwhm_idx = new_trace.getFWHMborders();
 
-        MassTrace opt_trace = new_trace;
-        double best_quality = opt_trace.getCentroidSD(); // TODO
+        // use flat vectors for faster processing
+        std::vector<double> mzs;
+        std::vector<double> rts;
+        std::vector<double> ints;
+        mzs.reserve(new_trace.getSize());
+        rts.reserve(new_trace.getSize());
+        ints.reserve(new_trace.getSize());
+
+        for (Size i = 0; i != new_trace.getSize(); ++i)
+        {
+          mzs.push_back(new_trace[i].getMZ());
+          rts.push_back(new_trace[i].getRT());
+          ints.push_back(new_trace[i].getIntensity());
+        }
+
+        double best_quality(1e10) ;
+
         Size best_left(0), best_right(new_trace.getSize() - 1);
-#ifdef DEBUG_MTD_SLOW
-        std::cout << "Optimizing: " << best_quality << " at m/z " << new_trace.getCentroidMZ() << " rt: " << new_trace.getCentroidRT() << std::endl;
-        std::cout << "left idx: " << fwhm_idx.first << " right: " << fwhm_idx.second << std::endl;
-        std::cout << "size: " << new_trace.getSize() << std::endl;
-#endif
+        //std::cout << "Optimizing: " << best_quality << " at m/z " << new_trace.getCentroidMZ() << " rt: " << new_trace.getCentroidRT() << std::endl;
+        //std::cout << "left idx: " << fwhm_idx.first << " right: " << fwhm_idx.second << std::endl;
+        //std::cout << "size: " << new_trace.getSize() << std::endl;
+
         for (int left = 0; left <= (int) fwhm_idx.first - 1; ++left) // TODO: can be most likely be calculated more efficient ;)
         {
           for (Size right = new_trace.getSize() - 1; right >= fwhm_idx.second + 1; --right)
           {  
-            std::vector<Peak2D> opt;          
+            double int_sum(0), mean_rt(0), mean_mz(0), sd_mz(0);       
             for (int i = left; i <= (int)right; ++i)
             {
-              opt.push_back(new_trace[i]);
-            } 
-             
-            MassTrace t(opt);
-            t.updateWeightedMeanRT();
-            t.updateWeightedMeanMZ();
-            t.updateWeightedMZsd();
-            double quality = t.getCentroidSD(); // TODO: maybe something more elaborate ;
+              int_sum += ints[i];
+              mean_mz += ints[i] * mzs[i];
+              mean_rt += rts[i];
+            }
+            mean_mz /= int_sum; 
+            mean_rt /= (double)(right - left + 1);
+
+            for (int i = left; i <= (int)right; ++i)
+            {
+              sd_mz += ints[i] * std::exp(2 * std::log(std::abs(mzs[i] - mean_mz)));
+            }
+            sd_mz = std::sqrt(sd_mz) / std::sqrt(int_sum);
+                      
+            double quality = sd_mz; // TODO: maybe something more elaborate ;
+            //std::cout << "  current quality: " << quality << " left idx: " << left << " right: " << right  << std::endl;
             if (quality < best_quality)
             {
-#ifdef DEBUG_MTD_SLOW
-              std::cout << "  improved to: " << quality << " left idx: " << left << " right: " << right  << std::endl;
-              std::cout << "  rt: " << t[0].getRT() << " " << t[t.getSize() - 1].getRT() << " size: " << t.getSize() << std::endl;
-#endif
-              opt_trace = t;
+              //std::cout << "  improved to: " << quality << " left idx: " << left << " right: " << right  << std::endl;
               best_left = left;
               best_right = right;
               best_quality = quality;
@@ -586,10 +603,21 @@ namespace OpenMS
         }
 
         // mark all peaks as visited
-        new_trace = opt_trace;
         for (Size i = best_left; i <= best_right; ++i)
         {          
           peak_visited[spec_offsets[gathered_idx[i].first] + gathered_idx[i].second] = true;
+        }
+
+        // did we find a better solution?
+        if (best_left != 0 || best_right != new_trace.getSize() - 1)
+        {
+          // would be better if MassTrace could be constructed from begin, end forward iterators... TODO
+          std::vector<Peak2D> opt_points;
+          for (Size i = best_left; i <= best_right; ++i)
+          {
+            opt_points.push_back(new_trace[i]);
+          }
+          new_trace = MassTrace(opt_points);
         }
 
         new_trace.setLabel("T" + String(trace_number));
