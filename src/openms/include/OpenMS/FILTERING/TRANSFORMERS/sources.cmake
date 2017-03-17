@@ -14,6 +14,7 @@ IsotopeMarker.h
 LinearResampler.h
 LinearResamplerAlign.h
 MarkerMower.h
+MorphologicalIsotopeFilter.h
 NLargest.h
 NeutralLossDiffFilter.h
 NeutralLossMarker.h

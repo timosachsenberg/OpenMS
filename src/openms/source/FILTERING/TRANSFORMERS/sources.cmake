@@ -13,6 +13,7 @@ IsotopeDiffFilter.cpp
 IsotopeMarker.cpp
 LinearResampler.cpp
 MarkerMower.cpp
+MorphologicalIsotopeFilter.cpp
 NLargest.cpp
 NeutralLossDiffFilter.cpp
 NeutralLossMarker.cpp
