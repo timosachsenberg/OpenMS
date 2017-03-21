@@ -78,7 +78,7 @@ class TOPPSpectraFilterIsotopePattern :
 {
 public:
   TOPPSpectraFilterIsotopePattern() :
-    TOPPBase("SpectraFilterIsotopePattern", "Applies isotopic pattern filter to peak spectra.")
+    TOPPBase("SpectraFilterIsotopePattern", "Applies isotopic pattern filter to peak spectra.", false)
   {
   }
 

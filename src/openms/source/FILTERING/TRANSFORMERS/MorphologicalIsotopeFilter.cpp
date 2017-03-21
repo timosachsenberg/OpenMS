@@ -171,7 +171,7 @@ namespace OpenMS
 
   void MorphologicalIsotopeFilter::updateMembers_()
   {
-    tol_ = (UInt)param_.getValue("tolerance");
+    tol_ = static_cast<double>(param_.getValue("tolerance"));
   }
 
 }
