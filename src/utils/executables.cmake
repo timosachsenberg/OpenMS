@@ -48,6 +48,7 @@ SequenceCoverageCalculator
 SimpleSearchEngine
 SpecLibCreator
 SpectraSTSearchAdapter
+SpectraFilterIsotopePattern
 SvmTheoreticalSpectrumGeneratorTrainer
 TICCalculator
 TransformationEvaluation
