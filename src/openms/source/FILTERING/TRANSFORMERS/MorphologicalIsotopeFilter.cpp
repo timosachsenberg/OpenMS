@@ -119,7 +119,6 @@ namespace OpenMS
       vector<Size> indices;
       for (Size j = 0; j != peak_map[i].size(); ++j)
       {
-        const double mz = peak_map[i][j].getMZ();
         const double intensity = peak_map[i][j].getIntensity();  
 
         // keep all peaks higher than upper quartile
@@ -129,6 +128,8 @@ namespace OpenMS
           indices.push_back(j);
           continue;
         }
+
+        const double mz = peak_map[i][j].getMZ();
                         
         // keep all peaks that have some isotopic neighbors
         double tol = Math::ppmToMass(tol_, mz);
@@ -136,36 +137,25 @@ namespace OpenMS
         for (vector<double>::const_iterator it = mz_shifts.begin(); it != mz_shifts.end(); ++it)
         {
           // isotopic peak to the left (or right)?
-          if (peak_map[i].findNearest(mz - *it, tol) != -1)
-          {
-            // check if at least one above or below is present
-            if ( peak_map[i + 1].findNearest(mz - *it, tol) != -1
+          if (peak_map[i].findNearest(mz - *it, tol) != -1 
+              || peak_map[i + 1].findNearest(mz - *it, tol) != -1
               || peak_map[i - 1].findNearest(mz - *it, tol) != -1
               || peak_map[i + 2].findNearest(mz - *it, tol) != -1
               || peak_map[i - 2].findNearest(mz - *it, tol) != -1
-               )
-            {
-              iso_ints.push_back(intensity);
-              indices.push_back(j);
-              break;
-            }         
-          }
-          else if (peak_map[i].findNearest(mz + *it, tol) != -1)
-          {
-            if ( peak_map[i + 1].findNearest(mz + *it, tol) != -1
+              || peak_map[i].findNearest(mz + *it, tol) != -1
+              || peak_map[i + 1].findNearest(mz + *it, tol) != -1
               || peak_map[i - 1].findNearest(mz + *it, tol) != -1
               || peak_map[i + 2].findNearest(mz + *it, tol) != -1
               || peak_map[i - 2].findNearest(mz + *it, tol) != -1
-               )
-            {
-              iso_ints.push_back(intensity);
-              indices.push_back(j);
-              break;
-            }           
-          }
+              )
+          {
+            iso_ints.push_back(intensity);
+            indices.push_back(j);
+            break;
+          }           
         } 
+        peak_map[i].select(indices); // filter all without isotopic peak
       }
-      peak_map[i].select(indices); // filter all without isotopic peak
     }
   }
 
