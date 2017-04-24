@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -49,7 +49,7 @@ namespace OpenMS
   std::ostream& operator<< (std::ostream& os, const ConnectedComponent& conn_comp)
     {
       os << "Proteins: ";
-      for (std::set<Size>::iterator prot_it = conn_comp.prot_grp_indices.begin();
+      for (std::set<Size>::const_iterator prot_it = conn_comp.prot_grp_indices.begin();
            prot_it != conn_comp.prot_grp_indices.end();
            ++prot_it)
       {
@@ -57,7 +57,7 @@ namespace OpenMS
       }
       os << std::endl;
       os << "Peptides: ";
-      for (std::set<Size>::iterator pep_it = conn_comp.pep_indices.begin();
+      for (std::set<Size>::const_iterator pep_it = conn_comp.pep_indices.begin();
            pep_it != conn_comp.pep_indices.end();
            ++pep_it)
       {

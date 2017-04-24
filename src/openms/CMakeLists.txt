@@ -2,7 +2,7 @@
 #                   OpenMS -- Open-Source Mass Spectrometry
 # --------------------------------------------------------------------------
 # Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-# ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+# ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 #
 # This software is released under a three-clause BSD license:
 #  * Redistributions of source code must retain the above copyright
@@ -79,14 +79,13 @@ include (${PROJECT_SOURCE_DIR}/includes.cmake)
 #------------------------------------------------------------------------------
 # all the dependency libraries are linked into libOpenMS.so, except Qt
 set(OPENMS_DEP_LIBRARIES  ${COIN_LIBRARIES}
-                          ${GSL_LIBRARIES}
-                          ${GSL_CBLAS_LIBRARIES}
                           ${LIBSVM_LIBRARIES}
                           ${XercesC_LIBRARY}
                           ${Boost_LIBRARIES}
                           ${WM5_LIBRARIES}
                           ${BZIP2_LIBRARIES}
                           ${ZLIB_LIBRARIES}
+                          ${SQLITE_LIBRARY}
                           ${GLPK_LIBRARIES})
 
 # xerces requires linking against CoreFoundation&CoreServices
@@ -102,7 +101,11 @@ if (MSVC)
 	list(APPEND OPENMS_DEP_LIBRARIES opengl32.lib)
 endif()
 if (WITH_CRAWDAD)
-  list(APPEND OPENMS_DEP_LIBRARIES Crawdad)
+  # find archive (static) version and add it to the OpenMS library
+  find_library(Crawdad_LIBRARY
+   NAMES Crawdad.a Crawdad
+    HINTS ${Crawdad_DIR})
+  list(APPEND OPENMS_DEP_LIBRARIES ${Crawdad_LIBRARY})
 endif()
 
 openms_add_library(TARGET_NAME  OpenMS
@@ -116,6 +119,7 @@ openms_add_library(TARGET_NAME  OpenMS
                                      ${GSL_INCLUDE_DIRS}
                                      ${Boost_INCLUDE_DIRS}
                                      ${SEQAN_INCLUDE_DIRS}
+                                     ${SQLITE_INCLUDE_DIR}
                                      ${LIBSVM_INCLUDE_DIRS}
                                      ${GLPK_INCLUDE_DIRS}
                                      ${ZLIB_INCLUDE_DIRS}

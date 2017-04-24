@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -138,12 +138,12 @@ namespace OpenMS
   {
     if (pep_pos >= protein.size())
     {
-      LOG_WARN << "Error: start of peptide is beyond end of protein!" << endl;
+      LOG_WARN << "Error: start of peptide (" << pep_pos << ") is beyond end of protein '" << protein.toString() << "'!" << endl;
       return false;
     }
     else if (pep_pos + pep_length > protein.size())
     {
-      LOG_WARN << "Error: end of peptide is beyond end of protein!" << endl;
+      LOG_WARN << "Error: end of peptide (" << (pep_pos + pep_length) << ") is beyond end of protein '" << protein.toString() << "'!" << endl;
       return false;
     }
     else if (pep_length == 0 || protein.size() == 0)

@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -463,7 +463,7 @@ END_SECTION
 BOOST_AUTO_TEST_CASE(test_RT_score)
 {
   MRMScoring mrmscore;
-  OpenSwath::LightPeptide pep;
+  OpenSwath::LightCompound pep;
   pep.rt = 100;
   TEST_REAL_SIMILAR(mrmscore.calcRTScore(pep, 100), 0)
   TEST_REAL_SIMILAR(mrmscore.calcRTScore(pep, 0), 100)

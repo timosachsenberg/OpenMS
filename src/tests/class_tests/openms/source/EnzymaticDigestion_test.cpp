@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -239,19 +239,19 @@ START_SECTION((void digest(const AASequence &protein, std::vector<AASequence>&ou
     
     ed.digest(AASequence::fromString("(ICPL:2H(4))ARCDRE"), out);
     TEST_EQUAL(out.size(), 5)
-    TEST_EQUAL(out[0].toString(), "(ICPL:2H(4))AR")
+    TEST_EQUAL(out[0].toString(), ".(ICPL:2H(4))AR")
     TEST_EQUAL(out[1].toString(), "CDR")
     TEST_EQUAL(out[2].toString(), "E")
-    TEST_EQUAL(out[3].toString(), "(ICPL:2H(4))ARCDR")
+    TEST_EQUAL(out[3].toString(), ".(ICPL:2H(4))ARCDR")
     TEST_EQUAL(out[4].toString(), "CDRE")
     
-    ed.digest(AASequence::fromString("ARCDRE(Amidated)"), out);
+    ed.digest(AASequence::fromString("ARCDRE.(Amidated)"), out);
     TEST_EQUAL(out.size(), 5)
     TEST_EQUAL(out[0].toString(), "AR")
     TEST_EQUAL(out[1].toString(), "CDR")
-    TEST_EQUAL(out[2].toString(), "E(Amidated)")
+    TEST_EQUAL(out[2].toString(), "E.(Amidated)")
     TEST_EQUAL(out[3].toString(), "ARCDR")
-    TEST_EQUAL(out[4].toString(), "CDRE(Amidated)")
+    TEST_EQUAL(out[4].toString(), "CDRE.(Amidated)")
     
     // ------------------------
     // Trypsin/P
@@ -273,10 +273,17 @@ START_SECTION((bool digestUnmodifiedString(const StringView sequence, std::vecto
     EnzymaticDigestion ed;
     vector<StringView> out;
     
+    // end without cutting site 
     std::string s = "ACDE";
     ed.digestUnmodifiedString(s, out);
     TEST_EQUAL(out.size(), 1)
     TEST_EQUAL(out[0].getString(), s)
+
+    // end with cutting site
+    s = "ACDEK";
+    ed.digestUnmodifiedString(s, out);
+    TEST_EQUAL(out.size(), 1)
+    TEST_EQUAL(out[0].getString(), "ACDEK")
     
     s = "ACKDE";
     ed.digestUnmodifiedString(s, out);

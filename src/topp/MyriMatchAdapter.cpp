@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -466,7 +466,7 @@ protected:
     vector<ProteinIdentification> protein_identifications;
     vector<PeptideIdentification> peptide_identifications;
 
-    MSExperiment<> exp;
+    PeakMap exp;
     if (File::exists(pep_file))
     {
       MzMLFile fh;
@@ -506,7 +506,7 @@ protected:
     search_parameters.variable_modifications = getStringList_("variable_modifications");
     search_parameters.missed_cleavages = getIntOption_("MaxMissedCleavages");
     search_parameters.fragment_mass_tolerance = getDoubleOption_("fragment_mass_tolerance");
-    search_parameters.precursor_tolerance = getDoubleOption_("precursor_mass_tolerance");
+    search_parameters.precursor_mass_tolerance = getDoubleOption_("precursor_mass_tolerance");
     search_parameters.precursor_mass_tolerance_ppm = getStringOption_("precursor_mass_tolerance_unit") == "ppm" ? true : false;
     search_parameters.fragment_mass_tolerance_ppm = getStringOption_("fragment_mass_tolerance_unit") == "ppm" ? true : false;
     protein_identifications[0].setSearchParameters(search_parameters);

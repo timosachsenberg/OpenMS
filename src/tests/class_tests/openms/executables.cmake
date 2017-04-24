@@ -20,6 +20,7 @@ set(concept_executables_list
 set(datastructures_executables_list
   Adduct_test
   #BinaryTreeNode_test
+  CalibrationData_test
   ClusteringGrid_test
   CVMappingRule_test
   CVMappingTerm_test
@@ -55,11 +56,6 @@ set(datastructures_executables_list
   StringListUtils_test
   StringUtils_test
   String_test
-  SuffixArrayPeptideFinder_test
-  SuffixArraySeqan_test
-  SuffixArrayTrypticCompressed_test
-  SuffixArrayTrypticSeqan_test
-  SuffixArray_test
   #ToolDescription_test
 )
 
@@ -67,6 +63,7 @@ set(metadata_executables_list
   AcquisitionInfo_test
   Acquisition_test
   CVTermList_test
+  CVTermListInterface_test
   CVTerm_test
   ChromatogramSettings_test
   ContactPerson_test
@@ -146,6 +143,7 @@ set(kernel_executables_list
   RichPeak1D_test
   RichPeak2D_test
   StandardTypes_test
+  SpectrumHelper_test
 )
 
 set(format_executables_list
@@ -171,6 +169,7 @@ set(format_executables_list
   GzipInputStream_test
   IBSpectraFile_test
   IdXMLFile_test
+  IndexedMzMLDecoder_test
   IndexedMzMLFile_test
   IndexedMzMLFileLoader_test
   InspectInfile_test
@@ -216,6 +215,7 @@ set(format_executables_list
   SequestInfile_test
   SequestOutfile_test
   SpecArrayFile_test
+  SqMassFile_test
   SwathMapMassCorrection_test
   SwathFile_test
   SwathFileConsumer_test
@@ -230,10 +230,13 @@ set(format_executables_list
   XMLValidator_test
   XTandemInfile_test
   XTandemXMLFile_test
+  ZlibCompression_test
   # DATAACCESS
   MSDataCachedConsumer_test
   MSDataTransformingConsumer_test
   MSDataChainingConsumer_test
+  MSDataStoringConsumer_test
+  MSDataAggregatingConsumer_test
   SpectrumAccessQuadMZTransforming_test
 )
 
@@ -255,9 +258,12 @@ set(math_executables_list
   NNLS_test
   NonNegativeLeastSquaresSolver_test
   PosteriorErrorProbabilityModel_test
-  #QuadraticRegression_test
+  QuadraticRegression_test
   #RegressionUtils_test
   RANSAC_test
+  RANSACModel_test
+  RANSACModelLinear_test
+  RANSACModelQuadratic_test
   ROCCurve_test
   StatisticFunctions_test
   #Spline2d_test
@@ -297,6 +303,7 @@ set(filtering_executables_list
   MultiplexFilterResultPeak_test
   MultiplexFilterResultRaw_test
   MultiplexIsotopicPeakPattern_test
+  MZTrafoModel_test
   NLargest_test
   NeutralLossDiffFilter_test
   NeutralLossMarker_test
@@ -346,8 +353,6 @@ set(comparison_executables_list
 set(chemistry_executables_list
   AAIndex_test
   AASequence_test
-  EdwardsLippertIteratorTryptic_test
-  EdwardsLippertIterator_test
   ElementDB_test
   Element_test
   EmpiricalFormula_test
@@ -361,6 +366,7 @@ set(chemistry_executables_list
   ModificationDefinition_test
   ModificationDefinitionsSet_test
   ModificationsDB_test
+  CrossLinksDB_test
   ModifierRep_test
   PepIterator_test
   ResidueDB_test
@@ -389,6 +395,7 @@ set(analysis_executables_list
   AScore_test
   BaseGroupFinder_test
   BaseSuperimposer_test
+  ClusterProxyKD_test
   CompNovoIdentificationBase_test
   CompNovoIdentificationCID_test
   CompNovoIdentification_test
@@ -413,7 +420,7 @@ set(analysis_executables_list
   FalseDiscoveryRate_test
   FeatureDeconvolution_test
   FeatureDistance_test
-  FeatureGroupingAlgorithmIdentification_test
+  FeatureGroupingAlgorithmKD_test
   FeatureGroupingAlgorithmLabeled_test
   FeatureGroupingAlgorithmQT_test
   FeatureGroupingAlgorithmUnlabeled_test
@@ -438,11 +445,14 @@ set(analysis_executables_list
   TMTSixPlexQuantitationMethod_test
   TMTTenPlexQuantitationMethod_test
   ItraqQuantifier_test
+  KDTreeFeatureMaps_test
+  KDTreeFeatureNode_test
   LabeledPairFinder_test
   LocalLinearMap_test
   TargetedExperiment_test
   MRMFragmentSelection_test
   MapAlignmentAlgorithmIdentification_test
+  MapAlignmentAlgorithmKD_test
   MapAlignmentAlgorithmPoseClustering_test
   MapAlignmentAlgorithmSpectrumAlignment_test
   MapAlignmentEvaluationAlgorithmPrecision_test
@@ -455,11 +465,6 @@ set(analysis_executables_list
   ModifiedPeptideGenerator_test
   OfflinePrecursorIonSelection_test
   PeptideAndProteinQuant_test
-  PILISModelGenerator_test
-  PILISModel_test
-  PILISScoring_test
-  PILISCrossValidation_test
-  PILISNeutralLossModel_test
   PeakIntensityPredictor_test
   PScore_test
   HyperScore_test
@@ -478,6 +483,7 @@ set(analysis_executables_list
   RNPxlModificationsGenerator_test
   SVMWrapper_test
   SimplePairFinder_test
+  SimpleSVM_test
   StablePairFinder_test
   #TargetedExperimentHelper_test
   TransformationDescription_test
@@ -504,6 +510,7 @@ set(transformations_executables_list
   ContinuousWaveletTransformNumIntegration_test
   ContinuousWaveletTransform_test
   EGHTraceFitter_test
+  ElutionModelFitter_test
   EmgFitter1D_test
   EmgModel_test
   ExtendedIsotopeFitter1D_test
@@ -582,6 +589,7 @@ if(NOT DISABLE_OPENSWATH)
     MRMIonSeries_test
     MRMRTNormalizer_test
     TransitionTSVReader_test
+    TransitionPQPReader_test
     ChromatogramExtractor_test
     ChromatogramExtractorAlgorithm_test
     OpenSwathHelper_test
@@ -617,6 +625,7 @@ set(Boost_dependent_tests
   StatisticFunctions_test
   String_test
   TransitionTSVReader_test
+  TransitionPQPReader_test
 )
 
 ### collect test executables

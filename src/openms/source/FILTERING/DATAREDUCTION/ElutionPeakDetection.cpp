@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Erhan Kenar$
+// $Maintainer: Timo Sachsenberg$
 // $Authors: Erhan Kenar, Holger Franken, Chris Bielow $
 // --------------------------------------------------------------------------
 
@@ -142,7 +142,7 @@ namespace OpenMS
 
     if (mt_length != tr.getSize())
     {
-      throw Exception::InvalidValue(__FILE__, __LINE__, __PRETTY_FUNCTION__,
+      throw Exception::InvalidValue(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION,
           "MassTrace was not smoothed before! Aborting...", String(smoothed_ints_vec.size()));
     }
 
@@ -544,7 +544,7 @@ namespace OpenMS
           new_mt.updateSmoothedMaxRT();
           new_mt.updateWeightedMeanMZ();
           new_mt.updateWeightedMZsd();
-
+          new_mt.setQuantMethod(mt.getQuantMethod());
           if (pw_filtering_ != "fixed")
           {
             new_mt.estimateFWHM(true);

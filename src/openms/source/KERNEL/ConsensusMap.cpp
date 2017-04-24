@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Erhan Kenar $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: $
 // --------------------------------------------------------------------------
 
@@ -168,7 +168,7 @@ namespace OpenMS
       getFileDescriptions()[it->first].size = it->second.size + it2->second.size;
     }
 
-    // append proteinIdenficiation
+    // append proteinIdentification
     protein_identifications_.insert(protein_identifications_.end(),
                                     rhs.protein_identifications_.begin(),
                                     rhs.protein_identifications_.end());
@@ -193,7 +193,7 @@ namespace OpenMS
       fixMod.resize(it_2 - fixMod.begin());
     }
 
-    // append unassignedPeptideIdentifiactions
+    // append unassignedPeptideIdentifications
     unassigned_peptide_identifications_.insert(unassigned_peptide_identifications_.end(),
                                                rhs.unassigned_peptide_identifications_.begin(),
                                                rhs.unassigned_peptide_identifications_.end());

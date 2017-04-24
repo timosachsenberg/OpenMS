@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -39,6 +39,7 @@
 #include <OpenMS/ANALYSIS/OPENSWATH/DATAACCESS/SimpleOpenMSSpectraAccessFactory.h>
 #include <OpenMS/ANALYSIS/OPENSWATH/DATAACCESS/MRMFeatureAccessOpenMS.h>
 #include <OpenMS/ANALYSIS/OPENSWATH/DATAACCESS/DataAccessHelper.h>
+#include <OpenMS/ANALYSIS/OPENSWATH/SONARScoring.h>
 
 // peak picking & noise estimation
 #include <OpenMS/FILTERING/NOISEESTIMATION/SignalToNoiseEstimatorMedian.h>
@@ -123,10 +124,12 @@ namespace OpenMS
     scores_to_use.setValidStrings("use_total_xic_score", ListUtils::create<String>("true,false"));
     scores_to_use.setValue("use_sn_score", "true", "Use the SN (signal to noise) score", ListUtils::create<String>("advanced"));
     scores_to_use.setValidStrings("use_sn_score", ListUtils::create<String>("true,false"));
-    scores_to_use.setValue("use_dia_scores", "true", "Use the DIA (SWATH) scores", ListUtils::create<String>("advanced"));
+    scores_to_use.setValue("use_dia_scores", "true", "Use the DIA (SWATH) scores. If turned off, will not use fragment ion spectra for scoring.", ListUtils::create<String>("advanced"));
     scores_to_use.setValidStrings("use_dia_scores", ListUtils::create<String>("true,false"));
     scores_to_use.setValue("use_ms1_correlation", "false", "Use the correlation scores with the MS1 elution profiles", ListUtils::create<String>("advanced"));
     scores_to_use.setValidStrings("use_ms1_correlation", ListUtils::create<String>("true,false"));
+    scores_to_use.setValue("use_sonar_scores", "false", "Use the scores for SONAR scans (scanning swath)", ListUtils::create<String>("advanced"));
+    scores_to_use.setValidStrings("use_sonar_scores", ListUtils::create<String>("true,false"));
     scores_to_use.setValue("use_ms1_fullscan", "false", "Use the full MS1 scan at the peak apex for scoring (ppm accuracy of precursor and isotopic pattern)", ListUtils::create<String>("advanced"));
     scores_to_use.setValidStrings("use_ms1_fullscan", ListUtils::create<String>("true,false"));
     scores_to_use.setValue("use_uis_scores", "false", "Use UIS scores for peptidoform identification ", ListUtils::create<String>("advanced"));
@@ -143,26 +146,32 @@ namespace OpenMS
   {
   }
 
-  void MRMFeatureFinderScoring::pickExperiment(MSExperiment<Peak1D>& chromatograms,
+  void MRMFeatureFinderScoring::pickExperiment(PeakMap& chromatograms,
                                                FeatureMap& output, TargetedExperiment& transition_exp_,
-                                               TransformationDescription trafo, MSExperiment<Peak1D>& swath_map)
+                                               TransformationDescription trafo, PeakMap& swath_map)
   {
     OpenSwath::LightTargetedExperiment transition_exp;
     OpenSwathDataAccessHelper::convertTargetedExp(transition_exp_, transition_exp);
     TransitionGroupMapType transition_group_map;
 
-    boost::shared_ptr<MSExperiment<Peak1D> > sh_chromatograms = boost::make_shared<MSExperiment<Peak1D> >(chromatograms);
-    boost::shared_ptr<MSExperiment<Peak1D> > sh_swath_map = boost::make_shared<MSExperiment<Peak1D> >(swath_map);
+    boost::shared_ptr<PeakMap > sh_chromatograms = boost::make_shared<PeakMap >(chromatograms);
+    boost::shared_ptr<PeakMap > sh_swath_map = boost::make_shared<PeakMap >(swath_map);
 
     OpenSwath::SpectrumAccessPtr chromatogram_ptr = SimpleOpenMSSpectraFactory::getSpectrumAccessOpenMSPtr(sh_chromatograms);
-    OpenSwath::SpectrumAccessPtr empty_swath_ptr = SimpleOpenMSSpectraFactory::getSpectrumAccessOpenMSPtr(sh_swath_map);
+    OpenSwath::SpectrumAccessPtr swath_ptr = SimpleOpenMSSpectraFactory::getSpectrumAccessOpenMSPtr(sh_swath_map);
 
-    pickExperiment(chromatogram_ptr, output, transition_exp, trafo, empty_swath_ptr, transition_group_map);
+    OpenSwath::SwathMap m;
+    m.sptr = swath_ptr;
+    std::vector<OpenSwath::SwathMap> swath_ptrs;
+    swath_ptrs.push_back(m);
+
+    pickExperiment(chromatogram_ptr, output, transition_exp, trafo, swath_ptrs, transition_group_map);
   }
 
   void MRMFeatureFinderScoring::pickExperiment(OpenSwath::SpectrumAccessPtr input,
                                                FeatureMap& output, OpenSwath::LightTargetedExperiment& transition_exp,
-                                               TransformationDescription trafo, OpenSwath::SpectrumAccessPtr swath_map,
+                                               TransformationDescription trafo, 
+                                               std::vector<OpenSwath::SwathMap> swath_maps,
                                                TransitionGroupMapType& transition_group_map)
   {
     updateMembers_();
@@ -199,7 +208,7 @@ namespace OpenMS
     {
       if (trgroup_it->second.getChromatograms().size() > 0) {counter++; }
     }
-    std::cout << "Will analyse " << counter << " peptides with a total of " << transition_exp.getTransitions().size() << " transitions " << std::endl;
+    LOG_INFO << "Will analyse " << counter << " peptides with a total of " << transition_exp.getTransitions().size() << " transitions " << std::endl;
 
     //
     // Step 3
@@ -220,8 +229,7 @@ namespace OpenMS
       MRMTransitionGroupPicker trgroup_picker;
       trgroup_picker.setParameters(param_.copy("TransitionGroupPicker:", true));
       trgroup_picker.pickTransitionGroup(transition_group);
-      scorePeakgroups(trgroup_it->second, trafo, swath_map, output);
-
+      scorePeakgroups(trgroup_it->second, trafo, swath_maps, output);
     }
     endProgress();
 
@@ -231,9 +239,9 @@ namespace OpenMS
 
   void MRMFeatureFinderScoring::prepareProteinPeptideMaps_(OpenSwath::LightTargetedExperiment& transition_exp)
   {
-    for (Size i = 0; i < transition_exp.getPeptides().size(); i++)
+    for (Size i = 0; i < transition_exp.getCompounds().size(); i++)
     {
-      PeptideRefMap_[transition_exp.getPeptides()[i].id] = &transition_exp.getPeptides()[i];
+      PeptideRefMap_[transition_exp.getCompounds()[i].id] = &transition_exp.getCompounds()[i];
     }
   }
 
@@ -282,9 +290,15 @@ namespace OpenMS
     transition_group_identification_decoy = transition_group.subsetDependent(identifying_transitions_decoy);
   }
 
-  OpenSwath_Scores MRMFeatureFinderScoring::scoreIdentification_(MRMTransitionGroupType& transition_group_identification, OpenSwathScoring& scorer, const size_t feature_idx, const std::vector<std::string> native_ids_detection, const double sn_win_len_, const unsigned int sn_bin_count_, bool write_log_messages, OpenSwath::SpectrumAccessPtr swath_map)
+  OpenSwath_Scores MRMFeatureFinderScoring::scoreIdentification_(MRMTransitionGroupType& transition_group_identification,
+                                                                 OpenSwathScoring& scorer,
+                                                                 const size_t feature_idx,
+                                                                 const std::vector<std::string> native_ids_detection,
+                                                                 const double sn_win_len_,
+                                                                 const unsigned int sn_bin_count_,
+                                                                 bool write_log_messages,
+                                                                 std::vector<OpenSwath::SwathMap> swath_maps)
   {
-    typedef MRMTransitionGroupType::PeakType PeakT;
     MRMFeature idmrmfeature = transition_group_identification.getFeaturesMuteable()[feature_idx];
     OpenSwath::IMRMFeature* idimrmfeature;
     idimrmfeature = new MRMFeatureOpenMS(idmrmfeature);  
@@ -294,8 +308,11 @@ namespace OpenMS
 
     for (Size i = 0; i < transition_group_identification.size(); i++)
     {
-      OpenSwath::ISignalToNoisePtr snptr(new OpenMS::SignalToNoiseOpenMS< PeakT >(transition_group_identification.getChromatogram(transition_group_identification.getTransitions()[i].getNativeID()), sn_win_len_, sn_bin_count_, write_log_messages));
-      if ((snptr->getValueAtRT(idmrmfeature.getRT()) > uis_threshold_sn_) && (idmrmfeature.getFeature(transition_group_identification.getTransitions()[i].getNativeID()).getIntensity() > uis_threshold_peak_area_))
+      OpenSwath::ISignalToNoisePtr snptr(new OpenMS::SignalToNoiseOpenMS< MSChromatogram<> >(
+            transition_group_identification.getChromatogram(transition_group_identification.getTransitions()[i].getNativeID()),
+            sn_win_len_, sn_bin_count_, write_log_messages));
+      if (  (snptr->getValueAtRT(idmrmfeature.getRT()) > uis_threshold_sn_) 
+            && (idmrmfeature.getFeature(transition_group_identification.getTransitions()[i].getNativeID()).getIntensity() > uis_threshold_peak_area_))
       {
         signal_noise_estimators_identification.push_back(snptr);
         native_ids_identification.push_back(transition_group_identification.getTransitions()[i].getNativeID());
@@ -309,30 +326,41 @@ namespace OpenMS
       scorer.calculateChromatographicIdScores(idimrmfeature, native_ids_identification, native_ids_detection, signal_noise_estimators_identification, idscores);
 
       std::stringstream ind_transition_names;
+      std::stringstream ind_area_intensity;
+      std::stringstream ind_apex_intensity;
       std::stringstream ind_log_intensity;
       for (size_t i = 0; i < native_ids_identification.size(); i++)
       {
         if (i != 0)
         {
           ind_transition_names << ";";
+          ind_area_intensity << ";";
+          ind_apex_intensity << ";";
           ind_log_intensity << ";";
         }
         ind_transition_names << native_ids_identification[i];
         if (idmrmfeature.getFeature(native_ids_identification[i]).getIntensity() > 0)
         {
+          ind_area_intensity << idmrmfeature.getFeature(native_ids_identification[i]).getIntensity();
+          ind_apex_intensity << idmrmfeature.getFeature(native_ids_identification[i]).getMetaValue("peak_apex_int");
           ind_log_intensity << std::log(idmrmfeature.getFeature(native_ids_identification[i]).getIntensity());
         }
         else
         {
+          ind_area_intensity << 0;
+          ind_apex_intensity << 0;
           ind_log_intensity << 0;
         }
       }
       idscores.ind_transition_names = ind_transition_names.str();
+      idscores.ind_area_intensity = ind_area_intensity.str();
+      idscores.ind_apex_intensity = ind_apex_intensity.str();
       idscores.ind_log_intensity = ind_log_intensity.str();
       idscores.ind_num_transitions = native_ids_identification.size();
     }
 
-    bool swath_present = (swath_map->getNrSpectra() > 0);
+    // Compute DIA scores only on the identification transitions
+    bool swath_present = (!swath_maps.empty() && swath_maps[0].sptr->getNrSpectra() > 0);
     if (swath_present && su_.use_dia_scores_ && native_ids_identification.size() > 0)
     {
       std::stringstream ind_isotope_correlation, ind_isotope_overlap, ind_massdev_score;
@@ -340,7 +368,9 @@ namespace OpenMS
       {
         OpenSwath_Scores tmp_scores;
 
-        scorer.calculateDIAIdScores(idimrmfeature, transition_group_identification.getTransition(native_ids_identification[i]), swath_map, diascoring_, tmp_scores);
+        scorer.calculateDIAIdScores(idimrmfeature,
+            transition_group_identification.getTransition(native_ids_identification[i]),
+            swath_maps, diascoring_, tmp_scores);
 
         if (i != 0)
         {
@@ -363,7 +393,8 @@ namespace OpenMS
   }
 
   void MRMFeatureFinderScoring::scorePeakgroups(MRMTransitionGroupType& transition_group,
-                                                TransformationDescription& trafo, OpenSwath::SpectrumAccessPtr swath_map,
+                                                TransformationDescription& trafo, 
+                                                std::vector<OpenSwath::SwathMap> swath_maps,
                                                 FeatureMap& output)
   {
     MRMTransitionGroupType transition_group_detection, transition_group_identification, transition_group_identification_decoy;
@@ -373,7 +404,6 @@ namespace OpenMS
       splitTransitionGroupsIdentification_(transition_group, transition_group_identification, transition_group_identification_decoy);
     }
 
-    typedef MRMTransitionGroupType::PeakType PeakT;
     std::vector<OpenSwath::ISignalToNoisePtr> signal_noise_estimators;
     std::vector<MRMFeature> feature_list;
 
@@ -383,12 +413,12 @@ namespace OpenMS
     // currently we cannot do much about the log messages and they mostly occur in decoy transition signals
     for (Size k = 0; k < transition_group_detection.getChromatograms().size(); k++)
     {
-      OpenSwath::ISignalToNoisePtr snptr(new OpenMS::SignalToNoiseOpenMS<PeakT>(
+      OpenSwath::ISignalToNoisePtr snptr(new OpenMS::SignalToNoiseOpenMS< MSChromatogram<> >(
             transition_group_detection.getChromatograms()[k], sn_win_len_, sn_bin_count_, write_log_messages));
       signal_noise_estimators.push_back(snptr);
     }
 
-    // get the expected rt value for this peptide
+    // get the expected rt value for this compound
     const PeptideType* pep = PeptideRefMap_[transition_group_detection.getTransitionGroupID()];
     double expected_rt = pep->rt;
     TransformationDescription newtr = trafo;
@@ -413,7 +443,7 @@ namespace OpenMS
       int group_size = boost::numeric_cast<int>(transition_group_detection.size());
       if (group_size == 0)
       {
-        throw Exception::IllegalArgument(__FILE__, __LINE__, __PRETTY_FUNCTION__,
+        throw Exception::IllegalArgument(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION,
                                          "Error: Transition group " + transition_group_detection.getTransitionGroupID() + " has no chromatograms.");
       }
       if (group_size < 2)
@@ -443,18 +473,25 @@ namespace OpenMS
 
       double normalized_experimental_rt = trafo.apply(imrmfeature->getRT());
       scorer.calculateLibraryScores(imrmfeature, transition_group_detection.getTransitions(), *pep, normalized_experimental_rt, scores);
-      if (swath_map->getNrSpectra() > 0 && su_.use_dia_scores_)
+      if (swath_maps.size() > 0 && swath_maps[0].sptr->getNrSpectra() > 0 && su_.use_dia_scores_)
       {
         scorer.calculateDIAScores(imrmfeature, transition_group_detection.getTransitions(),
-                                  swath_map, ms1_map_, diascoring_, *pep, scores);
+                                  swath_maps, ms1_map_, diascoring_, *pep, scores);
+      }
+      if (swath_maps.size() > 0 && swath_maps[0].sptr->getNrSpectra() > 0 && su_.use_sonar_scores)
+      {
+        sonarscoring_.computeSonarScores(imrmfeature, transition_group_detection.getTransitions(), swath_maps, scores);
       }
 
       if (su_.use_uis_scores && transition_group_identification.getTransitions().size() > 0)
       {
-        OpenSwath_Scores idscores = scoreIdentification_(transition_group_identification, scorer, feature_idx, native_ids_detection, sn_win_len_, sn_bin_count_, write_log_messages, swath_map);
+        OpenSwath_Scores idscores = scoreIdentification_(transition_group_identification, scorer, feature_idx, native_ids_detection, sn_win_len_, sn_bin_count_, write_log_messages, swath_maps);
 
         mrmfeature->setMetaValue("id_target_transition_names", idscores.ind_transition_names);
         mrmfeature->addScore("id_target_num_transitions", idscores.ind_num_transitions);
+        mrmfeature->setMetaValue("id_target_area_intensity", idscores.ind_area_intensity);
+        mrmfeature->setMetaValue("id_target_apex_intensity", idscores.ind_apex_intensity);
+        mrmfeature->setMetaValue("id_target_transition_names", idscores.ind_transition_names);
         mrmfeature->setMetaValue("id_target_ind_log_intensity", idscores.ind_log_intensity);
         mrmfeature->setMetaValue("id_target_ind_xcorr_coelution", idscores.ind_xcorr_coelution_score);
         mrmfeature->setMetaValue("id_target_ind_xcorr_shape", idscores.ind_xcorr_shape_score);
@@ -466,10 +503,12 @@ namespace OpenMS
 
       if (su_.use_uis_scores && transition_group_identification_decoy.getTransitions().size() > 0)
       {
-        OpenSwath_Scores idscores = scoreIdentification_(transition_group_identification_decoy, scorer, feature_idx, native_ids_detection, sn_win_len_, sn_bin_count_, write_log_messages, swath_map);
+        OpenSwath_Scores idscores = scoreIdentification_(transition_group_identification_decoy, scorer, feature_idx, native_ids_detection, sn_win_len_, sn_bin_count_, write_log_messages, swath_maps);
 
         mrmfeature->setMetaValue("id_decoy_transition_names", idscores.ind_transition_names);
         mrmfeature->addScore("id_decoy_num_transitions", idscores.ind_num_transitions);
+        mrmfeature->setMetaValue("id_decoy_area_intensity", idscores.ind_area_intensity);
+        mrmfeature->setMetaValue("id_decoy_apex_intensity", idscores.ind_apex_intensity);
         mrmfeature->setMetaValue("id_decoy_ind_log_intensity", idscores.ind_log_intensity);
         mrmfeature->setMetaValue("id_decoy_ind_xcorr_coelution", idscores.ind_xcorr_coelution_score);
         mrmfeature->setMetaValue("id_decoy_ind_xcorr_shape", idscores.ind_xcorr_shape_score);
@@ -519,7 +558,8 @@ namespace OpenMS
       }
 
       double xx_lda_prescore = -scores.calculate_lda_prescore(scores);
-      bool swath_present = (swath_map->getNrSpectra() > 0);
+      bool swath_present = (!swath_maps.empty() && swath_maps[0].sptr->getNrSpectra() > 0);
+      bool sonar_present = (swath_maps.size() > 1);
       if (!swath_present)
       {
         mrmfeature->addScore("main_var_xx_lda_prelim_score", xx_lda_prescore);
@@ -558,13 +598,32 @@ namespace OpenMS
         mrmfeature->setOverallQuality(xx_swath_prescore);
       }
 
+      if (sonar_present && su_.use_sonar_scores)
+      {
+
+        // set all scores less than 1 to zero (do not over-punish large negative scores)
+        double log_sn = 0;
+        if (scores.sonar_sn > 1) log_sn = std::log(scores.sonar_sn);
+        double log_trend = 0;
+        if (scores.sonar_trend > 1) log_trend = std::log(scores.sonar_trend);
+        double log_diff = 0;
+        if (scores.sonar_diff > 1) log_diff = std::log(scores.sonar_diff);
+
+        mrmfeature->addScore("var_sonar_lag", scores.sonar_lag);
+        mrmfeature->addScore("var_sonar_shape", scores.sonar_shape);
+        mrmfeature->addScore("var_sonar_log_sn", log_sn);
+        mrmfeature->addScore("var_sonar_log_diff", log_diff);
+        mrmfeature->addScore("var_sonar_log_trend", log_trend);
+        mrmfeature->addScore("var_sonar_rsq", scores.sonar_rsq);
+      }
+
       ///////////////////////////////////////////////////////////////////////////
       // add the peptide hit information to the feature
       ///////////////////////////////////////////////////////////////////////////
       PeptideIdentification pep_id_ = PeptideIdentification();
       PeptideHit pep_hit_ = PeptideHit();
 
-      if (pep->getChargeState() != -1)
+      if (pep->getChargeState() != 0)
       {
         pep_hit_.setCharge(pep->getChargeState());
       }
@@ -573,7 +632,11 @@ namespace OpenMS
       {
         pep_hit_.setScore(mrmfeature->getScore("xx_swath_prelim_score"));
       }
-      pep_hit_.setSequence(AASequence::fromString(pep->sequence));
+
+      if (pep->isPeptide())
+      {
+        pep_hit_.setSequence(AASequence::fromString(pep->sequence));
+      }
 
       // set protein accession numbers 
       for (Size k = 0; k < pep->protein_refs.size(); k++)
@@ -604,7 +667,10 @@ namespace OpenMS
       for (std::vector<String>::iterator id_it = precursors_ids.begin(); id_it != precursors_ids.end(); ++id_it)
       {
         Feature curr_feature = mrmfeature->getPrecursorFeature(*id_it);
-        curr_feature.setCharge(pep->getChargeState());
+        if (pep->getChargeState() != 0)
+        {
+          curr_feature.setCharge(pep->getChargeState());
+        }
         processFeatureForOutput(curr_feature, write_convex_hull_, quantification_cutoff_, total_intensity, total_peak_apices, "MS1");
         allFeatures.push_back(curr_feature);
       }
@@ -643,6 +709,12 @@ namespace OpenMS
     uis_threshold_sn_ = param_.getValue("uis_threshold_sn");
     uis_threshold_peak_area_ = param_.getValue("uis_threshold_peak_area");
 
+    // set SONAR values
+    Param p = sonarscoring_.getDefaults();
+    p.setValue("dia_extraction_window", param_.getValue("DIAScoring:dia_extraction_window"));
+    p.setValue("dia_centroided", param_.getValue("DIAScoring:dia_centroided"));
+    sonarscoring_.setParameters(p);
+
     diascoring_.setParameters(param_.copy("DIAScoring:", true));
     emgscoring_.setFitterParam(param_.copy("EmgScoring:", true));
 
@@ -656,6 +728,7 @@ namespace OpenMS
     su_.use_nr_peaks_score_      = param_.getValue("Scores:use_nr_peaks_score").toBool();
     su_.use_sn_score_            = param_.getValue("Scores:use_sn_score").toBool();
     su_.use_dia_scores_          = param_.getValue("Scores:use_dia_scores").toBool();
+    su_.use_sonar_scores         = param_.getValue("Scores:use_sonar_scores").toBool();
     su_.use_ms1_correlation      = param_.getValue("Scores:use_ms1_correlation").toBool();
     su_.use_ms1_fullscan         = param_.getValue("Scores:use_ms1_fullscan").toBool();
     su_.use_uis_scores           = param_.getValue("Scores:use_uis_scores").toBool();
@@ -689,45 +762,45 @@ namespace OpenMS
           transition->getPeptideRef() + " does not have a corresponding chromatogram" << std::endl;
         if (strict_)
         {
-          throw Exception::IllegalArgument(__FILE__, __LINE__, __PRETTY_FUNCTION__,
+          throw Exception::IllegalArgument(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION,
                                            "Error: Transition " + transition->getNativeID() + " from group " +
                                            transition->getPeptideRef() + " does not have a corresponding chromatogram");
         }
         continue;
       }
-      MSChromatogram<ChromatogramPeak> chromatogram_old;
-      OpenSwath::ChromatogramPtr cptr = input->getChromatogramById(chromatogram_map[transition->getNativeID()]);
-      OpenSwathDataAccessHelper::convertToOpenMSChromatogram(chromatogram_old, cptr);
-      RichPeakChromatogram chromatogram;
 
-      // Create the chromatogram information
+      //-----------------------------------
+      // Retrieve chromatogram and filter it by the desired RT
+      //-----------------------------------
+      OpenSwath::ChromatogramPtr cptr = input->getChromatogramById(chromatogram_map[transition->getNativeID()]);
+      MSChromatogram<> chromatogram;
+
       // Get the expected retention time, apply the RT-transformation
       // (which describes the normalization) and then take the difference.
       // Note that we inverted the transformation in the beginning because
       // we want to transform from normalized to real RTs here and not the
       // other way round.
-      expected_rt = PeptideRefMap_[transition->getPeptideRef()]->rt;
-      double de_normalized_experimental_rt = trafo.apply(expected_rt);
-      rt_max = de_normalized_experimental_rt + rt_extraction_window;
-      rt_min = de_normalized_experimental_rt - rt_extraction_window;
-      for (MSChromatogram<ChromatogramPeak>::const_iterator it = chromatogram_old.begin(); it != chromatogram_old.end(); ++it)
+      if (rt_extraction_window > 0)
       {
-        if (rt_extraction_window >= 0 && (it->getRT() < rt_min || it->getRT() > rt_max))
-        {
-          continue;
-        }
-        ChromatogramPeak peak;
-        peak.setMZ(it->getRT());
-        peak.setIntensity(it->getIntensity());
-        chromatogram.push_back(peak);
+        expected_rt = PeptideRefMap_[transition->getPeptideRef()]->rt;
+        double de_normalized_experimental_rt = trafo.apply(expected_rt);
+        rt_max = de_normalized_experimental_rt + rt_extraction_window;
+        rt_min = de_normalized_experimental_rt - rt_extraction_window;
+        OpenSwathDataAccessHelper::convertToOpenMSChromatogramFilter(chromatogram, cptr, rt_min, rt_max);
       }
+      else
+      {
+        OpenSwathDataAccessHelper::convertToOpenMSChromatogram(chromatogram, cptr);
+      }
+
+      // Check for empty chromatograms (e.g. RT transformation is off)
       if (chromatogram.empty())
       {
         std::cerr << "Error: Could not find any points for chromatogram " + transition->getNativeID() + \
           ". Maybe your retention time transformation is off?" << std::endl;
         if (strict_)
         {
-          throw Exception::IllegalArgument(__FILE__, __LINE__, __PRETTY_FUNCTION__,
+          throw Exception::IllegalArgument(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION,
                                            "Error: Could not find any points for chromatogram " + transition->getNativeID() + \
                                            ". Maybe your retention time transformation is off?");
         }
@@ -758,7 +831,7 @@ namespace OpenMS
     {
       if (trgroup_it->second.getChromatograms().size() > 0 && (trgroup_it->second.getChromatograms().size() != trgroup_it->second.getTransitions().size()))
       {
-        throw Exception::IllegalArgument(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Error: Could not match all transition to all chromatograms:\nFor chromatogram " + \
+        throw Exception::IllegalArgument(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Error: Could not match all transition to all chromatograms:\nFor chromatogram " + \
                                          trgroup_it->second.getTransitionGroupID() + " I found " + String(trgroup_it->second.getChromatograms().size()) + \
                                          " chromatograms but " + String(trgroup_it->second.getTransitions().size()) + " transitions.");
       }

@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -136,9 +136,6 @@ protected:
   // primary MS run referenced in the mzML file
   StringList primary_ms_run_path_;
   
-  // legacy conversion via tsv instead of mzid
-  bool legacy_conversion_;
-
   void registerOptionsAndFlags_()
   {
     registerInputFile_("in", "<file>", "", "Input file (MS-GF+ parameter '-s')");
@@ -174,9 +171,9 @@ protected:
     registerStringOption_("tryptic", "<choice>", tryptic_[2], "Level of cleavage specificity required (MS-GF+ parameter '-ntt')", false);
     setValidStrings_("tryptic", tryptic_);
 
-    registerIntOption_("min_precursor_charge", "<num>", 2, "Minimum precursor ion charge (MS-GF+ parameter '-minCharge')", false);
+    registerIntOption_("min_precursor_charge", "<num>", 2, "Minimum precursor ion charge (only used for spectra without charge information; MS-GF+ parameter '-minCharge')", false);
     setMinInt_("min_precursor_charge", 1);
-    registerIntOption_("max_precursor_charge", "<num>", 3, "Maximum precursor ion charge (MS-GF+ parameter '-maxCharge')", false);
+    registerIntOption_("max_precursor_charge", "<num>", 3, "Maximum precursor ion charge (only used for spectra without charge information; MS-GF+ parameter '-maxCharge')", false);
     setMinInt_("max_precursor_charge", 1);
 
     registerIntOption_("min_peptide_length", "<num>", 6, "Minimum peptide length to consider (MS-GF+ parameter '-minLength')", false);
@@ -201,6 +198,7 @@ protected:
     
     registerFlag_("legacy_conversion", "Use the indirect conversion of MS-GF+ results to idXML via export to TSV. Try this only if the default conversion takes too long or uses too much memory.", true);
 
+    registerInputFile_("java_executable", "<file>", "java", "The Java executable. Usually Java is on the system PATH. If Java is not found, use this parameter to specify the full path to Java", false, false, ListUtils::create<String>("skipexists"));
     registerIntOption_("java_memory", "<num>", 3500, "Maximum Java heap size (in MB)", false);
     registerIntOption_("java_permgen", "<num>", 0, "Maximum Java permanent generation space (in MB); only for Java 7 and below", false, true);
   }
@@ -335,8 +333,8 @@ protected:
   String makeModString_(const String& mod_name, bool fixed=true)
   {
     ResidueModification mod = ModificationsDB::getInstance()->getModification(mod_name);
-    String residue = mod.getOrigin();
-    if (residue.size() != 1) residue = "*"; // specificity groups, e.g. "Deamidated (NQ)", are not supported by OpenMS
+    char residue = mod.getOrigin();
+    if (residue == 'X') residue = '*'; // terminal mod. without residue specificity
     String position = mod.getTermSpecificityName(); // "Prot-N-term", "Prot-C-term" not supported by OpenMS
     if (position == "none") position = "any";
     return String(mod.getDiffMonoMass()) + ", " + residue + (fixed ? ", fix, " : ", opt, ") + position + ", " + mod.getId() + "    # " + mod_name;
@@ -373,21 +371,6 @@ protected:
     }
   }
 
-  void removeTempDir_(const String& temp_dir)
-  {
-    if (temp_dir.empty()) return; // no temp. dir. created
-
-    if (debug_level_ >= 2)
-    {
-      writeDebug_("Keeping temporary files in directory '" + temp_dir + "'. Set debug level to 1 or lower to remove them.", 2);
-    }
-    else
-    {
-      if (debug_level_ == 1) writeDebug_("Deleting temporary directory '" + temp_dir + "'. Set debug level to 2 or higher to keep it.", 1);
-      File::removeDirRecursively(temp_dir);
-    }
-  }
-  
   String describeHit_(const PeptideHit& hit)
   {
     return "peptide hit with sequence '" + hit.getSequence().toString() +
@@ -404,7 +387,7 @@ protected:
       if (!hit_it->metaValueExists("MS:1002052"))
       {
         String msg = "Meta value 'MS:1002052' not found for " + describeHit_(*hit_it);
-        throw Exception::MissingInformation(__FILE__, __LINE__, __PRETTY_FUNCTION__, msg);
+        throw Exception::MissingInformation(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, msg);
       }
       
       hit_it->setScore(hit_it->getMetaValue("MS:1002052"));
@@ -428,6 +411,7 @@ protected:
       return ILLEGAL_PARAMETERS;
     }
 
+    String java_executable = getStringOption_("java_executable");
     String db_name = getStringOption_("database");
     if (!File::readable(db_name))
     {
@@ -454,9 +438,9 @@ protected:
 
     if (!getFlag_("force"))
     {
-      if (!JavaInfo::canRun("java"))
+      if (!JavaInfo::canRun(java_executable))
       {
-        writeLog_("Fatal error: Java not found, or the Java process timed out. Java is needed to run MS-GF+. Make sure that it can be executed by calling 'java', e.g. add the directory containing the Java binary to your PATH variable. If you are certain java is installed, please set the 'force' flag in order to avoid this error message.");
+        writeLog_("Fatal error: Java is needed to run MS-GF+!");
         return EXTERNAL_PROGRAM_ERROR;
       }
     }
@@ -467,10 +451,7 @@ protected:
 
     // create temporary directory (and modifications file, if necessary):
     String temp_dir, mzid_temp, mod_file;
-    temp_dir = QDir::toNativeSeparators((File::getTempDirectory() + "/" + File::getUniqueName() + "/").toQString());
-    writeDebug_("Creating temporary directory '" + temp_dir + "'", 1);
-    QDir d;
-    d.mkpath(temp_dir.toQString());
+    temp_dir = makeTempDirectory_();
     // always create a temporary mzid file first, even if mzid output is requested via "mzid_out"
     // (reason: TOPPAS may pass a filename with wrong extension to "mzid_out", which would cause an error in MzIDToTSVConverter below,
     // so we make sure that we have a properly named mzid file for the converter; see https://github.com/OpenMS/OpenMS/issues/1251)
@@ -533,8 +514,6 @@ protected:
     {
       process_params << "-mod" << mod_file.toQString();
     }
-    
-    legacy_conversion_ = getFlag_("legacy_conversion");
 
     //-------------------------------------------------------------
     // execute MS-GF+
@@ -542,10 +521,10 @@ protected:
 
     // run MS-GF+ process and create the .mzid file
 
-    int status = QProcess::execute("java", process_params);
+    int status = QProcess::execute(java_executable.toQString(), process_params);
     if (status != 0)
     {
-      writeLog_("Fatal error: Running MS-GF+ returned an error code. Does the MS-GF+ executable (.jar file) exist?");
+      writeLog_("Fatal error: Running MS-GF+ returned an error code '" + String(status) + "'. Does the MS-GF+ executable (.jar file) exist?");
       return EXTERNAL_PROGRAM_ERROR;
     }
 
@@ -555,7 +534,7 @@ protected:
     
     if (!out.empty())
     {
-      if (legacy_conversion_)
+      if (getFlag_("legacy_conversion"))
       {
         // run TSV converter
         String tsv_out = temp_dir + "msgfplus_converted.tsv";
@@ -572,10 +551,10 @@ protected:
                        << "-showQValue" << "1"
                        << "-showDecoy" << "1"
                        << "-unroll" << "1";
-        status = QProcess::execute("java", process_params);
+        status = QProcess::execute(java_executable.toQString(), process_params);
         if (status != 0)
         {
-          writeLog_("Fatal error: Running MzIDToTSVConverter returned an error code.");
+          writeLog_("Fatal error: Running MzIDToTSVConverter returned an error code '" + String(status) + "'.");
           return EXTERNAL_PROGRAM_ERROR;
         }
     
@@ -590,11 +569,11 @@ protected:
         search_parameters.mass_type = ProteinIdentification::MONOISOTOPIC;
         search_parameters.fixed_modifications = fixed_mods;
         search_parameters.variable_modifications = variable_mods;
-        search_parameters.precursor_tolerance = precursor_mass_tol;
+        search_parameters.precursor_mass_tolerance = precursor_mass_tol;
         search_parameters.precursor_mass_tolerance_ppm = false;
         if (precursor_error_units == "ppm") // convert to Da (at m/z 666: 0.01 Da ~ 15 ppm)
         {
-          search_parameters.precursor_tolerance *= 2.0 / 3000.0;
+          search_parameters.precursor_mass_tolerance *= 2.0 / 3000.0;
           search_parameters.precursor_mass_tolerance_ppm = true;
         }
     
@@ -777,7 +756,7 @@ protected:
       }
     }
 
-    removeTempDir_(temp_dir);
+    removeTempDirectory_(temp_dir);
 
     return EXECUTION_OK;
   }

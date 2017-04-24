@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -72,10 +72,10 @@ using namespace OpenMS;
   This module generates assays for targeted proteomics using a set of rules
   that was found to improve the sensitivity and selectivity for detection
   of typical peptides (Schubert et al., 2015). The tool operates on TraML
-  files, which can come from ConvertTSVToTraML or any other tool. If the
+  files, which can come from TargetedFileConverter or any other tool. If the
   TraML is annotated with the CV terms for fragment ion annotation, it can
   directly filter the transitions according to the set rules. If this is not
-  the case (e.g. if an older version of ConvertTSVToTraML was used), the
+  the case (e.g. if an older version of TargetedFileConverter was used), the
   option -enable_reannotation can do the reannotation.
 
   <B>The command line parameters of this tool are:</B>
@@ -117,6 +117,7 @@ protected:
     registerFlag_("enable_detection_unspecific_losses", "set this flag if unspecific neutral losses (H2O1, H3N1, C1H2N2, C1H2N1O1) for detection fragment ions should be allowed");
     registerFlag_("enable_identification_specific_losses", "set this flag if specific neutral losses for identification fragment ions should be allowed");
     registerFlag_("enable_identification_unspecific_losses", "set this flag if unspecific neutral losses (H2O1, H3N1, C1H2N2, C1H2N1O1) for identification fragment ions should be allowed");
+    registerFlag_("enable_identification_ms2_precursors", "set this flag if MS2-level precursor ions for identification should be allowed to enable extraction of the precursor signal from the fragment ion data (MS2-level). This may help in identification if the MS1 signal is weak.");
     registerFlag_("enable_ms1_uis_scoring", "set this flag if MS1-UIS assays for UIS scoring should be generated");
     registerFlag_("enable_ms2_uis_scoring", "set this flag if MS2-UIS assays for UIS scoring should be generated");
     registerIntOption_("max_num_alternative_localizations", "<int>", 20, "maximum number of site-localization permutations", false);
@@ -144,6 +145,7 @@ protected:
     bool enable_detection_unspecific_losses = getFlag_("enable_detection_unspecific_losses");
     bool enable_identification_specific_losses = getFlag_("enable_identification_specific_losses");
     bool enable_identification_unspecific_losses = getFlag_("enable_identification_unspecific_losses");
+    bool enable_identification_ms2_precursors = getFlag_("enable_identification_ms2_precursors");
     bool enable_ms1_uis_scoring = getFlag_("enable_ms1_uis_scoring");
     bool enable_ms2_uis_scoring = getFlag_("enable_ms2_uis_scoring");
     size_t max_num_alternative_localizations = getIntOption_("max_num_alternative_localizations");
@@ -216,8 +218,9 @@ protected:
       else {uis_swathes = swathes;}
       
       std::cout << "Generating identifying (UIS) transitions" << std::endl;
-      assays.uisTransitions(targeted_exp, allowed_fragment_types, allowed_fragment_charges, enable_identification_specific_losses, enable_identification_unspecific_losses, product_mz_threshold, uis_swathes, -4, max_num_alternative_localizations, -1);
-      assays.restrictTransitions(targeted_exp, product_lower_mz_limit, product_upper_mz_limit, swathes);
+      assays.uisTransitions(targeted_exp, allowed_fragment_types, allowed_fragment_charges, enable_identification_specific_losses, enable_identification_unspecific_losses, enable_identification_ms2_precursors, product_mz_threshold, uis_swathes, -4, max_num_alternative_localizations, -1);
+      std::vector<std::pair<double, double> > empty_swathes;
+      assays.restrictTransitions(targeted_exp, product_lower_mz_limit, product_upper_mz_limit, empty_swathes);
     }
 
     std::cout << "Writing assays " << out << std::endl;

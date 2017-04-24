@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Nico Pfeifer $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Nico Pfeifer, Chris Bielow $
 // --------------------------------------------------------------------------
 
@@ -75,9 +75,9 @@ START_SECTION((MascotXMLFile()))
   TEST_NOT_EQUAL(ptr, nullPointer)
 END_SECTION
 
-START_SECTION((static void initializeLookup(SpectrumMetaDataLookup& lookup, MSExperiment<>& experiment, const String& scan_regex = "")))
+START_SECTION((static void initializeLookup(SpectrumMetaDataLookup& lookup, PeakMap& experiment, const String& scan_regex = "")))
 {
-  MSExperiment<> exp;
+  PeakMap exp;
   exp.getSpectra().resize(1);
   SpectrumMetaDataLookup lookup;
   xml_file.initializeLookup(lookup, exp);
@@ -99,14 +99,15 @@ START_SECTION((void load(const String& filename, ProteinIdentification& protein_
     TEST_EQUAL(search_parameters.db, "MSDB_chordata");
     TEST_EQUAL(search_parameters.db_version, "MSDB_chordata_20070910.fasta");
     TEST_EQUAL(search_parameters.fragment_mass_tolerance, 0.2);
-    TEST_EQUAL(search_parameters.precursor_tolerance, 1.4);
+    TEST_EQUAL(search_parameters.precursor_mass_tolerance, 1.4);
     TEST_EQUAL(search_parameters.fragment_mass_tolerance_ppm, false);
     TEST_EQUAL(search_parameters.precursor_mass_tolerance_ppm, false);
     TEST_EQUAL(search_parameters.charges, "1+, 2+ and 3+");
-    TEST_EQUAL(search_parameters.fixed_modifications.size(), 3);
+    TEST_EQUAL(search_parameters.fixed_modifications.size(), 4);
     TEST_EQUAL(search_parameters.fixed_modifications[0], "Carboxymethyl (C)");
-    TEST_EQUAL(search_parameters.fixed_modifications[1], "Deamidated (NQ)");
-    TEST_EQUAL(search_parameters.fixed_modifications[2], "Guanidinyl (K)");
+    TEST_EQUAL(search_parameters.fixed_modifications[1], "Deamidated (N)");
+    TEST_EQUAL(search_parameters.fixed_modifications[2], "Deamidated (Q)");
+    TEST_EQUAL(search_parameters.fixed_modifications[3], "Guanidinyl (K)");
     TEST_EQUAL(search_parameters.variable_modifications.size(), 3);
     TEST_EQUAL(search_parameters.variable_modifications[0], "Acetyl (Protein N-term)");
     TEST_EQUAL(search_parameters.variable_modifications[1], "Biotin (K)");
@@ -176,7 +177,7 @@ START_SECTION((void load(const String& filename, ProteinIdentification& protein_
     TEST_EQUAL(search_parameters.db, "IPI_human");
     TEST_EQUAL(search_parameters.db_version, "ipi.HUMAN.v3.61.fasta");
     TEST_EQUAL(search_parameters.fragment_mass_tolerance, 0.3);
-    TEST_EQUAL(search_parameters.precursor_tolerance, 3);
+    TEST_EQUAL(search_parameters.precursor_mass_tolerance, 3);
     TEST_EQUAL(search_parameters.fragment_mass_tolerance_ppm, false);
     TEST_EQUAL(search_parameters.precursor_mass_tolerance_ppm, false);
     TEST_EQUAL(search_parameters.charges, "");

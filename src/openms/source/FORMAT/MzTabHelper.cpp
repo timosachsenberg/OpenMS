@@ -33,6 +33,12 @@
 // --------------------------------------------------------------------------
 
 #include <OpenMS/FORMAT/MzTabHelper.h>
+#include <OpenMS/DATASTRUCTURES/String.h>
+
+#include <vector>
+#include <set>
+
+using namespace std;
 
 namespace OpenMS
 {
@@ -47,7 +53,14 @@ namespace OpenMS
 
   }
   
-  void MzTabHelper::addPepEvidenceToRows(const std::vector<PeptideEvidence>& peptide_evidences, MzTabPSMSectionRow& row, MzTabPSMSectionRows& rows)
+    /**
+      @brief Gets peptide_evidences with data from internal structures adds their info to an MzTabPSMSectionRow (pre- or unfilled)
+
+      @param peptide_evidences Vector of PeptideEvidence holding internal data.
+      @param row Pre- or unfilled MzTabPSMSectionRow to be filled with the data.
+      @param rows Vector of MzTabPSMSectionRow to add the differently updated rows to.
+    */
+  void MzTabHelper::addPepEvidenceToRows(const vector<PeptideEvidence>& peptide_evidences, MzTabPSMSectionRow& row, MzTabPSMSectionRows& rows)
   {
     if (!peptide_evidences.empty())
     {
@@ -119,9 +132,18 @@ namespace OpenMS
     }
   }
   
-  void MzTabHelper::addMetaInfoToOptionalColumns(const std::set<String>& keys, std::vector<MzTabOptionalColumnEntry>& opt, const String id, const MetaInfoInterface meta)
+    /**
+      @brief Inserts values from MetaInfoInterface objects matching a (precalculated or filtered) set of keys to optional columns of an MzTab row.
+
+      @param keys Only values matching those keys will be extracted from the object inheriting from MetaInfoInterface.
+      @param opt A vector of optional columns to add to.
+      @param id The identifier for this optional value according to the mzTab standard (like global, MS_Run, assay, etc.)
+      @param meta The object holding the MetaInformation (like PeptideHit, ProteinHit, etc.)
+      @return void: Only updates the values of the columns in opt
+    */
+  void MzTabHelper::addMetaInfoToOptionalColumns(const set<String>& keys, vector<MzTabOptionalColumnEntry>& opt, const String id, const MetaInfoInterface meta)
   {
-    for (std::set<String>::const_iterator sit = keys.begin(); sit != keys.end(); ++sit)
+    for (set<String>::const_iterator sit = keys.begin(); sit != keys.end(); ++sit)
     {
       const String& key = *sit;
       MzTabOptionalColumnEntry opt_entry;
@@ -134,10 +156,10 @@ namespace OpenMS
     }
   }
 
-  std::map<Size, MzTabModificationMetaData> MzTabHelper::generateMzTabStringFromModifications(const std::vector<String>& mods)
+  map<Size, MzTabModificationMetaData> MzTabHelper::generateMzTabStringFromModifications(const vector<String>& mods)
   {
-    std::map<Size, MzTabModificationMetaData> mods_mztab;
-    for (std::vector<String>::const_iterator sit = mods.begin(); sit != mods.end(); ++sit)
+    map<Size, MzTabModificationMetaData> mods_mztab;
+    for (vector<String>::const_iterator sit = mods.begin(); sit != mods.end(); ++sit)
     {
       Size index = (sit - mods.begin()) + 1;
       MzTabModificationMetaData mod;
@@ -178,14 +200,14 @@ namespace OpenMS
     return mods_mztab;
   }
 
-  std::map<Size, MzTabModificationMetaData> MzTabHelper::generateMzTabStringFromVariableModifications(const std::vector<String>& mods)
+  map<Size, MzTabModificationMetaData> MzTabHelper::generateMzTabStringFromVariableModifications(const vector<String>& mods)
   {
     if (mods.empty())
     {
-      std::map<Size, MzTabModificationMetaData> mods_mztab;
+      map<Size, MzTabModificationMetaData> mods_mztab;
       MzTabModificationMetaData mod_mtd;
       mod_mtd.modification.fromCellString("[MS, MS:1002454, No variable modifications searched, ]");
-      mods_mztab.insert(std::make_pair(1, mod_mtd));
+      mods_mztab.insert(make_pair(1, mod_mtd));
       return mods_mztab;
     }
     else
@@ -194,14 +216,14 @@ namespace OpenMS
     }
   }
 
-  std::map<Size, MzTabModificationMetaData> MzTabHelper::generateMzTabStringFromFixedModifications(const std::vector<String>& mods)
+  map<Size, MzTabModificationMetaData> MzTabHelper::generateMzTabStringFromFixedModifications(const vector<String>& mods)
   {
     if (mods.empty())
     {
-      std::map<Size, MzTabModificationMetaData> mods_mztab;
+      map<Size, MzTabModificationMetaData> mods_mztab;
       MzTabModificationMetaData mod_mtd;
       mod_mtd.modification.fromCellString("[MS, MS:1002453, No fixed modifications searched, ]");
-      mods_mztab.insert(std::make_pair(1, mod_mtd));
+      mods_mztab.insert(make_pair(1, mod_mtd));
       return mods_mztab;
     }
     else
@@ -210,24 +232,25 @@ namespace OpenMS
     }
   }
 
-  MzTabModificationList MzTabHelper::extractModificationListFromAASequence(const AASequence& aas, const std::vector<String>& fixed_mods = std::vector<String>())
+  // Generate MzTab style list of PTMs from AASequence object. 
+  // All passed fixed modifications are not reported (as suggested by the standard for the PRT and PEP section).
+  // In contrast, all modifications are reported in the PSM section (see standard document for details).
+  MzTabModificationList MzTabHelper::extractModificationListFromAASequence(const AASequence& aas, const vector<String>& fixed_mods = vector<String>())
   {
     MzTabModificationList mod_list;
-    std::vector<MzTabModification> mods;
+    vector<MzTabModification> mods;
 
     if (aas.isModified())
     {
-      ModificationsDB* mod_db = ModificationsDB::getInstance();
-
       if (aas.hasNTerminalModification())
       {
         MzTabModification mod;
-        String mod_name = aas.getNTerminalModification();
-        if (std::find(fixed_mods.begin(), fixed_mods.end(), mod_name) == fixed_mods.end())
+        const ResidueModification& res_mod = *(aas.getNTerminalModification());
+        if (find(fixed_mods.begin(), fixed_mods.end(), res_mod.getId()) == fixed_mods.end())
         {
-          MzTabString unimod_accession = MzTabString(mod_db->getTerminalModification(mod_name, ResidueModification::N_TERM).getUniModAccession());
-          std::vector<std::pair<Size, MzTabParameter> > pos;
-          pos.push_back(std::make_pair(0, MzTabParameter()));
+          MzTabString unimod_accession = MzTabString(res_mod.getUniModAccession());
+          vector<pair<Size, MzTabParameter> > pos;
+          pos.push_back(make_pair(0, MzTabParameter()));
           mod.setModificationIdentifier(unimod_accession);
           mod.setPositionsAndParameters(pos);
           mods.push_back(mod);
@@ -235,51 +258,52 @@ namespace OpenMS
       }
 
       for (Size ai = 0; ai != aas.size(); ++ai)
-      {
-        if (aas.isModified(ai))
-        {
-          MzTabModification mod;
-          String mod_name = aas[ai].getModification();
-          if (std::find(fixed_mods.begin(), fixed_mods.end(), mod_name) == fixed_mods.end())
-          {
-            // MzTab standard is to just report Unimod accession.
-            MzTabString unimod_accession = MzTabString(mod_db->getModification(aas[ai].getOneLetterCode(), mod_name, ResidueModification::ANYWHERE).getUniModAccession());
-            std::vector<std::pair<Size, MzTabParameter> > pos;
-            pos.push_back(std::make_pair(ai + 1, MzTabParameter()));
-            mod.setPositionsAndParameters(pos);
-            mod.setModificationIdentifier(unimod_accession);
-            mods.push_back(mod);
-          }
-        }
-      }
+   {
+ if (aas[ai].isModified())
+   {
+   MzTabModification mod;
+   const ResidueModification& res_mod = *(aas[ai].getModification());
+   if (find(fixed_mods.begin(), fixed_mods.end(), res_mod.getId()) == fixed_mods.end())
+   {
+ // MzTab standard is to just report Unimod accession.
+   MzTabString unimod_accession = MzTabString(res_mod.getUniModAccession());
+ vector<pair<Size, MzTabParameter> > pos;
+   pos.push_back(make_pair(ai + 1, MzTabParameter()));
+ mod.setPositionsAndParameters(pos);
+   mod.setModificationIdentifier(unimod_accession);
+ mods.push_back(mod);
+ }
+   }
+   }
 
-      if (aas.hasCTerminalModification())
-      {
-        MzTabModification mod;
-        String mod_name = aas.getCTerminalModification();
-        if (std::find(fixed_mods.begin(), fixed_mods.end(), mod_name) == fixed_mods.end())
-        {
-          MzTabString unimod_accession = MzTabString(mod_db->getTerminalModification(mod_name, ResidueModification::C_TERM).getUniModAccession());
-          std::vector<std::pair<Size, MzTabParameter> > pos;
-          pos.push_back(std::make_pair(aas.size() + 1, MzTabParameter()));
-          mod.setPositionsAndParameters(pos);
-          mod.setModificationIdentifier(unimod_accession);
-          mods.push_back(mod);
-        }
-      }
-    }
-    mod_list.set(mods);
-    return mod_list;
-  }
+   if (aas.hasCTerminalModification())
+   {
+ MzTabModification mod;
+   const ResidueModification& res_mod = *(aas.getCTerminalModification());
+ if (find(fixed_mods.begin(), fixed_mods.end(), res_mod.getId()) == fixed_mods.end())
+   {
+   MzTabString unimod_accession = MzTabString(res_mod.getUniModAccession());
+   vector<pair<Size, MzTabParameter> > pos;
+   pos.push_back(make_pair(aas.size() + 1, MzTabParameter()));
+   mod.setPositionsAndParameters(pos);
+   mod.setModificationIdentifier(unimod_accession);
+   mods.push_back(mod);
+ }
+ }
+   }
+ mod_list.set(mods);
+   return mod_list;
+   }
+
 
   MzTab MzTabHelper::exportFeatureMapToMzTab(const FeatureMap& feature_map, const String& filename)
   {
-    LOG_INFO << "exporting feature map: \"" << filename << "\" to mzTab: " << std::endl;
+    LOG_INFO << "exporting feature map: \"" << filename << "\" to mzTab: " << endl;
     MzTab mztab;
     MzTabMetaData meta_data;
 
-    std::vector<ProteinIdentification> prot_ids = feature_map.getProteinIdentifications();        
-    std::vector<String> var_mods, fixed_mods;
+    vector<ProteinIdentification> prot_ids = feature_map.getProteinIdentifications();        
+    vector<String> var_mods, fixed_mods;
     MzTabString db, db_version;
     if (!prot_ids.empty())
     {
@@ -311,21 +335,21 @@ namespace OpenMS
     // pre-analyze data for occuring meta values at feature and peptide hit level
     // these are used to build optional columns containing the meta values in internal data structures
 
-    std::set<String> feature_user_value_keys;
-    std::set<String> peptide_hit_user_value_keys;
+    set<String> feature_user_value_keys;
+    set<String> peptide_hit_user_value_keys;
     for (Size i = 0; i < feature_map.size(); ++i)
     {
       const Feature& f = feature_map[i];
-      std::vector<String> keys;
+      vector<String> keys;
       f.getKeys(keys); //TODO: why not just return it?
       feature_user_value_keys.insert(keys.begin(), keys.end());
 
-      const std::vector<PeptideIdentification>& pep_ids = f.getPeptideIdentifications();
-      for (std::vector<PeptideIdentification>::const_iterator it = pep_ids.begin(); it != pep_ids.end(); ++it)
+      const vector<PeptideIdentification>& pep_ids = f.getPeptideIdentifications();
+      for (vector<PeptideIdentification>::const_iterator it = pep_ids.begin(); it != pep_ids.end(); ++it)
       {
-        for (std::vector<PeptideHit>::const_iterator hit = it->getHits().begin(); hit != it->getHits().end(); ++hit)
+        for (vector<PeptideHit>::const_iterator hit = it->getHits().begin(); hit != it->getHits().end(); ++hit)
         {
-          std::vector<String> ph_keys;
+          vector<String> ph_keys;
           hit->getKeys(ph_keys);
           peptide_hit_user_value_keys.insert(ph_keys.begin(), ph_keys.end());
         }
@@ -339,13 +363,13 @@ namespace OpenMS
       const Feature& f = feature_map[i];
       row.mass_to_charge = MzTabDouble(f.getMZ());
       MzTabDoubleList rt_list;
-      std::vector<MzTabDouble> rts;
+      vector<MzTabDouble> rts;
       rts.push_back(MzTabDouble(f.getRT()));
       rt_list.set(rts);
       row.retention_time = rt_list;
 
       // set rt window if a bounding box has been set
-      std::vector<MzTabDouble> window;
+      vector<MzTabDouble> window;
       if (f.getConvexHull().getBoundingBox() != DBoundingBox<2>())
       {
         window.push_back(MzTabDouble(f.getConvexHull().getBoundingBox().minX()));
@@ -370,7 +394,7 @@ namespace OpenMS
       // create and fill opt_ columns for feature (peptide) user values
       addMetaInfoToOptionalColumns(feature_user_value_keys, row.opt_, String("global"), f);
 
-      std::vector<PeptideIdentification> pep_ids = f.getPeptideIdentifications();
+      vector<PeptideIdentification> pep_ids = f.getPeptideIdentifications();
       if (pep_ids.empty())
       {
         rows.push_back(row);
@@ -378,8 +402,8 @@ namespace OpenMS
       }
 
       // TODO: here we assume that all have the same score type etc.
-      std::vector<PeptideHit> all_hits;
-      for (std::vector<PeptideIdentification>::const_iterator it = pep_ids.begin(); it != pep_ids.end(); ++it)
+      vector<PeptideHit> all_hits;
+      for (vector<PeptideIdentification>::const_iterator it = pep_ids.begin(); it != pep_ids.end(); ++it)
       {
         all_hits.insert(all_hits.end(), it->getHits().begin(), it->getHits().end());
       }
@@ -401,8 +425,8 @@ namespace OpenMS
 
       row.modifications = extractModificationListFromAASequence(aas, fixed_mods);
 
-      const std::set<String>& accessions = best_ph.extractProteinAccessions();
-      const std::vector<PeptideEvidence> peptide_evidences = best_ph.getPeptideEvidences();
+      const set<String>& accessions = best_ph.extractProteinAccessions();
+      const vector<PeptideEvidence> peptide_evidences = best_ph.getPeptideEvidences();
 
       row.unique = accessions.size() == 1 ? MzTabBoolean(true) : MzTabBoolean(false);
       // select accession of first peptide_evidence as representative ("leading") accession
@@ -430,13 +454,13 @@ namespace OpenMS
     return mztab;
   }
 
-  MzTab MzTabHelper::exportIdentificationsToMzTab(const std::vector<ProteinIdentification>& prot_ids, const std::vector<PeptideIdentification>& peptide_ids, const String& filename)
+  MzTab MzTabHelper::exportIdentificationsToMzTab(const vector<ProteinIdentification>& prot_ids, const vector<PeptideIdentification>& peptide_ids, const String& filename)
   {
-    LOG_INFO << "exporting identifications: \"" << filename << "\" to mzTab: " << std::endl;
-    std::vector<PeptideIdentification> pep_ids = peptide_ids;
+    LOG_INFO << "exporting identifications: \"" << filename << "\" to mzTab: " << endl;
+    vector<PeptideIdentification> pep_ids = peptide_ids;
     MzTab mztab;
     MzTabMetaData meta_data;
-    std::vector<String> var_mods, fixed_mods;
+    vector<String> var_mods, fixed_mods;
     MzTabString db, db_version;
     String search_engine;
     String search_engine_version;
@@ -464,12 +488,12 @@ namespace OpenMS
       MzTabProteinSectionRows protein_rows;
 
       Size current_run_index(1);
-      for (std::vector<ProteinIdentification>::const_iterator it = prot_ids.begin();
+      for (vector<ProteinIdentification>::const_iterator it = prot_ids.begin();
        it != prot_ids.end(); ++it, ++current_run_index)
       {
-        const std::vector<ProteinIdentification::ProteinGroup> protein_groups = it->getProteinGroups();
-        const std::vector<ProteinIdentification::ProteinGroup> indist_groups = it->getIndistinguishableProteins();
-        const std::vector<ProteinHit> protein_hits = it->getHits();
+        const vector<ProteinIdentification::ProteinGroup> protein_groups = it->getProteinGroups();
+        const vector<ProteinIdentification::ProteinGroup> indist_groups = it->getIndistinguishableProteins();
+        const vector<ProteinHit> protein_hits = it->getHits();
 
         MzTabMSRunMetaData ms_run;
         ms_run.location = it->getPrimaryMSRunPath().empty() ? MzTabString("null") : MzTabString(it->getPrimaryMSRunPath()[0]);
@@ -478,8 +502,8 @@ namespace OpenMS
 
         // pre-analyze data for occuring meta values at protein hit level
         // these are used to build optional columns containing the meta values in internal data structures
-        std::set<String> protein_hit_user_value_keys = 
-          MetaInfoInterfaceUtils::findCommonMetaKeys<std::vector<ProteinHit>, std::set<String> >(protein_hits.begin(), protein_hits.end(), 100.0);
+        set<String> protein_hit_user_value_keys = 
+          MetaInfoInterfaceUtils::findCommonMetaKeys<vector<ProteinHit>, set<String> >(protein_hits.begin(), protein_hits.end(), 100.0);
 
         // we do not want descriptions twice
         protein_hit_user_value_keys.erase("Description");
@@ -497,18 +521,18 @@ namespace OpenMS
           protein_row.database_version = db_version; // String Version of the protein database.
           protein_row.best_search_engine_score[1] = MzTabDouble(hit.getScore());
        // MzTabParameterList search_engine; // Search engine(s) identifying the protein.
-       // std::map<Size, MzTabDouble>  best_search_engine_score; // best_search_engine_score[1-n]
-       // std::map<Size, std::map<Size, MzTabDouble> > search_engine_score_ms_run; // search_engine_score[index1]_ms_run[index2]
+       // map<Size, MzTabDouble>  best_search_engine_score; // best_search_engine_score[1-n]
+       // map<Size, map<Size, MzTabDouble> > search_engine_score_ms_run; // search_engine_score[index1]_ms_run[index2]
        // MzTabInteger reliability;
-       // std::map<Size, MzTabInteger> num_psms_ms_run;
-       // std::map<Size, MzTabInteger> num_peptides_distinct_ms_run;
-       // std::map<Size, MzTabInteger> num_peptides_unique_ms_run;
+       // map<Size, MzTabInteger> num_psms_ms_run;
+       // map<Size, MzTabInteger> num_peptides_distinct_ms_run;
+       // map<Size, MzTabInteger> num_peptides_unique_ms_run;
        // MzTabModificationList modifications; // Modifications identified in the protein.
        // MzTabString uri; // Location of the protein’s source entry.
        // MzTabStringList go_terms; // List of GO terms for the protein.
           double coverage = hit.getCoverage();
           protein_row.protein_coverage = coverage >= 0 ? MzTabDouble(coverage) : MzTabDouble(); // (0-1) Amount of protein sequence identified.
-       // std::vector<MzTabOptionalColumnEntry> opt_; // Optional Columns must start with “opt_”
+       // vector<MzTabOptionalColumnEntry> opt_; // Optional Columns must start with “opt_”
 
           // create and fill opt_ columns for protein hit user values
           addMetaInfoToOptionalColumns(protein_hit_user_value_keys, protein_row.opt_, String("global"), hit);
@@ -532,7 +556,7 @@ namespace OpenMS
             
           MzTabStringList ambiguity_members;
           ambiguity_members.setSeparator(',');
-          std::vector<MzTabString> entries;
+          vector<MzTabString> entries;
           for (Size j = 0; j != group.accessions.size() ; ++j)
           {
             // set accession and description to first element of group
@@ -563,7 +587,7 @@ namespace OpenMS
             
           MzTabStringList ambiguity_members;
           ambiguity_members.setSeparator(',');
-          std::vector<MzTabString> entries;
+          vector<MzTabString> entries;
           for (Size j = 0; j != group.accessions.size() ; ++j)
           {
             // set accession and description to first element of group
@@ -580,7 +604,7 @@ namespace OpenMS
           opt_column_entry.second = MzTabString("indistinguishable_group");
           protein_row.opt_.push_back(opt_column_entry);
           protein_row.best_search_engine_score[1] = MzTabDouble(group.probability);
-          //std::vector<MzTabOptionalColumnEntry> opt_; // Optional Columns must start with “opt_”
+          //vector<MzTabOptionalColumnEntry> opt_; // Optional Columns must start with “opt_”
           protein_rows.push_back(protein_row);
         }
 
@@ -606,7 +630,7 @@ namespace OpenMS
 
     MzTabPSMSectionRows rows;
     Size psm_id(0);
-    for (std::vector<PeptideIdentification>::iterator it = pep_ids.begin(); it != pep_ids.end(); ++it, ++psm_id)
+    for (vector<PeptideIdentification>::iterator it = pep_ids.begin(); it != pep_ids.end(); ++it, ++psm_id)
     {
       // skip empty peptide identification objects
       if (it->getHits().empty())
@@ -635,7 +659,7 @@ namespace OpenMS
       row.search_engine = search_engines;
 
       row.search_engine_score[1] = MzTabDouble(best_ph.getScore());
-      std::vector<MzTabDouble> rts_vector;
+      vector<MzTabDouble> rts_vector;
       rts_vector.push_back(MzTabDouble(it->getRT()));
       MzTabDoubleList rts;
       rts.set(rts_vector);
@@ -652,19 +676,19 @@ namespace OpenMS
 
       // currently write all keys
       // TODO: percentage procedure with MetaInfoInterfaceUtils
-      std::vector<String> ph_keys;
+      vector<String> ph_keys;
       best_ph.getKeys(ph_keys);
       // TODO: no conversion but make funtion on collections
-      std::set<String> ph_key_set(ph_keys.begin(), ph_keys.end());
+      set<String> ph_key_set(ph_keys.begin(), ph_keys.end());
       addMetaInfoToOptionalColumns(ph_key_set, row.opt_, String("global"), best_ph);
 
       // TODO Think about if the uniqueness can be determined by # of peptide evidences
       // b/c this would only differ when evidences come from different DBs
-      const std::set<String>& accessions = best_ph.extractProteinAccessions();
+      const set<String>& accessions = best_ph.extractProteinAccessions();
       row.unique = accessions.size() == 1 ? MzTabBoolean(true) : MzTabBoolean(false);
 
       // create row for every PeptideEvidence entry (mapping to a protein)
-      const std::vector<PeptideEvidence> peptide_evidences = best_ph.getPeptideEvidences();
+      const vector<PeptideEvidence> peptide_evidences = best_ph.getPeptideEvidences();
 
       // pass common row entries and create rows for all peptide evidences
       addPepEvidenceToRows(peptide_evidences, row, rows);
@@ -677,10 +701,10 @@ namespace OpenMS
 
   MzTab MzTabHelper::exportConsensusMapToMzTab(const ConsensusMap& consensus_map, const String& filename)
   {
-    LOG_INFO << "exporting consensus map: \"" << filename << "\" to mzTab: " << std::endl;
+    LOG_INFO << "exporting consensus map: \"" << filename << "\" to mzTab: " << endl;
     MzTab mztab;
-    std::vector<ProteinIdentification> prot_ids = consensus_map.getProteinIdentifications();
-    std::vector<String> var_mods, fixed_mods;
+    vector<ProteinIdentification> prot_ids = consensus_map.getProteinIdentifications();
+    vector<String> var_mods, fixed_mods;
     MzTabString db, db_version;
     if (!prot_ids.empty())
     {
@@ -720,21 +744,21 @@ namespace OpenMS
 
     // pre-analyze data for occuring meta values at consensus feature and peptide hit level
     // these are used to build optional columns containing the meta values in internal data structures
-    std::set<String> consensus_feature_user_value_keys;
-    std::set<String> peptide_hit_user_value_keys;
+    set<String> consensus_feature_user_value_keys;
+    set<String> peptide_hit_user_value_keys;
     for (Size i = 0; i < consensus_map.size(); ++i)
     {
       const ConsensusFeature& c = consensus_map[i];
-      std::vector<String> keys;
+      vector<String> keys;
       c.getKeys(keys);
       consensus_feature_user_value_keys.insert(keys.begin(), keys.end());
 
-      const std::vector<PeptideIdentification>& pep_ids = c.getPeptideIdentifications();
-      for (std::vector<PeptideIdentification>::const_iterator it = pep_ids.begin(); it != pep_ids.end(); ++it)
+      const vector<PeptideIdentification>& pep_ids = c.getPeptideIdentifications();
+      for (vector<PeptideIdentification>::const_iterator it = pep_ids.begin(); it != pep_ids.end(); ++it)
       {
-        for (std::vector<PeptideHit>::const_iterator hit = it->getHits().begin(); hit != it->getHits().end(); ++hit)
+        for (vector<PeptideHit>::const_iterator hit = it->getHits().begin(); hit != it->getHits().end(); ++hit)
         {
-          std::vector<String> ph_keys;
+          vector<String> ph_keys;
           hit->getKeys(ph_keys);
           peptide_hit_user_value_keys.insert(ph_keys.begin(), ph_keys.end());
         }
@@ -754,7 +778,7 @@ namespace OpenMS
       row.opt_.push_back(opt_global_modified_sequence);
 
       // create opt_ columns for consensus feature (peptide) user values
-      for (std::set<String>::const_iterator mit = consensus_feature_user_value_keys.begin(); mit != consensus_feature_user_value_keys.end(); ++mit)
+      for (set<String>::const_iterator mit = consensus_feature_user_value_keys.begin(); mit != consensus_feature_user_value_keys.end(); ++mit)
       {
         MzTabOptionalColumnEntry opt_entry;
         const String& key = *mit;
@@ -767,7 +791,7 @@ namespace OpenMS
       }
 
       // create opt_ columns for psm (PeptideHit) user values
-      for (std::set<String>::const_iterator mit = peptide_hit_user_value_keys.begin(); mit != peptide_hit_user_value_keys.end(); ++mit)
+      for (set<String>::const_iterator mit = peptide_hit_user_value_keys.begin(); mit != peptide_hit_user_value_keys.end(); ++mit)
       {
         MzTabOptionalColumnEntry opt_entry;
         const String& key = *mit;
@@ -778,7 +802,7 @@ namespace OpenMS
 
       row.mass_to_charge = MzTabDouble(c.getMZ());
       MzTabDoubleList rt_list;
-      std::vector<MzTabDouble> rts;
+      vector<MzTabDouble> rts;
       rts.push_back(MzTabDouble(c.getRT()));
       rt_list.set(rts);
       row.retention_time = rt_list;
@@ -805,7 +829,7 @@ namespace OpenMS
         row.peptide_abundance_study_variable[study_variable] = MzTabDouble(fit->getIntensity());
       }
 
-      std::vector<PeptideIdentification> pep_ids = c.getPeptideIdentifications();
+      vector<PeptideIdentification> pep_ids = c.getPeptideIdentifications();
       if (!pep_ids.empty())
       {
         if (pep_ids.size() != 1)
@@ -820,8 +844,8 @@ namespace OpenMS
 
         row.modifications = extractModificationListFromAASequence(aas, fixed_mods);
 
-        const std::set<String>& accessions = best_ph.extractProteinAccessions();
-        const std::vector<PeptideEvidence> peptide_evidences = best_ph.getPeptideEvidences();
+        const set<String>& accessions = best_ph.extractProteinAccessions();
+        const vector<PeptideEvidence> peptide_evidences = best_ph.getPeptideEvidences();
 
         row.unique = accessions.size() == 1 ? MzTabBoolean(true) : MzTabBoolean(false);
         // select accession of first peptide_evidence as representative ("leading") accession
@@ -843,7 +867,7 @@ namespace OpenMS
         }
 
         // fill opt_ column of psm
-        std::vector<String> ph_keys;
+        vector<String> ph_keys;
         best_ph.getKeys(ph_keys);
         for (Size k = 0; k != ph_keys.size(); ++k)
         {
@@ -871,10 +895,7 @@ namespace OpenMS
 
   void MzTabHelper::appendQuants(MzTab& mztab, const PeptideAndProteinQuant::PeptideQuant& peptide_quants, const PeptideAndProteinQuant::ProteinQuant& protein_quants)
   {
-    std::cout << "\n*** Appending Quants ***\n\n";
-    
     MzTabProteinSectionRows rows = mztab.getProteinSectionRows();
-    std::cout << "number of rows: " << rows.size() << "\n";
     
     // loop over protein quants
     for (PeptideAndProteinQuant::ProteinQuant::const_iterator q_it = protein_quants.begin(); q_it != protein_quants.end(); ++q_it)

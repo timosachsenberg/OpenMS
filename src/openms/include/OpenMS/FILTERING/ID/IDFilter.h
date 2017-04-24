@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -38,6 +38,7 @@
 #include <OpenMS/config.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
 #include <OpenMS/METADATA/ProteinIdentification.h>
+#include <OpenMS/KERNEL/StandardTypes.h>
 #include <OpenMS/KERNEL/MSExperiment.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
 
@@ -125,7 +126,7 @@ public:
       {
         if (rank == 0)
         {
-          throw Exception::IllegalArgument(__FILE__, __LINE__, __PRETTY_FUNCTION__, "The cut-off value for rank filtering must not be zero!");
+          throw Exception::IllegalArgument(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "The cut-off value for rank filtering must not be zero!");
         }
       }
 
@@ -134,7 +135,7 @@ public:
         Size hit_rank = hit.getRank();
         if (hit_rank == 0)
         {
-          throw Exception::MissingInformation(__FILE__, __LINE__, __PRETTY_FUNCTION__, "No rank assigned to peptide or protein hit");
+          throw Exception::MissingInformation(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "No rank assigned to peptide or protein hit");
         }
         return hit_rank <= rank;
       }
@@ -393,7 +394,7 @@ public:
         }
         else if (best_id_it->getScoreType() != id_it->getScoreType())
         {
-          throw Exception::InvalidValue(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Can't compare scores of different types", best_id_it->getScoreType() + "/" + id_it->getScoreType());
+          throw Exception::InvalidValue(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Can't compare scores of different types", best_id_it->getScoreType() + "/" + id_it->getScoreType());
         }
 
         bool higher_better = best_id_it->isHigherScoreBetter();
@@ -764,10 +765,10 @@ public:
     /**
        @brief Removes duplicate peptide hits from each peptide identification, keeping only unique hits (per ID).
 
-       Hits are considered duplicated if they compare as equal using PeptideHit::operator== (i.e. not only the sequences have to match!).
+       By default, hits are considered duplicated if they compare as equal using PeptideHit::operator==. However, if @p seq_only is set, only the sequences (incl. modifications) are compared. In both cases, the first occurrence of each hit in a peptide ID is kept, later ones are removed.
     */
     static void removeDuplicatePeptideHits(std::vector<PeptideIdentification>&
-                                           peptides);
+                                           peptides, bool seq_only = false);
 
     ///@}
 
@@ -776,8 +777,7 @@ public:
     ///@{
 
     /// Filters an MS/MS experiment according to score thresholds
-    template <class PeakT>
-    static void filterHitsByScore(MSExperiment<PeakT>& experiment,
+    static void filterHitsByScore(PeakMap& experiment,
                                   double peptide_threshold_score,
                                   double protein_threshold_score)
     {
@@ -788,7 +788,7 @@ public:
       // be referenced by peptide IDs (via run ID)
 
       // filter peptide hits:
-      for (typename MSExperiment<PeakT>::Iterator exp_it = experiment.begin();
+      for (PeakMap::Iterator exp_it = experiment.begin();
            exp_it != experiment.end(); ++exp_it)
       {
         filterHitsByScore(exp_it->getPeptideIdentifications(), 
@@ -801,8 +801,7 @@ public:
     }
 
     /// Filters an MS/MS experiment according to fractions of the significance thresholds
-    template <class PeakT>
-    static void filterHitsBySignificance(MSExperiment<PeakT>& experiment,
+    static void filterHitsBySignificance(PeakMap& experiment,
                                          double peptide_threshold_fraction,
                                          double protein_threshold_fraction)
     {
@@ -813,7 +812,7 @@ public:
       // be referenced by peptide IDs (via run ID)
 
       // filter peptide hits:
-      for (typename MSExperiment<PeakT>::Iterator exp_it = experiment.begin();
+      for (PeakMap::Iterator exp_it = experiment.begin();
            exp_it != experiment.end(); ++exp_it)
       {
         filterHitsBySignificance(exp_it->getPeptideIdentifications(),
@@ -826,15 +825,14 @@ public:
     }
 
     /// Filters an MS/MS experiment by keeping the N best peptide hits for every spectrum
-    template <class PeakT>
-    static void keepNBestHits(MSExperiment<PeakT>& experiment, Size n)
+    static void keepNBestHits(PeakMap& experiment, Size n)
     {
       // don't filter the protein hits by "N best" here - filter the peptides
       // and update the protein hits!
       std::vector<PeptideIdentification> all_peptides; // IDs from all spectra
 
       // filter peptide hits:
-      for (typename MSExperiment<PeakT>::Iterator exp_it = experiment.begin();
+      for (PeakMap::Iterator exp_it = experiment.begin();
            exp_it != experiment.end(); ++exp_it)
       {
         std::vector<PeptideIdentification>& peptides = 
@@ -852,9 +850,8 @@ public:
     }
 
     /// Filters an MS/MS experiment according to the given proteins
-    template <class PeakT>
     static void keepHitsMatchingProteins(
-      MSExperiment<PeakT>& experiment, 
+      PeakMap& experiment, 
       const std::vector<FASTAFile::FASTAEntry>& proteins)
     {
       std::set<String> accessions;
@@ -870,7 +867,7 @@ public:
       updateHitRanks(experiment.getProteinIdentifications());
 
       // filter peptide hits:
-      for (typename MSExperiment<PeakT>::Iterator exp_it = experiment.begin();
+      for (PeakMap::Iterator exp_it = experiment.begin();
            exp_it != experiment.end(); ++exp_it)
       {
         if (exp_it->getMSLevel() == 2)

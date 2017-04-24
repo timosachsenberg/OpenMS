@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -32,11 +32,16 @@
 // $Authors: Timo Sachsenberg $
 // --------------------------------------------------------------------------
 
-#include <OpenMS/KERNEL/StandardTypes.h>
 #include <OpenMS/ANALYSIS/RNPXL/HyperScore.h>
+
+#include <OpenMS/KERNEL/MSSpectrum.h>
+#include <OpenMS/KERNEL/MSExperiment.h>
+#include <OpenMS/KERNEL/RichPeak1D.h>
 
 #include <vector>
 #include <map>
+#include <cmath>
+#include <iostream>
 
 using std::vector;
 
@@ -68,6 +73,12 @@ namespace OpenMS
 
     for (MSSpectrum<RichPeak1D>::ConstIterator theo_peak_it = theo_spectrum.begin(); theo_peak_it != theo_spectrum.end(); ++theo_peak_it)
     {
+      if (!theo_peak_it->metaValueExists("IonName"))
+      {
+        std::cout << "Error: Theoretical spectrum without IonName annotation provided." << std::endl;
+        return 0.0;
+      }
+
       const double& theo_mz = theo_peak_it->getMZ();
       const double& theo_intensity = theo_peak_it->getIntensity();
 
@@ -94,7 +105,7 @@ namespace OpenMS
             std::cout << theo_peak_it->getMetaValue("IonName").toString() << " intensity: " << exp_spectrum[index].getIntensity() << std::endl;
           #endif
           ++b_ion_count;
-        }
+        }       
       }
     }
 

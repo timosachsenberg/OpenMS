@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -32,17 +32,19 @@
 // $Authors: George Rosenberger, Hannes Roest, Witold Wolski $
 // --------------------------------------------------------------------------
 
-#include <OpenMS/CONCEPT/ClassTest.h>
 #include <OpenMS/test_config.h>
-#include <OpenMS/FORMAT/TraMLFile.h>
-
-#include <boost/assign/std/vector.hpp>
-#include <boost/assign/list_of.hpp>
+#include <OpenMS/CONCEPT/ClassTest.h>
 
 ///////////////////////////
 #include <OpenMS/ANALYSIS/OPENSWATH/MRMDecoy.h>
-#include <OpenMS/CHEMISTRY/ModificationsDB.h>
 ///////////////////////////
+
+#include <OpenMS/FORMAT/TraMLFile.h>
+#include <OpenMS/FORMAT/TraMLFile.h>
+#include <OpenMS/CHEMISTRY/ModificationsDB.h>
+
+#include <boost/assign/std/vector.hpp>
+#include <boost/assign/list_of.hpp>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
@@ -154,7 +156,7 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide shufflePeptide(OpenMS::Targete
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_target_sequence_01b;
   shuffleAASequence_target_sequence_01b.sequence = "TESTPEPTIDE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_expected_01b;
-  shuffleAASequence_expected_01b.sequence = "TCTTPDPISEE";
+  shuffleAASequence_expected_01b.sequence = "TETTPDPICEE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_01b;
   shuffleAASequence_result_01b = gen.shufflePeptide(shuffleAASequence_target_sequence_01b, 0.2, 42, 10000, true);
   TEST_EQUAL(shuffleAASequence_result_01b.sequence, shuffleAASequence_expected_01b.sequence)
@@ -162,7 +164,7 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide shufflePeptide(OpenMS::Targete
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_target_sequence_00b;
   shuffleAASequence_target_sequence_00b.sequence = "TESTPEPTIDE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_expected_00b;
-  shuffleAASequence_expected_00b.sequence = "HGCGPDPCCHG";
+  shuffleAASequence_expected_00b.sequence = "QDCHGLGGEEC";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_00b;
   shuffleAASequence_result_00b = gen.shufflePeptide(shuffleAASequence_target_sequence_00b, 0.0, 42, 2000, true);
   TEST_EQUAL(shuffleAASequence_result_00b.sequence, shuffleAASequence_expected_00b.sequence)
@@ -186,6 +188,47 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide shufflePeptide(OpenMS::Targete
     shuffled = gen.shufflePeptide(original_input, 0.7, 42, 20);
     TEST_EQUAL(shuffled.sequence[shuffled.sequence.size() - 1], 'R')
     TEST_EQUAL(shuffled.sequence, expected_sequence)
+  }
+
+  {
+    OpenMS::TargetedExperiment::Peptide original_input;
+    OpenMS::TargetedExperiment::Peptide::Modification mod;
+    // std::vector<TargetedExperiment::Peptide::Modification> mods;
+    std::vector<TargetedExperiment::Peptide::Modification> mods;
+    // original_input.sequence = "EPAHLMSLFGGKPM(UniMod:35)";
+    original_input.sequence = "EPAHLMSLFGGKPM";
+    mod.location = 13; // non-C terminal
+    mod.unimod_id = 35;
+    mods.push_back(mod);
+    original_input.mods = mods;
+    expected_sequence = "MPGHLMGASLEKPF";
+    OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_00;
+    shuffled = gen.shufflePeptide(original_input, 0.7, 42, 20);
+    TEST_EQUAL(shuffled.sequence[shuffled.sequence.size() - 1], 'F')
+    TEST_EQUAL(shuffled.sequence, expected_sequence)
+    TEST_EQUAL(shuffled.mods.size(), 1)
+    TEST_EQUAL(shuffled.mods[0].location, 5) // the second M moved to position 5
+  }
+
+  {
+    OpenMS::TargetedExperiment::Peptide original_input;
+    OpenMS::TargetedExperiment::Peptide::Modification mod;
+    // std::vector<TargetedExperiment::Peptide::Modification> mods;
+    std::vector<TargetedExperiment::Peptide::Modification> mods;
+    // original_input.sequence = "EPAHLMSLFGGKPM(UniMod:35)";
+    original_input.sequence = "EPAHLMSLFGGKPM";
+    mod.location = 14; // C terminal
+    mod.unimod_id = 35;
+    mods.push_back(mod);
+    original_input.mods = mods;
+    expected_sequence = "MPGHLMGASLEKPF";
+    OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_00;
+    shuffled = gen.shufflePeptide(original_input, 0.7, 42, 20);
+    TEST_EQUAL(shuffled.sequence[shuffled.sequence.size() - 1], 'F')
+    TEST_EQUAL(shuffled.sequence, expected_sequence)
+    TEST_EQUAL(shuffled.mods.size(), 1)
+    TEST_EQUAL(shuffled.mods[0].location, 14) // Problem: this modification cannot be C terminal any more for F!
+    // TODO: report and fix this
   }
 
 }
@@ -398,7 +441,24 @@ START_SECTION((void generateDecoys(OpenMS::TargetedExperiment & exp,
   MRMDecoy decoys = MRMDecoy();
   TEST_EQUAL(targeted_exp.getPeptides().size(), 13)
   TEST_EQUAL(targeted_exp.getTransitions().size(), 36)
-  decoys.generateDecoys(targeted_exp, targeted_decoy, method, decoy_tag, identity_threshold, max_attempts, mz_threshold, mz_shift, exclude_similar, similarity_threshold, remove_CNterminal_mods, 0.1, fragment_types, fragment_charges, enable_specific_losses, enable_unspecific_losses, skip_unannotated);  traml.store(test, targeted_decoy);
+  decoys.generateDecoys(targeted_exp, 
+                        targeted_decoy,
+                        method,
+                        decoy_tag,
+                        identity_threshold,
+                        max_attempts,
+                        mz_threshold,
+                        mz_shift, 
+                        exclude_similar,
+                        similarity_threshold,
+                        remove_CNterminal_mods, 
+                        0.1,
+                        fragment_types, 
+                        fragment_charges,
+                        enable_specific_losses, 
+                        enable_unspecific_losses,
+                        skip_unannotated); 
+  traml.store(test, targeted_decoy);
 
   TEST_FILE_EQUAL(test.c_str(), OPENMS_GET_TEST_DATA_PATH(out))
 }

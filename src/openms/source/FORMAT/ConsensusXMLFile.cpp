@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2016.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Clemens Groepl $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Clemens Groepl, Marc Sturm, Mathias Walzer $
 // --------------------------------------------------------------------------
 
@@ -38,6 +38,7 @@
 #include <OpenMS/CONCEPT/LogStream.h>
 #include <OpenMS/CONCEPT/PrecisionWrapper.h>
 #include <OpenMS/METADATA/DataProcessing.h>
+#include <OpenMS/CONCEPT/UniqueIdGenerator.h>
 #include <OpenMS/CHEMISTRY/EnzymesDB.h>
 #include <fstream>
 
@@ -46,8 +47,8 @@ using namespace std;
 namespace OpenMS
 {
   ConsensusXMLFile::ConsensusXMLFile() :
-    XMLHandler("", "1.6"), 
-    XMLFile("/SCHEMAS/ConsensusXML_1_6.xsd", "1.6"), 
+    XMLHandler("", "1.7"), 
+    XMLFile("/SCHEMAS/ConsensusXML_1_7.xsd", "1.7"), 
     ProgressLogger(), 
     consensus_map_(0), 
     act_cons_element_(), 
@@ -345,8 +346,21 @@ namespace OpenMS
       prot_id_.setDateTime(DateTime::fromString(String(attributeAsString_(attributes, "date")).toQString(), "yyyy-MM-ddThh:mm:ss"));
       //set identifier
       String identifier = prot_id_.getSearchEngine() + '_' + attributeAsString_(attributes, "date");
-      prot_id_.setIdentifier(identifier);
-      id_identifier_[attributeAsString_(attributes, "id")] = identifier;
+      String id = attributeAsString_(attributes, "id");
+
+      if (!id_identifier_.has(id))
+      {
+        prot_id_.setIdentifier(identifier);
+        id_identifier_[id] = identifier;
+      }
+      else
+      {
+        warning(LOAD, "Non-unique identifier for IdentificationRun encountered '" + identifier + "'. Generating a unique one.");
+        UInt64 uid = UniqueIdGenerator::getUniqueId();
+        identifier = identifier + String(uid);
+        prot_id_.setIdentifier(identifier);
+        id_identifier_[id] = identifier;
+      }
     }
     else if (tag == "SearchParameters")
     {
@@ -360,7 +374,7 @@ namespace OpenMS
       String peak_unit;
       optionalAttributeAsString_(peak_unit, attributes, "peak_mass_tolerance_ppm");
       search_param_.fragment_mass_tolerance_ppm = peak_unit == "true" ? true : false;
-      search_param_.precursor_tolerance = attributeAsDouble_(attributes, "precursor_peak_tolerance");
+      search_param_.precursor_mass_tolerance = attributeAsDouble_(attributes, "precursor_peak_tolerance");
       String precursor_unit;
       optionalAttributeAsString_(precursor_unit, attributes, "precursor_peak_tolerance_ppm");
       search_param_.precursor_mass_tolerance_ppm = precursor_unit == "true" ? true : false;
@@ -419,6 +433,14 @@ namespace OpenMS
       String accession = attributeAsString_(attributes, "accession");
       prot_hit_.setAccession(accession);
       prot_hit_.setScore(attributeAsDouble_(attributes, "score"));
+
+      // coverage
+      double coverage = -std::numeric_limits<double>::max();
+      optionalAttributeAsDouble_(coverage, attributes, "coverage");
+      if (coverage != -std::numeric_limits<double>::max())
+      {
+        prot_hit_.setCoverage(coverage);
+      }
 
       //sequence
       String tmp = "";
@@ -616,7 +638,7 @@ namespace OpenMS
     if (!consensus_map.isMapConsistent(&LOG_WARN))
     {
       // Currently it is possible that FeatureLinkerUnlabeledQT triggers this exception
-      // throw Exception::MissingInformation(__FILE__, __LINE__, __PRETTY_FUNCTION__, "The ConsensusXML file contains invalid maps or references thereof. No data was written! Please fix the file or notify the maintainer of this tool if you did not provide a consensusXML file!");
+      // throw Exception::MissingInformation(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "The ConsensusXML file contains invalid maps or references thereof. No data was written! Please fix the file or notify the maintainer of this tool if you did not provide a consensusXML file!");
       std::cerr << "The ConsensusXML file contains invalid maps or references thereof. Please fix the file or notify the maintainer of this tool if you did not provide a consensusXML file! Note that this warning will be a fatal error in the next version of OpenMS!" << std::endl;
     }
 
@@ -649,7 +671,7 @@ namespace OpenMS
     ofstream os(filename.c_str());
     if (!os)
     {
-      throw Exception::UnableToCreateFile(__FILE__, __LINE__, __PRETTY_FUNCTION__, filename);
+      throw Exception::UnableToCreateFile(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
     }
 
     os.precision(writtenDigits<double>(0.0));
@@ -683,7 +705,7 @@ namespace OpenMS
       os << " experiment_type=\"" << consensus_map.getExperimentType() << "\"";
     }
     os
-      << " xsi:noNamespaceSchemaLocation=\"http://open-ms.sourceforge.net/schemas/ConsensusXML_1_6.xsd\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n";
+      << " xsi:noNamespaceSchemaLocation=\"http://open-ms.sourceforge.net/schemas/ConsensusXML_1_7.xsd\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n";
 
     // user param
     writeUserParam_("UserParam", os, consensus_map, 1);
@@ -737,7 +759,7 @@ namespace OpenMS
       String peak_unit = search_param.fragment_mass_tolerance_ppm ? "true" : "false";
 
       os << "missed_cleavages=\"" << search_param.missed_cleavages << "\" "
-         << "precursor_peak_tolerance=\"" << search_param.precursor_tolerance << "\" ";
+         << "precursor_peak_tolerance=\"" << search_param.precursor_mass_tolerance << "\" ";
       os << "precursor_peak_tolerance_ppm=\"" << precursor_unit << "\" ";
       os << "peak_mass_tolerance=\"" << search_param.fragment_mass_tolerance << "\" ";
       os << "peak_mass_tolerance_ppm=\"" << peak_unit << "\" ";
@@ -777,6 +799,13 @@ namespace OpenMS
 
         os << " accession=\"" << current_prot_id.getHits()[j].getAccession() << "\"";
         os << " score=\"" << current_prot_id.getHits()[j].getScore() << "\"";
+        
+        double coverage = current_prot_id.getHits()[j].getCoverage();
+        if (coverage != ProteinHit::COVERAGE_UNKNOWN)
+        {
+          os << " coverage=\"" << coverage << "\"";
+        }
+        
         os << " sequence=\"" << current_prot_id.getHits()[j].getSequence() << "\">\n";
 
         writeUserParam_("UserParam", os, current_prot_id.getHits()[j], 4);
@@ -885,7 +914,7 @@ namespace OpenMS
     if (!map.isMapConsistent(&LOG_WARN)) // a warning is printed to LOG_WARN during isMapConsistent()
     {
       // don't throw exception for now, since this would prevent us from reading old files...
-      // throw Exception::MissingInformation(__FILE__, __LINE__, __PRETTY_FUNCTION__, "The ConsensusXML file contains invalid maps or references thereof. Please fix the file!");
+      // throw Exception::MissingInformation(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "The ConsensusXML file contains invalid maps or references thereof. Please fix the file!");
 
     }
 

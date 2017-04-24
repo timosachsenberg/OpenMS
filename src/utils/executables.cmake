@@ -6,6 +6,7 @@ set(UTILS_executables
 AccurateMassSearch
 CVInspector
 DecoyDatabase
+DatabaseFilter
 DeMeanderize
 Digestor
 DigestorMotif
@@ -27,6 +28,7 @@ MetaboliteSpectralMatcher
 MetaProSIP
 MRMPairFinder
 MSSimulator
+MultiplexResolver
 MzMLSplitter
 OpenMSInfo
 PeakPickerIterative
@@ -39,27 +41,28 @@ QCMerger
 QCShrinker
 RNPxl
 RNPxlXICFilter
+RNPxlSearch
 RTEvaluation
 SemanticValidator
 SequenceCoverageCalculator
 SimpleSearchEngine
 SpecLibCreator
+SpectraSTSearchAdapter
 SvmTheoreticalSpectrumGeneratorTrainer
+TICCalculator
 TransformationEvaluation
 TopPerc
 XMLValidator
-#SimpleSearchEngine
-#RNPxlSearch
 )
 
 if(NOT DISABLE_OPENSWATH)
   set(UTILS_executables
     ${UTILS_executables}
-    ConvertTSVToTraML
-    ConvertTraMLToTSV
+    TargetedFileConverter
     OpenSwathDIAPreScoring
     OpenSwathMzMLFileCacher
     OpenSwathWorkflow
+    OpenSwathFileSplitter
     OpenSwathRewriteToFeatureXML
     MRMTransitionGroupPicker
   )
