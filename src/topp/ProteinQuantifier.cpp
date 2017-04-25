@@ -697,6 +697,8 @@ protected:
 
     FileTypes::Type in_type = FileHandler::getType(in);
 
+    ConsensusMap consensus;
+
     if (in_type == FileTypes::FEATUREXML)
     {
       FeatureMap features;
@@ -733,7 +735,6 @@ protected:
     }
     else // consensusXML
     {
-      ConsensusMap consensus;
       ConsensusXMLFile().load(in, consensus);
       files_ = consensus.getFileDescriptions();
       // protein inference results in the consensusXML?
@@ -779,17 +780,18 @@ protected:
       writeProteinTable_(output, quantifier.getProteinResults());
       outstr.close();
     }
-    if (!out_mzTab.empty())
+
+    // TODO: error if no consensusXML provided 
+    if (!out_mzTab.empty() && in_type == FileTypes::CONSENSUSXML)
     {
       // Test mzTab output (START)
       MzTab mztab;
       mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups);
-      MzTabHelper::appendQuants(mztab, quantifier.getPeptideResults(), quantifier.getProteinResults());
+      MzTabHelper::exportQuants(mztab, quantifier.getPeptideResults(), quantifier.getProteinResults(), consensus);
       if (!out_mzTab.empty())
       {
         MzTabFile().store(out_mzTab, mztab);
       }
-      // Test mzTab output (END)
     }
 
     writeStatistics_(quantifier.getStatistics());

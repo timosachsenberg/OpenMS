@@ -53,13 +53,6 @@ namespace OpenMS
 
   }
   
-    /**
-      @brief Gets peptide_evidences with data from internal structures adds their info to an MzTabPSMSectionRow (pre- or unfilled)
-
-      @param peptide_evidences Vector of PeptideEvidence holding internal data.
-      @param row Pre- or unfilled MzTabPSMSectionRow to be filled with the data.
-      @param rows Vector of MzTabPSMSectionRow to add the differently updated rows to.
-    */
   void MzTabHelper::addPepEvidenceToRows(const vector<PeptideEvidence>& peptide_evidences, MzTabPSMSectionRow& row, MzTabPSMSectionRows& rows)
   {
     if (!peptide_evidences.empty())
@@ -132,15 +125,6 @@ namespace OpenMS
     }
   }
   
-    /**
-      @brief Inserts values from MetaInfoInterface objects matching a (precalculated or filtered) set of keys to optional columns of an MzTab row.
-
-      @param keys Only values matching those keys will be extracted from the object inheriting from MetaInfoInterface.
-      @param opt A vector of optional columns to add to.
-      @param id The identifier for this optional value according to the mzTab standard (like global, MS_Run, assay, etc.)
-      @param meta The object holding the MetaInformation (like PeptideHit, ProteinHit, etc.)
-      @return void: Only updates the values of the columns in opt
-    */
   void MzTabHelper::addMetaInfoToOptionalColumns(const set<String>& keys, vector<MzTabOptionalColumnEntry>& opt, const String id, const MetaInfoInterface meta)
   {
     for (set<String>::const_iterator sit = keys.begin(); sit != keys.end(); ++sit)
@@ -239,7 +223,7 @@ namespace OpenMS
   {
     MzTabModificationList mod_list;
     vector<MzTabModification> mods;
-
+  
     if (aas.isModified())
     {
       if (aas.hasNTerminalModification())
@@ -256,45 +240,45 @@ namespace OpenMS
           mods.push_back(mod);
         }
       }
-
+  
       for (Size ai = 0; ai != aas.size(); ++ai)
-   {
- if (aas[ai].isModified())
-   {
-   MzTabModification mod;
-   const ResidueModification& res_mod = *(aas[ai].getModification());
-   if (find(fixed_mods.begin(), fixed_mods.end(), res_mod.getId()) == fixed_mods.end())
-   {
- // MzTab standard is to just report Unimod accession.
-   MzTabString unimod_accession = MzTabString(res_mod.getUniModAccession());
- vector<pair<Size, MzTabParameter> > pos;
-   pos.push_back(make_pair(ai + 1, MzTabParameter()));
- mod.setPositionsAndParameters(pos);
-   mod.setModificationIdentifier(unimod_accession);
- mods.push_back(mod);
- }
-   }
-   }
-
-   if (aas.hasCTerminalModification())
-   {
- MzTabModification mod;
-   const ResidueModification& res_mod = *(aas.getCTerminalModification());
- if (find(fixed_mods.begin(), fixed_mods.end(), res_mod.getId()) == fixed_mods.end())
-   {
-   MzTabString unimod_accession = MzTabString(res_mod.getUniModAccession());
-   vector<pair<Size, MzTabParameter> > pos;
-   pos.push_back(make_pair(aas.size() + 1, MzTabParameter()));
-   mod.setPositionsAndParameters(pos);
-   mod.setModificationIdentifier(unimod_accession);
-   mods.push_back(mod);
- }
- }
-   }
- mod_list.set(mods);
-   return mod_list;
-   }
-
+      {
+        if (aas[ai].isModified())
+        {
+          MzTabModification mod;
+          const ResidueModification& res_mod = *(aas[ai].getModification());
+          if (find(fixed_mods.begin(), fixed_mods.end(), res_mod.getId()) == fixed_mods.end())
+          {
+            // MzTab standard is to just report Unimod accession.
+            MzTabString unimod_accession = MzTabString(res_mod.getUniModAccession());
+            vector<pair<Size, MzTabParameter> > pos;
+            pos.push_back(make_pair(ai + 1, MzTabParameter()));
+            mod.setPositionsAndParameters(pos);
+            mod.setModificationIdentifier(unimod_accession);
+            mods.push_back(mod);
+          }
+        }
+      }
+  
+  if (aas.hasCTerminalModification())
+  {
+  MzTabModification mod;
+  const ResidueModification& res_mod = *(aas.getCTerminalModification());
+  if (find(fixed_mods.begin(), fixed_mods.end(), res_mod.getId()) == fixed_mods.end())
+  {
+  MzTabString unimod_accession = MzTabString(res_mod.getUniModAccession());
+  vector<pair<Size, MzTabParameter> > pos;
+  pos.push_back(make_pair(aas.size() + 1, MzTabParameter()));
+  mod.setPositionsAndParameters(pos);
+  mod.setModificationIdentifier(unimod_accession);
+  mods.push_back(mod);
+  }
+  }
+  }
+  mod_list.set(mods);
+  return mod_list;
+  }
+  
 
   MzTab MzTabHelper::exportFeatureMapToMzTab(const FeatureMap& feature_map, const String& filename)
   {
@@ -316,7 +300,6 @@ namespace OpenMS
 
     meta_data.variable_mod = generateMzTabStringFromVariableModifications(var_mods);
     meta_data.fixed_mod = generateMzTabStringFromFixedModifications(fixed_mods);
-
 
     // mandatory meta values
     meta_data.mz_tab_type = MzTabString("Quantification");
@@ -701,9 +684,26 @@ namespace OpenMS
 
   MzTab MzTabHelper::exportConsensusMapToMzTab(const ConsensusMap& consensus_map, const String& filename)
   {
-    LOG_INFO << "exporting consensus map: \"" << filename << "\" to mzTab: " << endl;
+    if (!filename.empty())
+    {
+      LOG_INFO << "exporting consensus map: \"" << filename << "\" to mzTab: " << endl;
+    }
     MzTab mztab;
+
+    // TODO:refactor from IDSplitter
+    vector<PeptideIdentification> pep_ids(consensus_map.getUnassignedPeptideIdentifications());
+
+    for (ConsensusMap::ConstIterator cons_it = consensus_map.begin();
+         cons_it != consensus_map.end(); ++cons_it)
+    {
+      pep_ids.insert(pep_ids.end(),
+                      cons_it->getPeptideIdentifications().begin(),
+                      cons_it->getPeptideIdentifications().end());
+    }
+
     vector<ProteinIdentification> prot_ids = consensus_map.getProteinIdentifications();
+    mztab = exportIdentificationsToMzTab(prot_ids, pep_ids, "");
+
     vector<String> var_mods, fixed_mods;
     MzTabString db, db_version;
     if (!prot_ids.empty())
@@ -724,10 +724,6 @@ namespace OpenMS
     meta_data.mz_tab_type = MzTabString("Quantification");
     meta_data.mz_tab_mode = MzTabString("Summary");
     meta_data.description = MzTabString("Export from consensusXML");
-
-    // For consensusXML we export a "Summary Quantification" file. This means we don't need to report feature quantification values at the assay level
-    // but only at the study variable variable level.
-
     meta_data.variable_mod = generateMzTabStringFromModifications(var_mods);
     meta_data.fixed_mod = generateMzTabStringFromModifications(fixed_mods);
     meta_data.peptide_search_engine_score[1] = MzTabParameter();
@@ -893,16 +889,86 @@ namespace OpenMS
     return mztab;
   }
 
-  void MzTabHelper::appendQuants(MzTab& mztab, const PeptideAndProteinQuant::PeptideQuant& peptide_quants, const PeptideAndProteinQuant::ProteinQuant& protein_quants)
+  void MzTabHelper::exportQuants(MzTab& mztab, 
+    const PeptideAndProteinQuant::PeptideQuant& peptide_quants, 
+    const PeptideAndProteinQuant::ProteinQuant& protein_quants,
+    const ConsensusMap& consensus_map)
   {
+    // Export proteins, the raw peptide features and the PSMs
+    vector<ProteinIdentification> prot_ids = consensus_map.getProteinIdentifications();
+    mztab = MzTabHelper::exportConsensusMapToMzTab(consensus_map, "exported from ProteinQuantifier");
+
     MzTabProteinSectionRows rows = mztab.getProteinSectionRows();
-    
+
+    vector<String> var_mods, fixed_mods;
+    MzTabString db, db_version;
+
+    if (!prot_ids.empty())
+    {
+      // TODO: how to handle multiple protein ids
+      ProteinIdentification::SearchParameters sp = prot_ids[0].getSearchParameters();
+      var_mods = sp.variable_modifications;
+      fixed_mods = sp.fixed_modifications;
+      db = sp.db.empty() ? MzTabString() : MzTabString(sp.db);
+      db_version = sp.db_version.empty() ? MzTabString() : MzTabString(sp.db_version);
+    }
+   
+    // determine number of channels
+    Size n_study_variables = consensus_map.getFileDescriptions().size();
+
+    MzTabMetaData meta_data;
+
+    // mandatory meta values
+    meta_data.mz_tab_type = MzTabString("Quantification");
+    meta_data.mz_tab_mode = MzTabString("Summary");
+    meta_data.description = MzTabString("Export from ProteinQuantifier");
+
+    // For consensusXML we export a "Summary Quantification" file. This means we don't need to report feature quantification values at the assay level
+    // but only at the study variable variable level.
+    meta_data.variable_mod = generateMzTabStringFromModifications(var_mods);
+    meta_data.fixed_mod = generateMzTabStringFromModifications(fixed_mods);
+    meta_data.peptide_search_engine_score[1] = MzTabParameter();
+    meta_data.psm_search_engine_score[1] = MzTabParameter(); // TODO insert search engine information
+    MzTabMSRunMetaData ms_run;
+    StringList ms_runs = consensus_map.getPrimaryMSRunPath();
+    for (Size i = 0; i != ms_runs.size(); ++i)
+    {
+      ms_run.location = MzTabString(ms_runs[i]);
+      meta_data.ms_run[i + 1] = ms_run;
+    }
+
+    mztab.setMetaData(meta_data);
+
     // loop over protein quants
     for (PeptideAndProteinQuant::ProteinQuant::const_iterator q_it = protein_quants.begin(); q_it != protein_quants.end(); ++q_it)
     {
-      
-    }
-    
-  }
+      const String & protein_accession = q_it->first;
+      const PeptideAndProteinQuant::ProteinData & protein_data = q_it->second;
+      const PeptideAndProteinQuant::SampleAbundances & assay_abundances = protein_data.total_abundances;
 
+      MzTabProteinSectionRow row;
+      row.accession = MzTabString(protein_accession);
+
+      // initialize columns
+      for (Size study_variable = 1; study_variable <= n_study_variables; ++study_variable)
+      {
+        row.protein_abundance_stdev_study_variable[study_variable] = MzTabDouble();
+        row.protein_abundance_std_error_study_variable[study_variable] = MzTabDouble();
+        row.protein_abundance_study_variable[study_variable] = MzTabDouble();
+        row.search_engine_score_ms_run[1][study_variable] = MzTabDouble();
+      }
+
+      // loop over sample abundances
+      Size study_variable(1);
+      for (PeptideAndProteinQuant::SampleAbundances::const_iterator a_it = assay_abundances.begin(); a_it != assay_abundances.end(); ++a_it)
+      {
+        row.protein_abundance_stdev_study_variable[study_variable];
+        row.protein_abundance_std_error_study_variable[study_variable];
+        row.protein_abundance_study_variable[study_variable] = MzTabDouble(a_it->second);
+        ++study_variable;
+      }
+      rows.push_back(row);
+    }
+    mztab.setProteinSectionRows(rows);
+  }
 }
