@@ -136,7 +136,7 @@ protected:
 public:
     MzTabDouble();
 
-    explicit MzTabDouble(const double v);
+    MzTabDouble(const double v);
 
     virtual ~MzTabDouble();
 
@@ -248,7 +248,7 @@ protected:
 public:
     MzTabString();
 
-    explicit MzTabString(const String& s);
+    MzTabString(const String& s);
 
     virtual ~MzTabString();
 

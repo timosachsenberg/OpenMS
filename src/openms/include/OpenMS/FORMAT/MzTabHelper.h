@@ -114,7 +114,10 @@ namespace OpenMS
     static MzTab exportIdentificationsToMzTab(const std::vector<ProteinIdentification>& prot_ids, const std::vector<PeptideIdentification>& peptide_ids, const String& filename);
     
     static MzTab exportConsensusMapToMzTab(const ConsensusMap& consensus_map, const String& filename);
-    
+   
+    // reannotate MS runs to get proper link to the spectra
+    static void setMSRuns(const StringList& ms_run_locations, MzTab& mztab);
+ 
     /**
       @brief Add peptide and protein quantifications to an existing MzTab object
   

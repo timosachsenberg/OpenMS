@@ -353,6 +353,8 @@ protected:
     setValidFormats_("in", ListUtils::create<String>("featureXML,consensusXML,idXML"));
     registerInputFile_("protein_groups", "<file>", "", "Protein inference results for the identification runs that were used to annotate the input (e.g. from ProteinProphet via IDFileConverter or Fido via FidoAdapter).\nInformation about indistinguishable proteins will be used for protein quantification.", false);
     setValidFormats_("protein_groups", ListUtils::create<String>("idXML"));
+    registerInputFileList_("in_mzMLs", "<file>", StringList(), "Original spectra the identifications refers to in mzML format.", false);
+    setValidFormats_("in_mzMLs", ListUtils::create<String>("mzML"));
     registerOutputFile_("out", "<file>", "", "Output file for protein abundances", false);
     setValidFormats_("out", ListUtils::create<String>("csv"));
     registerOutputFile_("peptide_out", "<file>", "", "Output file for peptide abundances", false);
@@ -784,12 +786,13 @@ protected:
     // TODO: error if no consensusXML provided 
     if (!out_mzTab.empty() && in_type == FileTypes::CONSENSUSXML)
     {
-      // Test mzTab output (START)
       MzTab mztab;
       mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups);
       MzTabHelper::exportQuants(mztab, quantifier.getPeptideResults(), quantifier.getProteinResults(), consensus);
       if (!out_mzTab.empty())
       {
+        StringList ms_run_locations = getStringList_("in_mzMLs");
+        MzTabHelper::setMSRuns(ms_run_locations, mztab); // must be mzMLs
         MzTabFile().store(out_mzTab, mztab);
       }
     }

@@ -34,6 +34,7 @@
 
 #include <OpenMS/FORMAT/MzTabHelper.h>
 #include <OpenMS/DATASTRUCTURES/String.h>
+#include <OpenMS/SYSTEM/File.h>
 
 #include <vector>
 #include <set>
@@ -282,7 +283,10 @@ namespace OpenMS
 
   MzTab MzTabHelper::exportFeatureMapToMzTab(const FeatureMap& feature_map, const String& filename)
   {
-    LOG_INFO << "exporting feature map: \"" << filename << "\" to mzTab: " << endl;
+    if (!filename.empty())
+    {
+      LOG_INFO << "exporting feature map: \"" << filename << "\" to mzTab: " << endl;
+    }
     MzTab mztab;
     MzTabMetaData meta_data;
 
@@ -439,7 +443,10 @@ namespace OpenMS
 
   MzTab MzTabHelper::exportIdentificationsToMzTab(const vector<ProteinIdentification>& prot_ids, const vector<PeptideIdentification>& peptide_ids, const String& filename)
   {
-    LOG_INFO << "exporting identifications: \"" << filename << "\" to mzTab: " << endl;
+    if (!filename.empty())
+    {
+      LOG_INFO << "exporting identifications: \"" << filename << "\" to mzTab: " << endl;
+    }
     vector<PeptideIdentification> pep_ids = peptide_ids;
     MzTab mztab;
     MzTabMetaData meta_data;
@@ -889,6 +896,18 @@ namespace OpenMS
     return mztab;
   }
 
+  void MzTabHelper::setMSRuns(const StringList& ms_run_locations, MzTab& mztab)
+  {
+    MzTabMetaData md = mztab.getMetaData();
+    Size i(1);
+    for (StringList::const_iterator sit = ms_run_locations.begin(); sit != ms_run_locations.end(); ++sit)
+    {
+      md.ms_run[i].location = MzTabString("file://" + File::absolutePath(*sit));
+      ++i;
+    }
+    mztab.setMetaData(md);
+  }
+
   void MzTabHelper::exportQuants(MzTab& mztab, 
     const PeptideAndProteinQuant::PeptideQuant& peptide_quants, 
     const PeptideAndProteinQuant::ProteinQuant& protein_quants,
@@ -898,56 +917,35 @@ namespace OpenMS
     vector<ProteinIdentification> prot_ids = consensus_map.getProteinIdentifications();
     mztab = MzTabHelper::exportConsensusMapToMzTab(consensus_map, "exported from ProteinQuantifier");
 
-    MzTabProteinSectionRows rows = mztab.getProteinSectionRows();
-
-    vector<String> var_mods, fixed_mods;
-    MzTabString db, db_version;
-
-    if (!prot_ids.empty())
+    // build map to retrieve detailed protein level information from consensus map
+    map<String, ProteinHit> acc2prot_id;
+    for (vector<ProteinIdentification>::const_iterator p_it = prot_ids.begin(); p_it != prot_ids.end(); ++p_it)
     {
-      // TODO: how to handle multiple protein ids
-      ProteinIdentification::SearchParameters sp = prot_ids[0].getSearchParameters();
-      var_mods = sp.variable_modifications;
-      fixed_mods = sp.fixed_modifications;
-      db = sp.db.empty() ? MzTabString() : MzTabString(sp.db);
-      db_version = sp.db_version.empty() ? MzTabString() : MzTabString(sp.db_version);
+      const vector<ProteinHit>& hits = p_it->getHits();
+      for (vector<ProteinHit>::const_iterator h_it = hits.begin(); h_it != hits.end(); ++h_it)
+      {
+        acc2prot_id[h_it->getAccession()] = *h_it;
+      }
     }
-   
+    
+    MzTabProteinSectionRows rows;
+
     // determine number of channels
     Size n_study_variables = consensus_map.getFileDescriptions().size();
-
-    MzTabMetaData meta_data;
-
-    // mandatory meta values
-    meta_data.mz_tab_type = MzTabString("Quantification");
-    meta_data.mz_tab_mode = MzTabString("Summary");
-    meta_data.description = MzTabString("Export from ProteinQuantifier");
-
-    // For consensusXML we export a "Summary Quantification" file. This means we don't need to report feature quantification values at the assay level
-    // but only at the study variable variable level.
-    meta_data.variable_mod = generateMzTabStringFromModifications(var_mods);
-    meta_data.fixed_mod = generateMzTabStringFromModifications(fixed_mods);
-    meta_data.peptide_search_engine_score[1] = MzTabParameter();
-    meta_data.psm_search_engine_score[1] = MzTabParameter(); // TODO insert search engine information
-    MzTabMSRunMetaData ms_run;
-    StringList ms_runs = consensus_map.getPrimaryMSRunPath();
-    for (Size i = 0; i != ms_runs.size(); ++i)
-    {
-      ms_run.location = MzTabString(ms_runs[i]);
-      meta_data.ms_run[i + 1] = ms_run;
-    }
-
-    mztab.setMetaData(meta_data);
 
     // loop over protein quants
     for (PeptideAndProteinQuant::ProteinQuant::const_iterator q_it = protein_quants.begin(); q_it != protein_quants.end(); ++q_it)
     {
       const String & protein_accession = q_it->first;
       const PeptideAndProteinQuant::ProteinData & protein_data = q_it->second;
-      const PeptideAndProteinQuant::SampleAbundances & assay_abundances = protein_data.total_abundances;
+      const PeptideAndProteinQuant::SampleAbundances & sample_abundances = protein_data.total_abundances;
 
       MzTabProteinSectionRow row;
       row.accession = MzTabString(protein_accession);
+
+      const ProteinHit& ph = acc2prot_id.at(protein_accession);
+      row.protein_coverage = ph.getCoverage() >= 0 ? MzTabDouble(ph.getCoverage()) : MzTabDouble(); // (0-1) Amount of protein sequence identified.
+      row.description = ph.getDescription();
 
       // initialize columns
       for (Size study_variable = 1; study_variable <= n_study_variables; ++study_variable)
@@ -960,7 +958,7 @@ namespace OpenMS
 
       // loop over sample abundances
       Size study_variable(1);
-      for (PeptideAndProteinQuant::SampleAbundances::const_iterator a_it = assay_abundances.begin(); a_it != assay_abundances.end(); ++a_it)
+      for (PeptideAndProteinQuant::SampleAbundances::const_iterator a_it = sample_abundances.begin(); a_it != sample_abundances.end(); ++a_it)
       {
         row.protein_abundance_stdev_study_variable[study_variable];
         row.protein_abundance_std_error_study_variable[study_variable];
