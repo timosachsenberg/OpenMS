@@ -384,8 +384,17 @@ namespace OpenMS
           {
             throw Exception::MissingInformation(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, " PeptideEvidence does not contain start or end position. Cannot compute coverage!");
           }
-          
-          std::fill(covered_amino_acids.begin() + start, covered_amino_acids.begin() + stop + 1, true);
+  
+          if (start < protein_length && stop < protein_length && start < stop)
+          {
+            std::fill(covered_amino_acids.begin() + start, covered_amino_acids.begin() + stop + 1, true);
+          }
+          else
+          {
+            throw Exception::MissingInformation(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, 
+              " PeptideEvidence of '" + accession + "' has invalid protein start and end annotations (start/end/protein length): " + 
+              String(start) + "/" + String(stop) + "/" + String(protein_length));
+          }
         }
         coverage = 100.0 * (double) std::accumulate(covered_amino_acids.begin(), covered_amino_acids.end(), 0) / protein_length;
       }

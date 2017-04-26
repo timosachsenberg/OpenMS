@@ -62,7 +62,7 @@
 namespace OpenMS
 {
 /**
-      @brief Functionality for MzTabExporter.
+      @brief Common helper functions used by MzTab writing tools or converters.
 
       @ingroup FileIO
   */
@@ -96,26 +96,48 @@ namespace OpenMS
     */
     static void addMetaInfoToOptionalColumns(const std::set<String>& keys, std::vector<MzTabOptionalColumnEntry>& opt, const String id, const MetaInfoInterface meta);
     
+    /// @brief helper function to convert OpenMS mod names to MzTab mod strings    
     static std::map<Size, MzTabModificationMetaData> generateMzTabStringFromModifications(const std::vector<String>& mods);
     
+    /// @brief helper function to convert OpenMS mod names to MzTab mod strings    
     static std::map<Size, MzTabModificationMetaData> generateMzTabStringFromVariableModifications(const std::vector<String>& mods);
-    
+
+    /// @brief helper function to convert OpenMS mod names to MzTab mod strings    
     static std::map<Size, MzTabModificationMetaData> generateMzTabStringFromFixedModifications(const std::vector<String>& mods);
     
     /**
       @brief Generate MzTab style list of PTMs from AASequence object. 
-      All passed fixed modifications are not reported (as suggested by the standard for the PRT and PEP section).
+      @param fixed_mods Fixed modifications are not reported.
+      According to mzTab standard, fixed modifications are omitted in the PRT and PEP section.
       In contrast, all modifications are reported in the PSM section (see standard document for details).
     */
     static MzTabModificationList extractModificationListFromAASequence(const AASequence& aas, const std::vector<String>& fixed_mods);
     
+    /**
+       @brief Convert a feature map to MzTab
+       @param feature_map Feature map to be converted
+       @param filename Name of the featureXML to be annotated in the mzTab file as conversion source.
+    */ 
     static MzTab exportFeatureMapToMzTab(const FeatureMap& feature_map, const String& filename);
     
+    /**
+       @brief Convert identifications to MzTab
+       @param prot_ids ProteinIdentifications to be converted
+       @param peptide_ids PeptideIdentifications to be converted
+       @param filename Name of the identification file to be annotated in the mzTab file as conversion source.
+    */ 
     static MzTab exportIdentificationsToMzTab(const std::vector<ProteinIdentification>& prot_ids, const std::vector<PeptideIdentification>& peptide_ids, const String& filename);
     
+    /**
+       @brief Convert a consensus map to MzTab
+       @param consensus_map Consensus map to be converted
+       @param filename Name of the consensusXML to be annotated in the mzTab file as conversion source.
+    */ 
     static MzTab exportConsensusMapToMzTab(const ConsensusMap& consensus_map, const String& filename);
    
-    // reannotate MS runs to get proper link to the spectra
+    /**
+      @brief Reannotate MS runs to get proper link to the spectra
+    */
     static void setMSRuns(const StringList& ms_run_locations, MzTab& mztab);
  
     /**

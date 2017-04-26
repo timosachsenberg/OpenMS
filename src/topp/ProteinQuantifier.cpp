@@ -687,7 +687,6 @@ protected:
       }
       proteins_ = proteins[0]; // inference data is attached to first ID run
       proteins_complete_ = proteins;
-            
     }
 
     PeptideAndProteinQuant quantifier;
@@ -760,11 +759,22 @@ protected:
     String separator = getStringOption_("format:separator");
     String replacement = getStringOption_("format:replacement");
     String quoting = getStringOption_("format:quoting");
+
     if (separator == "") separator = "\t";
+
     String::QuotingMethod quoting_method;
-    if (quoting == "none") quoting_method = String::NONE;
-    else if (quoting == "double") quoting_method = String::DOUBLE;
-    else quoting_method = String::ESCAPE;
+    if (quoting == "none") 
+    {
+      quoting_method = String::NONE;
+    }
+    else if (quoting == "double") 
+    {
+      quoting_method = String::DOUBLE;
+    }
+    else 
+    {
+      quoting_method = String::ESCAPE;
+    }
 
     if (!peptide_out.empty())
     {
@@ -774,6 +784,7 @@ protected:
       writePeptideTable_(output, quantifier.getPeptideResults());
       outstr.close();
     }
+
     if (!out.empty())
     {
       ofstream outstr(out.c_str());
@@ -783,18 +794,28 @@ protected:
       outstr.close();
     }
 
-    // TODO: error if no consensusXML provided 
-    if (!out_mzTab.empty() && in_type == FileTypes::CONSENSUSXML)
+    ////////////////////////////////////////////
+    // Export to mzTab
+    if (!out_mzTab.empty())
     {
+      if (in_type != FileTypes::CONSENSUSXML)
+      {
+        throw Exception::InvalidParameter(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, 
+          "Export to mzTab only supported for consensusXML.");
+      }
+
       MzTab mztab;
       mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups);
       MzTabHelper::exportQuants(mztab, quantifier.getPeptideResults(), quantifier.getProteinResults(), consensus);
-      if (!out_mzTab.empty())
+
+      // optionally, reannotate MS runs
+      StringList ms_run_locations = getStringList_("in_mzMLs");
+      if (!ms_run_locations.empty())
       {
-        StringList ms_run_locations = getStringList_("in_mzMLs");
         MzTabHelper::setMSRuns(ms_run_locations, mztab); // must be mzMLs
-        MzTabFile().store(out_mzTab, mztab);
       }
+
+      MzTabFile().store(out_mzTab, mztab);
     }
 
     writeStatistics_(quantifier.getStatistics());
