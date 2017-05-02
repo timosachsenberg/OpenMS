@@ -481,9 +481,9 @@ namespace OpenMS
       for (vector<ProteinIdentification>::const_iterator it = prot_ids.begin();
        it != prot_ids.end(); ++it, ++current_run_index)
       {
-        const vector<ProteinIdentification::ProteinGroup> protein_groups = it->getProteinGroups();
-        const vector<ProteinIdentification::ProteinGroup> indist_groups = it->getIndistinguishableProteins();
-        const vector<ProteinHit> protein_hits = it->getHits();
+        const vector<ProteinIdentification::ProteinGroup>& protein_groups = it->getProteinGroups();
+        const vector<ProteinIdentification::ProteinGroup>& indist_groups = it->getIndistinguishableProteins();
+        const vector<ProteinHit>& protein_hits = it->getHits();
 
         MzTabMSRunMetaData ms_run;
         ms_run.location = it->getPrimaryMSRunPath().empty() ? MzTabString("null") : MzTabString(it->getPrimaryMSRunPath()[0]);
@@ -911,7 +911,9 @@ namespace OpenMS
   void MzTabHelper::exportQuants(MzTab& mztab, 
     const PeptideAndProteinQuant::PeptideQuant& peptide_quants, 
     const PeptideAndProteinQuant::ProteinQuant& protein_quants,
-    const ConsensusMap& consensus_map)
+    const ConsensusMap& consensus_map,
+    const vector<ProteinIdentification::ProteinGroup>& indist_groups
+    )
   {
     // Export proteins, the raw peptide features and the PSMs
     vector<ProteinIdentification> prot_ids = consensus_map.getProteinIdentifications();
@@ -927,7 +929,15 @@ namespace OpenMS
         acc2prot_id[h_it->getAccession()] = *h_it;
       }
     }
-    
+  
+    // build map from protein group leader to group 
+    map<String, ProteinIdentification::ProteinGroup> leader2group;
+    for (vector<ProteinIdentification::ProteinGroup>::const_iterator p_it = indist_groups.begin(); p_it != indist_groups.end(); ++p_it)
+    {
+      const vector<String>& accessions = p_it->accessions;
+      leader2group[accessions[0]] = *p_it;
+    }
+
     MzTabProteinSectionRows rows;
 
     // determine number of channels
@@ -936,6 +946,7 @@ namespace OpenMS
     // loop over protein quants
     for (PeptideAndProteinQuant::ProteinQuant::const_iterator q_it = protein_quants.begin(); q_it != protein_quants.end(); ++q_it)
     {
+      // protein or protein group leader
       const String & protein_accession = q_it->first;
       const PeptideAndProteinQuant::ProteinData & protein_data = q_it->second;
       const PeptideAndProteinQuant::SampleAbundances & sample_abundances = protein_data.total_abundances;
@@ -943,9 +954,39 @@ namespace OpenMS
       MzTabProteinSectionRow row;
       row.accession = MzTabString(protein_accession);
 
+      String protein_group_type("single_protein");
+
+      // check if single protein or group of indistinguishable proteins
+      if (leader2group.find(protein_accession) != leader2group.end())
+      {
+        const ProteinIdentification::ProteinGroup& protein_group = leader2group.at(protein_accession);
+        if (protein_group.accessions.size() >= 2)
+        {
+          protein_group_type = "indistinguishable_group";
+
+          // add ambiguity members (exclude leader protein)
+          String ambiguity_members;
+          for (Size i = 1; i != protein_group.accessions.size(); ++i)
+          {
+            if (i != 1) ambiguity_members += ",";
+            ambiguity_members += protein_group.accessions[i];
+          }
+          row.ambiguity_members.setSeparator(',');
+          row.ambiguity_members.fromCellString(ambiguity_members);
+        }
+      }
+      
+      MzTabOptionalColumnEntry opt_column_entry;
+      opt_column_entry.first = "opt_global_protein_group_type";
+      opt_column_entry.second = protein_group_type;
+      row.opt_.push_back(opt_column_entry);
+
       const ProteinHit& ph = acc2prot_id.at(protein_accession);
       row.protein_coverage = ph.getCoverage() >= 0 ? MzTabDouble(ph.getCoverage()) : MzTabDouble(); // (0-1) Amount of protein sequence identified.
       row.description = ph.getDescription();
+
+      // note: we put the protein score here as it makes more sense than the PSM score
+      row.best_search_engine_score[1] = ph.getScore();
 
       // initialize columns
       for (Size study_variable = 1; study_variable <= n_study_variables; ++study_variable)
@@ -970,3 +1011,4 @@ namespace OpenMS
     mztab.setProteinSectionRows(rows);
   }
 }
+

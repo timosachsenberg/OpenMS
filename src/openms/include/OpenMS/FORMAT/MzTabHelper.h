@@ -145,7 +145,11 @@ namespace OpenMS
   
       @param mztab  MzTab object to be appended
     */
-    static void exportQuants(MzTab& mztab, const PeptideAndProteinQuant::PeptideQuant& peptide_quants, const PeptideAndProteinQuant::ProteinQuant& protein_quants, const ConsensusMap& consensus_map);
+    static void exportQuants(MzTab& mztab, 
+      const PeptideAndProteinQuant::PeptideQuant& peptide_quants, 
+      const PeptideAndProteinQuant::ProteinQuant& protein_quants, 
+      const ConsensusMap& consensus_map,
+      const std::vector<OpenMS::ProteinIdentification::ProteinGroup>& indist_protein_groups);
 
   };
 

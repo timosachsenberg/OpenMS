@@ -805,8 +805,22 @@ protected:
       }
 
       MzTab mztab;
-      mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, protein_groups);
-      MzTabHelper::exportQuants(mztab, quantifier.getPeptideResults(), quantifier.getProteinResults(), consensus);
+      mztab = MzTabHelper::exportIdentificationsToMzTab(proteins_complete_, peptides_, String());
+      //MzTabFile().store(out_mzTab + ".debug.csv", mztab);
+
+     // extract indistinguishable protein groups
+     vector<ProteinIdentification::ProteinGroup> indist_groups;
+     if (!proteins_complete_.empty())
+     {
+       indist_groups = proteins_complete_[0].getIndistinguishableProteins();
+     }
+
+     // export protein and peptide quantifications. Enrich with information from consensusXML and protein groups
+     MzTabHelper::exportQuants(mztab, 
+        quantifier.getPeptideResults(), 
+        quantifier.getProteinResults(), 
+        consensus, 
+        indist_groups);
 
       // optionally, reannotate MS runs
       StringList ms_run_locations = getStringList_("in_mzMLs");
