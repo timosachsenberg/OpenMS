@@ -37,7 +37,14 @@
 #include <OpenMS/FORMAT/SVOutStream.h>
 #include <OpenMS/SYSTEM/File.h>
 #include <OpenMS/DATASTRUCTURES/ListUtils.h>
+#include <OpenMS/FORMAT/FASTAFile.h>
+#include <OpenMS/CHEMISTRY/EnzymaticDigestion.h>
+#include <OpenMS/CHEMISTRY/EnzymesDB.h>
+#include <OpenMS/ANALYSIS/RNPXL/ModifiedPeptideGenerator.h>
+#include <OpenMS/CHEMISTRY/ModificationsDB.h>
+
 #include <iostream>
+#include <iomanip>
 #include <ostream>
 
 using namespace OpenMS;
@@ -101,10 +108,24 @@ protected:
   Residue::ResidueType res_type_;
   map<String, Residue::ResidueType> res_type_names_;
 
+  vector<ResidueModification> getModifications_(StringList modNames)
+  {
+    vector<ResidueModification> modifications;
+
+    // iterate over modification names and add to vector
+    for (StringList::iterator mod_it = modNames.begin(); mod_it != modNames.end(); ++mod_it)
+    {
+      String modification(*mod_it);
+      modifications.push_back(ModificationsDB::getInstance()->getModification(modification));
+    }
+
+    return modifications;
+  }
+
   void registerOptionsAndFlags_()
   {
     registerInputFile_("in", "<file>", "", "Input file with peptide sequences and optionally charge numbers (mutually exclusive to 'in_seq')", false);
-    setValidFormats_("in",ListUtils::create<String>("txt"));
+    setValidFormats_("in",ListUtils::create<String>("txt,fasta"));
 
     registerStringList_("in_seq", "<peptide_sequences>", StringList(), "List of peptide sequences (mutually exclusive to 'in')", false, false);
 
@@ -118,6 +139,28 @@ protected:
     registerStringOption_("fragment_type", "<choice>", "full", "For what type of sequence/fragment the mass should be computed\n", false);
     setValidStrings_("fragment_type", ListUtils::create<String>("full,internal,N-terminal,C-terminal,a-ion,b-ion,c-ion,x-ion,y-ion,z-ion"));
     registerStringOption_("separator", "<sep>", "", "Field separator for 'table' output format; by default, the 'tab' character is used", false);
+
+    registerTOPPSubsection_("modifications", "Modifications Options");
+    vector<String> all_mods;
+    ModificationsDB::getInstance()->getAllSearchModifications(all_mods);
+    registerStringList_("modifications:fixed", "<mods>", ListUtils::create<String>(""), "Fixed modifications, specified using UniMod (www.unimod.org) terms, e.g. 'Carbamidomethyl (C)'", false);
+    setValidStrings_("modifications:fixed", all_mods);
+    registerStringList_("modifications:variable", "<mods>", ListUtils::create<String>(""), "Variable modifications, specified using UniMod (www.unimod.org) terms, e.g. 'Oxidation (M)'", false);
+    setValidStrings_("modifications:variable", all_mods);
+    registerIntOption_("modifications:variable_max_per_peptide", "<num>", 1, "Maximum number of residues carrying a variable modification per candidate peptide", false, false);
+
+    vector<String> all_enzymes;
+    EnzymesDB::getInstance()->getAllNames(all_enzymes);
+    registerStringOption_("enzyme", "<cleavage site>", "Trypsin", "The enzyme used for peptide digestion.", false);
+    setValidStrings_("enzyme", all_enzymes);
+
+    registerTOPPSubsection_("peptide", "Peptide Options");
+    registerIntOption_("peptide:min_size", "<num>", 7, "Minimum size a peptide must have after digestion to be considered in the search.", false, true);
+    registerIntOption_("peptide:max_size", "<num>", 40, "Maximum size a peptide must have after digestion to be considered in the search (0 = disabled).", false, true);
+    registerIntOption_("peptide:missed_cleavages", "<num>", 0, "Number of missed cleavages.", false, false);
+    registerStringOption_("peptide:filter_duplicates", "<toggle>", "true", "Peptides with identical amino acid sequence are counted only once ('true') or multiple ('false') times.", false, false);
+    setValidStrings_("peptide:filter_duplicates", ListUtils::create<String>("true,false"));
+
   }
 
   double computeMass_(const AASequence& seq, Int charge) const
@@ -277,7 +320,100 @@ protected:
       return ILLEGAL_PARAMETERS;
     }
 
-    if (in.size() > 0)
+    if (in.hasSuffix(".fasta"))
+    {
+      FASTAFile fastaFile;
+      vector<FASTAFile::FASTAEntry> fasta_db;
+      fastaFile.load(in, fasta_db);
+
+      const Size missed_cleavages = getIntOption_("peptide:missed_cleavages");
+      EnzymaticDigestion digestor;
+      digestor.setEnzyme(getStringOption_("enzyme"));
+      digestor.setMissedCleavages(missed_cleavages);
+
+      StringList fixedModNames = getStringList_("modifications:fixed");
+      set<String> fixed_unique(fixedModNames.begin(), fixedModNames.end());
+
+      if (fixed_unique.size() != fixedModNames.size())
+      {
+        cout << "duplicate fixed modification provided." << endl;
+        return ILLEGAL_PARAMETERS;
+      }
+
+      StringList varModNames = getStringList_("modifications:variable");
+      set<String> var_unique(varModNames.begin(), varModNames.end());
+      if (var_unique.size() != varModNames.size())
+      {
+        cout << "duplicate variable modification provided." << endl;
+        return ILLEGAL_PARAMETERS;
+      }
+
+      vector<ResidueModification> fixedMods = getModifications_(fixedModNames);
+      vector<ResidueModification> varMods = getModifications_(varModNames);
+      Size max_variable_mods_per_peptide = getIntOption_("modifications:variable_max_per_peptide");
+
+      // lookup for processed peptides. must be defined outside of omp section and synchronized
+      set<StringView> processed_petides;
+
+      // set minimum / maximum size of peptide after digestion
+      Size min_peptide_length = getIntOption_("peptide:min_size");
+      Size max_peptide_length = getIntOption_("peptide:max_size");
+
+      map<double, Size> masses;
+
+      bool skip_duplicates = getStringOption_("peptide:filter_duplicates") == "true" ? true : false;
+
+      for (SignedSize fasta_index = 0; fasta_index < (SignedSize)fasta_db.size(); ++fasta_index)
+      {
+        vector<StringView> current_digest;
+        digestor.digestUnmodifiedString(fasta_db[fasta_index].sequence, current_digest, min_peptide_length, max_peptide_length);
+        for (vector<StringView>::iterator cit = current_digest.begin(); cit != current_digest.end(); ++cit)
+        {
+          if (cit->getString().has('X')) continue;
+
+          // if we want to skip duplicates we need to take track of already processes sequences.
+          if (skip_duplicates)
+          {
+            bool already_processed = false;
+            if (processed_petides.find(*cit) != processed_petides.end())
+            {
+              // peptide (and all modified variants) already processed so skip it
+              already_processed = true;
+            }
+ 
+            if (already_processed)
+            {
+              continue;
+            }
+        
+            processed_petides.insert(*cit);
+          }
+      
+          vector<AASequence> all_modified_peptides;
+
+          AASequence aas = AASequence::fromString(cit->getString());
+          ModifiedPeptideGenerator::applyFixedModifications(fixedMods.begin(), fixedMods.end(), aas);
+          ModifiedPeptideGenerator::applyVariableModifications(varMods.begin(), varMods.end(), aas, max_variable_mods_per_peptide, all_modified_peptides);
+          
+          for (SignedSize mod_pep_idx = 0; mod_pep_idx < (SignedSize)all_modified_peptides.size(); ++mod_pep_idx)
+          {
+            const AASequence& candidate = all_modified_peptides[mod_pep_idx];
+            double current_peptide_mass = candidate.getMonoWeight();
+
+            // round to 6 decimal digits
+            current_peptide_mass = round( current_peptide_mass * 1e6 ) / 1e6; 
+            masses[current_peptide_mass]++;  
+          }
+        }
+      }
+
+      // write header:
+      outfile << "mass\tcount" << fixed << setprecision(6) << endl;
+      for (map<double, Size>::const_iterator mit = masses.begin(); mit != masses.end(); ++mit)
+      {
+        outfile << mit->first << "\t" << mit->second << endl;
+      }    
+    } else if (in.size() > 0)
     {
       readFile_(in, charges);
     }
