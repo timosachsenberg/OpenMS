@@ -412,7 +412,7 @@ namespace OpenMS
 
       row.modifications = extractModificationListFromAASequence(aas, fixed_mods);
 
-      const set<String>& accessions = best_ph.extractProteinAccessions();
+      const set<String>& accessions = best_ph.extractProteinAccessionsSet();
       const vector<PeptideEvidence> peptide_evidences = best_ph.getPeptideEvidences();
 
       row.unique = accessions.size() == 1 ? MzTabBoolean(true) : MzTabBoolean(false);
@@ -674,7 +674,7 @@ namespace OpenMS
 
       // TODO Think about if the uniqueness can be determined by # of peptide evidences
       // b/c this would only differ when evidences come from different DBs
-      const set<String>& accessions = best_ph.extractProteinAccessions();
+      const set<String>& accessions = best_ph.extractProteinAccessionsSet();
       row.unique = accessions.size() == 1 ? MzTabBoolean(true) : MzTabBoolean(false);
 
       // create row for every PeptideEvidence entry (mapping to a protein)
@@ -847,7 +847,7 @@ namespace OpenMS
 
         row.modifications = extractModificationListFromAASequence(aas, fixed_mods);
 
-        const set<String>& accessions = best_ph.extractProteinAccessions();
+        const set<String>& accessions = best_ph.extractProteinAccessionsSet();
         const vector<PeptideEvidence> peptide_evidences = best_ph.getPeptideEvidences();
 
         row.unique = accessions.size() == 1 ? MzTabBoolean(true) : MzTabBoolean(false);
