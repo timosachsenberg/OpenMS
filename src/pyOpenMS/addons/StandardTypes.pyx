@@ -1,6 +1,7 @@
 
+
+# Add this to all modules
 PeakSpectrum = MSSpectrum
-RichPeakSpectrum = RichMSSpectrum
 
 Chromatorgram = MSChromatogram
 
