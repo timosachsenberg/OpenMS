@@ -2283,7 +2283,8 @@ namespace OpenMS
     // add some mandatory meta values
     meta_data.mz_tab_type = MzTabString("Quantification");
     meta_data.mz_tab_mode = MzTabString("Summary");
-    meta_data.description = MzTabString("OpenMS export from consensusXML");
+    meta_data.title = MzTabString("OpenMS quantification result");
+    meta_data.description = MzTabString("Exported from consensusXML");
 
     MzTabParameter quantification_method;
     quantification_method.fromCellString("[MS,MS:1001834,LC-MS label-free quantitation analysis,]");
