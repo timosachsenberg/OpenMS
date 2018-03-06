@@ -40,8 +40,10 @@
 #include <iostream>
 
 #include <OpenMS/COMPARISON/SPECTRA/SpectrumAlignment.h>
+#include <OpenMS/ANALYSIS/XLMS/OPXLSpectrumProcessingAlgorithms.h>
 #include <OpenMS/FILTERING/TRANSFORMERS/Normalizer.h>
 #include <OpenMS/FORMAT/DTAFile.h>
+#include <OpenMS/SYSTEM/StopWatch.h>
 
 ///////////////////////////
 
@@ -165,6 +167,71 @@ START_SECTION(template <typename SpectrumType> void getSpectrumAlignment(std::ve
     TEST_EQUAL(alignment[i].second, alignment_result[i].second)
   }
 
+
+  PeakSpectrum ps_theo, ps_exp;
+  Peak1D peak;
+  peak.setIntensity(1);
+  peak.setMZ(100);
+  ps_theo.push_back(peak);
+  ps_exp.push_back(peak);
+
+  // dense second spectrum
+  for (int i = 0; i != 1e3; ++i) // 1000 theo. and 10.000 exp. peaks
+  {
+    peak.setIntensity(1);
+    peak.setMZ(ps_theo.back().getMZ() + 1.0);
+    ps_theo.push_back(peak);
+    ps_exp.push_back(peak);
+
+    for (int j = 1; j <= 5; ++j) // add +- 1..5 ppm extra peaks to have many matching peaks
+    {
+      Peak1D noise(peak);
+      noise.setMZ(peak.getMZ() - j * peak.getMZ()*1e-6);
+      ps_exp.push_back(noise);
+      noise.setMZ(peak.getMZ() + j * peak.getMZ()*1e-6);
+      ps_exp.push_back(noise);
+    }
+  }
+  
+  ps_theo.sortByPosition();
+  ps_exp.sortByPosition();
+
+  vector<pair<Size, Size > > alignment_slow, alignment_fast, alignment_xl;
+  PeakSpectrum::IntegerDataArray c1, c2;
+
+  StopWatch s;
+  s.start();
+  for (Size i = 0; i != 1e3; ++i)
+  {
+    alignment_fast.clear();
+    sas1.getSpectrumAlignmentFastCharge(alignment_fast, 10.0, true, ps_theo, ps_exp, c1, c2);
+  }
+  s.stop();
+  cerr << " done (" << s.getClockTime() << "s)" << std::endl;
+  s.reset();
+
+  p.setValue("tolerance", 10.0); // 10 ppm tolerance
+  sas1.setParameters(p);
+  s.start();
+  for (Size i = 0; i != 1e3; ++i)
+  {
+    alignment_slow.clear();
+    sas1.getSpectrumAlignment(alignment_slow, ps_theo, ps_exp);
+  }
+  s.stop();
+  cerr << " done (" << s.getClockTime() << "s)" << std::endl;
+  s.reset();
+
+ 
+  s.start();
+  for (Size i = 0; i != 1e3; ++i)
+  {
+    alignment_xl.clear();
+    OPXLSpectrumProcessingAlgorithms::getSpectrumAlignment(alignment_xl, ps_theo, ps_exp, 10.0, true); 
+  }
+  cerr << " done (" << s.getClockTime() << "s)" << std::endl;
+  s.stop();
+
   alignment.clear();
   p.setValue("is_relative_tolerance", "true");
   p.setValue("tolerance", 1e4); // one percent tolerance
@@ -189,6 +256,7 @@ START_SECTION(template <typename SpectrumType> void getSpectrumAlignment(std::ve
     TEST_EQUAL(alignment[i].first, alignment_result[i].first)
     TEST_EQUAL(alignment[i].second, alignment_result[i].second)
   }
+
 
 
 END_SECTION
