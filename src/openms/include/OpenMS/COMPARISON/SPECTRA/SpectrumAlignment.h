@@ -92,7 +92,8 @@ public:
       const SpectrumType1& theo_spectrum, 
       const SpectrumType2& exp_spectrum,
       const typename SpectrumType1::IntegerDataArray& theo_charges,
-      const typename SpectrumType1::IntegerDataArray& exp_charges)
+      const typename SpectrumType2::IntegerDataArray& exp_charges,
+      const double min_ratio = 0)
     {
       OPENMS_PRECONDITION(exp_spectrum.isSorted(), "Spectrum needs to be sorted.");
       OPENMS_PRECONDITION(theo_spectrum.isSorted(), "Spectrum needs to be sorted.");
@@ -120,13 +121,16 @@ public:
         }
         const bool tz_matches_ez = (ez == tz || !ez || !tz);
 
+        const double ratio = min_ratio > 0 ? theo_spectrum[t].getIntensity() / exp_spectrum[e].getIntensity() : 1.0;
+        const bool ti_matches_ei = (ratio >= min_ratio || ratio >= 1.0/min_ratio);
+
         double d = exp_mz - theo_mz;
         const double max_dist_dalton = fragment_mass_tolerance_unit_ppm ? theo_mz * fragment_mass_tolerance * 1e-6 : fragment_mass_tolerance;
 
         if (fabs(d) <= max_dist_dalton) // match in tolerance window? 
         {
           // get first peak with matching charge in tolerance window
-          if (!tz_matches_ez)
+          if (!tz_matches_ez || !ti_matches_ei)
           {
             Size e_candidate(e);
             while (true)
@@ -134,8 +138,12 @@ public:
               ++e_candidate;
               double new_ez = has_charge ? exp_charges[e_candidate] : 0;
               const bool charge_matches = (new_ez == tz || !new_ez || !tz);
+ 
+              double new_ratio = min_ratio > 0 ? theo_spectrum[t].getIntensity() / exp_spectrum[e_candidate].getIntensity() : 1.0;
+              const bool ratio_matches = (new_ratio >= min_ratio || new_ratio >= 1.0/min_ratio);;
+
               double new_d = exp_spectrum[e].getMZ() - theo_mz;
-              if (charge_matches && new_d <= max_dist_dalton)
+              if (charge_matches && ratio_matches && new_d <= max_dist_dalton)
               { // found a match
                 break;
               }
@@ -187,9 +195,12 @@ public:
             // check if charge of next peak matches
             if (has_charge) { new_ez = exp_charges[e]; }
             const bool charge_matches = (new_ez == tz || !new_ez || !tz);
-            if (!charge_matches) { continue; }
+            // check if ratio of next peak matches
+            const double new_ratio = min_ratio > 0 ? theo_spectrum[t].getIntensity() / exp_spectrum[e].getIntensity() : 1.0;
+            const bool ratio_matches = (new_ratio >= min_ratio || new_ratio >= 1.0/min_ratio);
+            if (!charge_matches || !ratio_matches) { continue; }
 
-            // Invariant: charge matches
+            // Invariant: charge and ratio matches
 
             const bool better_distance = (fabs(new_d) <= fabs(best_d));
 
