@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -60,9 +60,9 @@ namespace OpenMS
 
 public:
     /// menu is created here
-    INIFileEditorWindow(QWidget * parent = 0);
+    INIFileEditorWindow(QWidget * parent = nullptr);
     /// when user closes window a message box asks the user if he wants to save
-    void closeEvent(QCloseEvent * event);
+    void closeEvent(QCloseEvent * event) override;
 
 public slots:
     ///loads the xml-file into a Param object and loads Param into ParamEditor

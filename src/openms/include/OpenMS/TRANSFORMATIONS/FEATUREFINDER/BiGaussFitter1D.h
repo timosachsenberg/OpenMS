@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Clemens Groepl $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: $
 // --------------------------------------------------------------------------
 
@@ -59,7 +59,7 @@ public:
     BiGaussFitter1D(const BiGaussFitter1D & source);
 
     /// destructor
-    virtual ~BiGaussFitter1D();
+    ~BiGaussFitter1D() override;
 
     /// assignment operator
     virtual BiGaussFitter1D & operator=(const BiGaussFitter1D & source);
@@ -71,7 +71,7 @@ public:
     }
 
     /// return interpolation model
-    QualityType fit1d(const RawDataArrayType & range, InterpolationModel * & model);
+    QualityType fit1d(const RawDataArrayType & range, InterpolationModel * & model) override;
 
     /// name of the model (needed by Factory)
     static const String getProductName()
@@ -86,7 +86,7 @@ protected:
     /// statistics for second peak site
     Math::BasicStatistics<> statistics2_;
 
-    void updateMembers_();
+    void updateMembers_() override;
   };
 }
 

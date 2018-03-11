@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Johannes Junker $
+// $Maintainer: Johannes Veit $
 // $Authors: Johannes Junker, Chris Bielow $
 // --------------------------------------------------------------------------
 
@@ -123,10 +123,10 @@ public:
     /// Pipeline status after refreshParameters() was called
     enum RefreshStatus
     {
-      ST_REFRESH_NOCHANGE,        //< no updates required
-      ST_REFRESH_CHANGED,         //< some parameters were updated, but pipeline is ok
-      ST_REFRESH_CHANGEINVALID,   //< updating made pipeline invalid
-      ST_REFRESH_REMAINSINVALID   //< pipeline was not valid before and is invalid afterwards
+      ST_REFRESH_NOCHANGE,        ///< no updates required
+      ST_REFRESH_CHANGED,         ///< some parameters were updated, but pipeline is ok
+      ST_REFRESH_CHANGEINVALID,   ///< updating made pipeline invalid
+      ST_REFRESH_REMAINSINVALID   ///< pipeline was not valid before and is invalid afterwards
     };
 
 
@@ -147,7 +147,7 @@ public:
     TOPPASScene(QObject * parent, const QString & tmp_path, bool gui = true);
 
     /// Destructor
-    virtual ~TOPPASScene();
+    ~TOPPASScene() override;
 
     /// Adds a vertex
     void addVertex(TOPPASVertex * tv);
@@ -192,9 +192,9 @@ public:
     /// Performs a topological sort of all vertices
     void topoSort();
     /// Returns the name of the directory for output files
-    const QString & getOutDir();
+    const QString & getOutDir() const;
     /// Returns the name of the directory for temporary files
-    const QString & getTempDir();
+    const QString & getTempDir() const;
     /// Sets the name of the directory for output files
     void setOutDir(const QString & dir);
     /// Saves the pipeline if it has been changed since the last save.
@@ -231,6 +231,10 @@ public:
     bool wasChanged();
     /// Refreshes the parameters of the TOPP tools in this workflow
     RefreshStatus refreshParameters();
+    
+    /// is TOPPASScene run in GUI or non-GUI (ExecutePipeline) mode, i.e. are MessageBoxes allowed?
+    bool isGUIMode() const;
+
     /// determine dry run status (are tools actually called?)
     bool isDryRun() const;
     /// workflow description (to be displayed in TOPPAS window)
@@ -373,7 +377,7 @@ protected:
 
     ///@name reimplemented Qt events
     //@{
-    void contextMenuEvent(QGraphicsSceneContextMenuEvent * event);
+    void contextMenuEvent(QGraphicsSceneContextMenuEvent * event) override;
     //@}
 
     ///Writes the @p text to the logfile

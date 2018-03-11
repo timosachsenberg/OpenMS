@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry               
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 // 
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -49,8 +49,8 @@ START_TEST(FeatureDistance, "$Id$")
 using namespace OpenMS;
 using namespace std;
 
-FeatureDistance* d_ptr = 0;
-FeatureDistance* d_nullPointer = 0;
+FeatureDistance* d_ptr = nullptr;
+FeatureDistance* d_nullPointer = nullptr;
 START_SECTION((FeatureDistance(double max_intensity=1.0, bool force_constraints=false)))
 {
 	d_ptr = new FeatureDistance();

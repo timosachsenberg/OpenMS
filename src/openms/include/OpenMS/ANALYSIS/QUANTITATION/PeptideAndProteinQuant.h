@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -127,7 +127,7 @@ public:
     PeptideAndProteinQuant();
 
     /// Destructor
-    ~PeptideAndProteinQuant() {}
+    ~PeptideAndProteinQuant() override {}
 
     /**
          @brief Read quantitative data from a feature map.
@@ -214,7 +214,7 @@ private:
          The keys of @p abundances are stored ordered in @p result, best first.
     */
     template <typename T>
-    void orderBest_(const std::map<T, SampleAbundances> abundances,
+    void orderBest_(const std::map<T, SampleAbundances> & abundances,
                     std::vector<T>& result)
     {
       typedef std::pair<Size, double> PairType;
@@ -268,7 +268,7 @@ private:
     void countPeptides_(std::vector<PeptideIdentification>& peptides);
 
     /// Clear all data when parameters are set
-    void updateMembers_();
+    void updateMembers_() override;
 
   };   // class
 

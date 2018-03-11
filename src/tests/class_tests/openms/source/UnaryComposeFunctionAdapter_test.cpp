@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry               
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 // 
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 // --------------------------------------------------------------------------
-// $Maintainer: Stephan Aiche$
+// $Maintainer: Timo Sachsenberg$
 // $Authors: Stephan Aiche$
 // --------------------------------------------------------------------------
 
@@ -67,8 +67,8 @@ typedef std::const_mem_fun_ref_t<const std::string&, Element> T_MEMBER_FUNCTIOM;
 
 typedef UnaryComposeFunctionAdapter<T_BINDER_2ND, T_MEMBER_FUNCTIOM> UCFA;
 
-UCFA* ptr = 0;
-UCFA* null_ptr = 0;
+UCFA* ptr = nullptr;
+UCFA* null_ptr = nullptr;
 START_SECTION((UnaryComposeFunctionAdapter(const OP1 &o1, const OP2 &o2)))
 {
   ptr = new UCFA(bind2nd(equal_to<string>(), "3"), mem_fun_ref(&Element::getA));

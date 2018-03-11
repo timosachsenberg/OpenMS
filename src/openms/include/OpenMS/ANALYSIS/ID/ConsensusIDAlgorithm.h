@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -73,7 +73,7 @@ namespace OpenMS
                Size number_of_runs = 0);
 
     /// Virtual destructor
-    virtual ~ConsensusIDAlgorithm();
+    ~ConsensusIDAlgorithm() override;
 
   protected:
     /// Mapping: peptide sequence -> (charge, scores)
@@ -105,7 +105,7 @@ namespace OpenMS
                         SequenceGrouping& results) = 0;
 
     /// Docu in base class
-    virtual void updateMembers_();
+    void updateMembers_() override;
 
     /// Compare (and possibly update) charge state information
     void compareChargeStates_(Int& recorded_charge, Int new_charge, 

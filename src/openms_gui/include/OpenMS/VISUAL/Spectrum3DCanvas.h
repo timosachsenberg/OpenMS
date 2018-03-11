@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -40,6 +40,8 @@
 
 // OpenMS
 #include <OpenMS/VISUAL/SpectrumCanvas.h>
+#include <OpenMS/VISUAL/MultiGradient.h>
+
 
 class QPainter;
 class QGLWidget;
@@ -72,9 +74,9 @@ namespace OpenMS
 public:
 
     /// Constructor
-    Spectrum3DCanvas(const Param & preferences, QWidget * parent = 0);
+    Spectrum3DCanvas(const Param & preferences, QWidget * parent = nullptr);
     /// Destructor
-    virtual  ~Spectrum3DCanvas();
+     ~Spectrum3DCanvas() override;
 
     ///Different shade modes
     enum ShadeModes
@@ -88,8 +90,8 @@ public:
 
     ///@name Reimplemented Qt events
     //@{
-    void resizeEvent(QResizeEvent * e);
-    void contextMenuEvent(QContextMenuEvent * e);
+    void resizeEvent(QResizeEvent * e) override;
+    void contextMenuEvent(QContextMenuEvent * e) override;
     //@}
     /// Returns if the legend is shown
     bool isLegendShown() const;
@@ -99,23 +101,27 @@ public:
     Spectrum3DOpenGLCanvas * openglcanvas_;
 
     // docu in base class
-    virtual void showCurrentLayerPreferences();
+    void showCurrentLayerPreferences() override;
 
     // Docu in base class
-    virtual void saveCurrentLayer(bool visible);
+    void saveCurrentLayer(bool visible) override;
 
 signals:
+
     /// Requests to display all spectra in 2D plot
     void showCurrentPeaksAs2D();
 
 public slots:
 
     // Docu in base class
-    void activateLayer(Size layer_index);
+    void activateLayer(Size layer_index) override;
     // Docu in base class
-    void removeLayer(Size layer_index);
-    //docu in base class
-    virtual void updateLayer(Size i);
+    void removeLayer(Size layer_index) override;
+    // Docu in base class
+    void updateLayer(Size i) override;
+    // Docu in base class
+    void intensityModeChange_() override;
+
 protected slots:
 
     /// Reacts on changed layer parameters
@@ -124,22 +130,25 @@ protected slots:
 protected:
 
     // Docu in base class
-    bool finishAdding_();
+    bool finishAdding_() override;
 
     // Reimplementation in order to update the OpenGL widget
-    virtual void update_(const char * caller_name = 0);
+    void update_(const char * caller_name = nullptr) override;
 
     ///whether the legend is shown or not
     bool legend_shown_;
 
+    ///stores the linear color gradient for non-log modes
+    MultiGradient linear_gradient_;
+
     //docu in base class
-    virtual void translateLeft_(Qt::KeyboardModifiers m);
+    void translateLeft_(Qt::KeyboardModifiers m) override;
     //docu in base class
-    virtual void translateRight_(Qt::KeyboardModifiers m);
+    void translateRight_(Qt::KeyboardModifiers m) override;
     //docu in base class
-    virtual void translateForward_();
+    void translateForward_() override;
     //docu in base class
-    virtual void translateBackward_();
+    void translateBackward_() override;
   };
 
 } //namespace

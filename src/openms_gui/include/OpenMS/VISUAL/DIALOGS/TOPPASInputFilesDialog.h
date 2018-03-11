@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Johannes Junker $
+// $Maintainer: Johannes Veit $
 // $Authors: Johannes Junker $
 // --------------------------------------------------------------------------
 
@@ -56,9 +56,9 @@ namespace OpenMS
 
 public:
     /// support drag'n'drop of files from OS window manager
-    void dragEnterEvent(QDragEnterEvent *e);
+    void dragEnterEvent(QDragEnterEvent *e) override;
     /// support drag'n'drop of files from OS window manager
-    void dropEvent(QDropEvent *e);
+    void dropEvent(QDropEvent *e) override;
 
     /// Constructor
     TOPPASInputFilesDialog(const QStringList& list, const QString& cwd);
@@ -70,7 +70,7 @@ public:
     const QString& getCWD() const;
 
     /// support Ctrl+C to copy currently selected items to clipboard
-    virtual void keyPressEvent(QKeyEvent *e);
+    void keyPressEvent(QKeyEvent *e) override;
 
 public slots:
 

@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,15 +28,13 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Stephan Aiche$
+// $Maintainer: Timo Sachsenberg$
 // $Authors: Marc Sturm, Stephan Aiche$
 // --------------------------------------------------------------------------
 
 #include <OpenMS/CONCEPT/ProgressLogger.h>
 #include <OpenMS/CONCEPT/Macros.h>
 #include <OpenMS/CONCEPT/Factory.h>
-
-#include <OpenMS/DATASTRUCTURES/String.h>
 
 #include <OpenMS/SYSTEM/StopWatch.h>
 
@@ -71,7 +69,7 @@ public:
       return "CMD";
     }
 
-    void startProgress(const SignedSize begin, const SignedSize end, const String& label, const int current_recursion_depth) const
+    void startProgress(const SignedSize begin, const SignedSize end, const String& label, const int current_recursion_depth) const override
     {
       begin_ = begin;
       end_ = end;
@@ -81,7 +79,7 @@ public:
       stop_watch_.start();
     }
 
-    void setProgress(const SignedSize value, const int current_recursion_depth) const
+    void setProgress(const SignedSize value, const int current_recursion_depth) const override
     {
       if (begin_ == end_)
       {
@@ -99,21 +97,14 @@ public:
       }
     }
 
-    void endProgress(const int current_recursion_depth) const
+    void endProgress(const int current_recursion_depth) const override
     {
       stop_watch_.stop();
-      if (begin_ == end_)
+      if (current_recursion_depth)
       {
-        if (current_recursion_depth)
-        {
-          cout << '\n';
-        }
-        cout << endl << string(2 * current_recursion_depth, ' ') << "-- done [took " << StopWatch::toString(stop_watch_.getCPUTime()) << " (CPU), " << StopWatch::toString(stop_watch_.getClockTime()) << " (Wall)] -- " << endl;
+        cout << '\n';
       }
-      else
-      {
-        cout << '\r' << string(2 * current_recursion_depth, ' ') << "-- done [took " << StopWatch::toString(stop_watch_.getCPUTime()) << " (CPU), " << StopWatch::toString(stop_watch_.getClockTime()) << " (Wall)] -- " << endl;
-      }
+      cout << '\r' << string(2 * current_recursion_depth, ' ') << "-- done [took " << StopWatch::toString(stop_watch_.getCPUTime()) << " (CPU), " << StopWatch::toString(stop_watch_.getClockTime()) << " (Wall)] -- " << endl;
     }
 
 private:
@@ -138,15 +129,15 @@ public:
       return "NONE";
     }
 
-    void startProgress(const SignedSize /* begin */, const SignedSize /* end */, const String& /* label */, const int /* current_recursion_depth */) const
+    void startProgress(const SignedSize /* begin */, const SignedSize /* end */, const String& /* label */, const int /* current_recursion_depth */) const override
     {
     }
 
-    void setProgress(const SignedSize /* value */, const int /* current_recursion_depth */) const
+    void setProgress(const SignedSize /* value */, const int /* current_recursion_depth */) const override
     {
     }
 
-    void endProgress(const int /* current_recursion_depth */) const
+    void endProgress(const int /* current_recursion_depth */) const override
     {
     }
 
@@ -236,7 +227,7 @@ public:
   void ProgressLogger::startProgress(SignedSize begin, SignedSize end, const String& label) const
   {
     OPENMS_PRECONDITION(begin <= end, "ProgressLogger::init : invalid range!");
-    last_invoke_ = time(NULL);
+    last_invoke_ = time(nullptr);
     current_logger_->startProgress(begin, end, label, recursion_depth_);
     ++recursion_depth_;
   }
@@ -244,9 +235,9 @@ public:
   void ProgressLogger::setProgress(SignedSize value) const
   {
     // update only if at least 1 second has passed
-    if (last_invoke_ == time(NULL)) return;
+    if (last_invoke_ == time(nullptr)) return;
 
-    last_invoke_ = time(NULL);
+    last_invoke_ = time(nullptr);
     current_logger_->setProgress(value, recursion_depth_);
   }
 

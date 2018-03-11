@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry               
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 // 
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 // --------------------------------------------------------------------------
-// $Maintainer: Stephan Aiche$
+// $Maintainer: Timo Sachsenberg$
 // $Authors: Stephan Aiche$
 // --------------------------------------------------------------------------
 
@@ -64,8 +64,8 @@ typedef std::const_mem_fun_ref_t<const std::string&, Element> T_MEMBER_FUNCTIOM;
 
 typedef BinaryComposeFunctionAdapter<T_STD_LESS,T_MEMBER_FUNCTIOM,T_MEMBER_FUNCTIOM > BCFA;
 
-BCFA* ptr = 0;
-BCFA* null_ptr = 0;
+BCFA* ptr = nullptr;
+BCFA* null_ptr = nullptr;
 
 START_SECTION((BinaryComposeFunctionAdapter(const OP1 &o1, const OP2 &o2, const OP3 &o3)))
 {

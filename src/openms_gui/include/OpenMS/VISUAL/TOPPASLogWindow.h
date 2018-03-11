@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Johannes Junker $
+// $Maintainer: Johannes Veit $
 // $Authors: Johannes Junker $
 // --------------------------------------------------------------------------
 
@@ -56,9 +56,9 @@ namespace OpenMS
 
   public:
     /// Constructor
-    TOPPASLogWindow(QWidget * parent = 0);
+    TOPPASLogWindow(QWidget * parent = nullptr);
     /// Destructor
-    ~TOPPASLogWindow();
+    ~TOPPASLogWindow() override;
 
     /// read max_length
     int maxLength() const;
@@ -68,7 +68,7 @@ namespace OpenMS
   protected:
     ///@name Reimplemented Qt events
     //@{
-    void contextMenuEvent(QContextMenuEvent * e);
+    void contextMenuEvent(QContextMenuEvent * e) override;
     //@}
 
     /// Members:

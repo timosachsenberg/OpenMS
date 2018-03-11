@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Clemens Groepl, Andreas Bertsch $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Chris Bauer $
 // --------------------------------------------------------------------------
 
@@ -66,28 +66,28 @@ public:
     /**
     @brief destructor
     */
-    virtual ~FastaIterator();
+    ~FastaIterator() override;
 
     /**
     @brief * operator for getting the iterator's value
     @return FASTAEntry
     @throw InvalidIterator if iterator was not initialized
     */
-    virtual FASTAEntry operator*();
+    FASTAEntry operator*() override;
 
     /**
     @brief pre-increment Operator for the iterator
     @return reference to PepIterator
     @throw Exception::InvalidIterator if iterator was not initialized
     */
-    virtual PepIterator & operator++();
+    PepIterator & operator++() override;
 
     /**
     @brief post-increment Operator for the iterator
     @return pointer to PepIterator
     @throw Exception::InvalidIterator if iterator was not initialized
     */
-    virtual PepIterator * operator++(int i);
+    PepIterator * operator++(int i) override;
 
     /**
     @brief setter for FASTAfile
@@ -95,22 +95,22 @@ public:
     @throw Exception::FileNotFound
     @throw ParseError is thrown if the file could not be parsed
     */
-    virtual void setFastaFile(const String & f);
+    void setFastaFile(const String & f) override;
 
     /**
     @brief getter for FASTA file
     @return String with file location
     */
-    virtual String getFastaFile();
+    String getFastaFile() override;
 
     /**
     @brief setter for spectrum
     @note note available for FastaIterator
     @throw Exception::NotImplemented
     */
-    virtual void setSpectrum(const std::vector<double> &)
+    void setSpectrum(const std::vector<double> &) override
     {
-      throw Exception::NotImplemented(__FILE__, __LINE__, __PRETTY_FUNCTION__);
+      throw Exception::NotImplemented(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION);
     }
 
     /**
@@ -118,9 +118,9 @@ public:
     @note note available for FastaIterator
     @throw Exception::NotImplemented
     */
-    virtual const std::vector<double> & getSpectrum()
+    const std::vector<double> & getSpectrum() override
     {
-      throw Exception::NotImplemented(__FILE__, __LINE__, __PRETTY_FUNCTION__);
+      throw Exception::NotImplemented(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION);
     }
 
     /**
@@ -128,9 +128,9 @@ public:
     @note note available for FastaIterator
     @throw Exception::NotImplemented
     */
-    virtual void setTolerance(double /* t */)
+    void setTolerance(double /* t */) override
     {
-      throw Exception::NotImplemented(__FILE__, __LINE__, __PRETTY_FUNCTION__);
+      throw Exception::NotImplemented(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION);
     }
 
     /**
@@ -139,9 +139,9 @@ public:
     @return tolerance
     @throw Exception::NotImplemented
     */
-    virtual double getTolerance()
+    double getTolerance() override
     {
-      throw Exception::NotImplemented(__FILE__, __LINE__, __PRETTY_FUNCTION__);
+      throw Exception::NotImplemented(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION);
     }
 
     /**
@@ -149,13 +149,13 @@ public:
     @return true if everything went right
     @throw Exception::InvalidIterator if fastaFile was not set
     */
-    virtual bool begin();
+    bool begin() override;
 
     /**
     @brief indicates whether iterator is at end
     @return bool true if iterator is at end
     */
-    virtual bool isAtEnd();
+    bool isAtEnd() override;
 
     /**
     @brief needed by Factory

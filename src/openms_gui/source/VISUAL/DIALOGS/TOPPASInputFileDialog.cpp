@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Johannes Junker $
+// $Maintainer: Johannes Veit $
 // $Authors: Johannes Junker $
 // --------------------------------------------------------------------------
 
@@ -81,7 +81,7 @@ namespace OpenMS
     // are searched in other paths via OpenMS.ini:id_db_dir
     if (!fileNameValid(line_edit->text()))
     {
-      QMessageBox::warning(0, "Invalid file name", "Warning: filename does not exist!");
+      QMessageBox::warning(nullptr, "Invalid file name", "Warning: filename does not exist!");
     }
 
     accept();

@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Johannes Junker $
+// $Maintainer: Johannes Veit $
 // $Authors: Johannes Junker, Chris Bielow $
 // --------------------------------------------------------------------------
 
@@ -60,6 +60,7 @@
 #include <QtCore/QFile>
 #include <QtCore/QMap>
 #include <QtCore/QSet>
+#include <QtCore/QSettings>
 #include <QtCore/QUrl>
 #include <QtGui/QApplication>
 #include <QtGui/QCheckBox>
@@ -107,7 +108,7 @@ namespace OpenMS
   TOPPASBase::TOPPASBase(QWidget* parent) :
     QMainWindow(parent),
     DefaultParamHandler("TOPPASBase"),
-    clipboard_scene_(0)
+    clipboard_scene_(nullptr)
   {
 #if  defined(__APPLE__)
     // we do not want to load plugins as this leads to serious problems
@@ -220,6 +221,7 @@ namespace OpenMS
     //################## Dock widgets #################
     //TOPP tools window
     QDockWidget* topp_tools_bar = new QDockWidget("TOPP", this);
+    topp_tools_bar->setObjectName("TOPP_tools_bar");
     addDockWidget(Qt::LeftDockWidgetArea, topp_tools_bar);
     tools_tree_view_ = createTOPPToolsTreeWidget(topp_tools_bar);
     topp_tools_bar->setWidget(tools_tree_view_);
@@ -228,6 +230,7 @@ namespace OpenMS
 
     //log window
     QDockWidget* log_bar = new QDockWidget("Log", this);
+    log_bar->setObjectName("log_bar");
     addDockWidget(Qt::BottomDockWidgetArea, log_bar);
     log_ = new TOPPASLogWindow(log_bar);
     log_->setReadOnly(true);
@@ -239,6 +242,7 @@ namespace OpenMS
 
     //workflow description window
     QDockWidget* description_bar = new QDockWidget("Workflow Description", this);
+    description_bar->setObjectName("workflow_description_bar");
     addDockWidget(Qt::RightDockWidgetArea, description_bar);
     desc_ = new QTextEdit(description_bar);
     desc_->setTextColor(Qt::black);
@@ -254,7 +258,7 @@ namespace OpenMS
     current_path_ = param_.getValue("preferences:default_path");
 
     // set & create temporary path -- make sure its a new subdirectory, as it will be deleted later
-    QString new_tmp_dir = File::getUniqueName().toQString();
+    QString new_tmp_dir = File::getUniqueName(false).toQString();
     QDir qd(File::getTempDirectory().toQString());
     qd.mkdir(new_tmp_dir);
     qd.cd(new_tmp_dir);
@@ -271,6 +275,10 @@ namespace OpenMS
 
     // update the menu
     updateMenu(); 
+
+    QSettings settings("OpenMS", "TOPPAS");
+    restoreGeometry(settings.value("geometry").toByteArray());
+    restoreState(settings.value("windowState").toByteArray());
   }
 
 
@@ -427,19 +435,19 @@ namespace OpenMS
     header_labels.append(QString("TOPP tools"));
     tools_tree_view->setHeaderLabels(header_labels);
 
-    QTreeWidgetItem* item = new QTreeWidgetItem((QTreeWidget*)0);
+    QTreeWidgetItem* item = new QTreeWidgetItem((QTreeWidget*)nullptr);
     item->setText(0, "<Input files>");
     tools_tree_view->addTopLevelItem(item);
-    item = new QTreeWidgetItem((QTreeWidget*)0);
+    item = new QTreeWidgetItem((QTreeWidget*)nullptr);
     item->setText(0, "<Output files>");
     tools_tree_view->addTopLevelItem(item);
-    item = new QTreeWidgetItem((QTreeWidget*)0);
+    item = new QTreeWidgetItem((QTreeWidget*)nullptr);
     item->setText(0, "<Merger>");
     tools_tree_view->addTopLevelItem(item);
-    item = new QTreeWidgetItem((QTreeWidget*)0);
+    item = new QTreeWidgetItem((QTreeWidget*)nullptr);
     item->setText(0, "<Collector>");
     tools_tree_view->addTopLevelItem(item);
-    item = new QTreeWidgetItem((QTreeWidget*)0);
+    item = new QTreeWidgetItem((QTreeWidget*)nullptr);
     item->setText(0, "<Splitter>");
     tools_tree_view->addTopLevelItem(item);
 
@@ -472,7 +480,7 @@ namespace OpenMS
 
     foreach(const QString &category, category_list)
     {
-      item = new QTreeWidgetItem((QTreeWidget*)0);
+      item = new QTreeWidgetItem((QTreeWidget*)nullptr);
       item->setText(0, category);
       tools_tree_view->addTopLevelItem(item);
       category_map[category] = item;
@@ -539,7 +547,7 @@ namespace OpenMS
       return;
     }
 
-    TOPPASScene* scene = 0;
+    TOPPASScene* scene = nullptr;
     if (in_new_window)
     {
       if (activeWindow_())
@@ -557,7 +565,7 @@ namespace OpenMS
     {
       if (!activeWindow_()) return;
 
-      TOPPASScene* tmp_scene = new TOPPASScene(0, this->tmp_path_.toQString(), false);
+      TOPPASScene* tmp_scene = new TOPPASScene(nullptr, this->tmp_path_.toQString(), false);
       tmp_scene->load(file_name);
       scene = activeWindow_()->getScene();
       scene->include(tmp_scene);
@@ -604,7 +612,7 @@ namespace OpenMS
 
   void TOPPASBase::savePipeline()
   {
-    TOPPASWidget* w = 0;
+    TOPPASWidget* w = nullptr;
     QObject* sendr = QObject::sender();
     QAction* save_button_clicked = qobject_cast<QAction*>(sendr);
 
@@ -683,7 +691,7 @@ namespace OpenMS
       }
       if (!w->getScene()->store(file_name))
       {
-        QMessageBox::warning(NULL, tr("Error"),
+        QMessageBox::warning(nullptr, tr("Error"),
                              tr("Unable to save current pipeline. Possible reason: Invalid edges due to parameter refresh."));
       }
       QString caption = File::basename(file_name).toQString();
@@ -898,8 +906,10 @@ namespace OpenMS
     }
     if (close)
     {
-      //ws_->closeAllWindows();
       event->accept();
+      QSettings settings("OpenMS", "TOPPAS");
+      settings.setValue("geometry", saveGeometry());
+      settings.setValue("windowState", saveState());
     }
     else
     {
@@ -926,13 +936,13 @@ namespace OpenMS
         return window;
       }
     }
-    return 0;
+    return nullptr;
   }
 
   TOPPASWidget* TOPPASBase::activeWindow_() const
   {
     if (!ws_->activeWindow())
-      return 0;
+      return nullptr;
 
     return qobject_cast<TOPPASWidget*>(ws_->activeWindow());
   }
@@ -1130,7 +1140,7 @@ namespace OpenMS
   void TOPPASBase::updateMenu()
   {
     TOPPASWidget* tw = activeWindow_();
-    TOPPASScene* ts = 0;
+    TOPPASScene* ts = nullptr;
     if (tw)
     {
       ts = tw->getScene();
@@ -1267,7 +1277,7 @@ namespace OpenMS
     TOPPASScene* scene = activeWindow_()->getScene();
     QTreeWidgetItem* current_tool = item ? item : tools_tree_view_->currentItem();
     String tool_name = String(current_tool->text(0));
-    TOPPASVertex* tv = 0;
+    TOPPASVertex* tv = nullptr;
 
     if (tool_name == "<Input files>")
     {
@@ -1302,7 +1312,7 @@ namespace OpenMS
         return;
       }
       String tool_type;
-      if (current_tool->parent() != 0 && current_tool->parent()->parent() != 0)
+      if (current_tool->parent() != nullptr && current_tool->parent()->parent() != nullptr)
       {
         // selected item is a type
         tool_type = String(current_tool->text(0));
@@ -1474,10 +1484,10 @@ namespace OpenMS
 
   void TOPPASBase::saveToClipboard(TOPPASScene* scene)
   {
-    if (clipboard_scene_ != 0)
+    if (clipboard_scene_ != nullptr)
     {
       delete clipboard_scene_;
-      clipboard_scene_ = 0;
+      clipboard_scene_ = nullptr;
     }
     clipboard_scene_ = scene;
   }
@@ -1485,7 +1495,7 @@ namespace OpenMS
   void TOPPASBase::sendClipboardContent()
   {
     TOPPASScene* sndr = qobject_cast<TOPPASScene*>(QObject::sender());
-    if (sndr != 0)
+    if (sndr != nullptr)
     {
       sndr->setClipboard(clipboard_scene_);
     }
@@ -1505,7 +1515,7 @@ namespace OpenMS
   // static
   QString TOPPASBase::refreshPipelineParameters(TOPPASWidget* tw, QString current_path)
   {
-    TOPPASScene* ts = 0;
+    TOPPASScene* ts = nullptr;
     if (tw)
     {
       ts = tw->getScene();

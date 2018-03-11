@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -32,21 +32,23 @@
 // $Authors: Chris Bielow $
 // --------------------------------------------------------------------------
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 #include <OpenMS/CONCEPT/Exception.h>
-#include <OpenMS/CONCEPT/LogStream.h>
-#include <OpenMS/VISUAL/APPLICATIONS/MISC/QApplicationTOPP.h>
-
-#include <OpenMS/CONCEPT/ProgressLogger.h>
-#include <OpenMS/VISUAL/GUIProgressLoggerImpl.h>
 #include <OpenMS/CONCEPT/Factory.h>
+#include <OpenMS/CONCEPT/LogStream.h>
+#include <OpenMS/SYSTEM/File.h>
+#include <OpenMS/VISUAL/APPLICATIONS/MISC/QApplicationTOPP.h>
+#include <OpenMS/VISUAL/GUIProgressLoggerImpl.h>
 
 //Qt
 #include <QtGui/QApplication>
+#include <QtGui/QStyleFactory>
 #include <QMessageBox>
+#include <QFile>
 #include <QFileOpenEvent>
+
 
 namespace OpenMS
 {
@@ -56,6 +58,28 @@ namespace OpenMS
   {
     // register GUI ProgressLogger that can be used in GUI tools
     Factory<ProgressLogger::ProgressLoggerImpl>::registerProduct(GUIProgressLoggerImpl::getProductName(), &GUIProgressLoggerImpl::create);
+
+    // set plastique style unless windows / mac style is available
+    if (QStyleFactory::keys().contains("windowsxp", Qt::CaseInsensitive))
+    {
+      this->setStyle("windowsxp");
+    }
+    else if (QStyleFactory::keys().contains("macintosh", Qt::CaseInsensitive))
+    {
+      this->setStyle("macintosh");
+    }
+    else if (QStyleFactory::keys().contains("plastique", Qt::CaseInsensitive))
+    {
+      this->setStyle("plastique");
+    }
+
+    // customize look and feel via Qt style sheets
+    String filename = File::find("GUISTYLE/qtStyleSheet.qss");
+    QFile fh(filename.toQString());
+    fh.open(QFile::ReadOnly);
+    QString style_string = QLatin1String(fh.readAll());
+    //std::cerr << "Stylesheet content: " << style_string.toStdString() << "\n\n\n";
+    this->setStyleSheet(style_string);
   }
 
   QApplicationTOPP::~QApplicationTOPP()
@@ -78,7 +102,7 @@ namespace OpenMS
     {
       String msg = String("Caught exception: '") + e.getName() + "' with message '" + e.getMessage() + "'";
       LOG_ERROR << msg << "\n";
-      QMessageBox::warning(0, QString("Unexpected error occurred"), msg.toQString());
+      QMessageBox::warning(nullptr, QString("Unexpected error occurred"), msg.toQString());
       return false;
       // we could also exit() here... but no for now
     }

@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 def parse_pxd_file(path):
     import pdb
@@ -52,7 +53,7 @@ def parse_pxd_file(path):
     lines = open(path).readlines()
 
     def cimport(b, _, __):
-        print "cimport", b.module_name, "as", b.as_name
+        print ("cimport", b.module_name, "as", b.as_name)
 
     handlers = { CEnumDefNode : "",
                  CppClassNode : "",
@@ -83,10 +84,15 @@ def parse_pxd_file(path):
     return result
 
 
-def create_pxd_file_map(bin_path):
-    # Finds all .pxd files given an OpenMS source (header) file
+def create_pxd_file_map(src_path):
+    # Searches through all pxd files and matches them to the corresponding
+    # OpenMS headers. Note that each header can be mapped to multiple pxd
+    # files:
+    #
+    # pxd_file_matching[ HeaderName ] = set( [PXDFile, PXDFile, ...] )
+    #
     import glob, os, re
-    pxd_path = os.path.join(bin_path, "src/pyOpenMS/pxds/")
+    pxd_path = os.path.join(src_path, "src/pyOpenMS/pxds/")
     pxds = glob.glob(pxd_path + "/*.pxd")
     pxd_file_matching = {}
     for pfile in pxds:

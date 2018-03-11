@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Alexandra Zerck $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: $
 // --------------------------------------------------------------------------
 //
@@ -59,7 +59,7 @@ namespace OpenMS
 public:
     PrecursorIonSelectionPreprocessing();
     PrecursorIonSelectionPreprocessing(const PrecursorIonSelectionPreprocessing & source);
-    ~PrecursorIonSelectionPreprocessing();
+    ~PrecursorIonSelectionPreprocessing() override;
 
     PrecursorIonSelectionPreprocessing & operator=(const PrecursorIonSelectionPreprocessing & source);
 
@@ -146,7 +146,7 @@ protected:
     Int getScanNumber_(double rt);
     double getRTProbability_(double min_obs_rt, double max_obs_rt, double pred_rt);
     /// update members method from DefaultParamHandler to update the members
-    void updateMembers_();
+    void updateMembers_() override;
 
     /// all tryptic masses of the distinct peptides in the database
     std::vector<double> masses_;

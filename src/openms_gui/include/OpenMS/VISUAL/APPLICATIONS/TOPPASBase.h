@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Johannes Junker $
+// $Maintainer: Johannes Veit $
 // $Authors: Johannes Junker, Chris Bielow $
 // --------------------------------------------------------------------------
 
@@ -84,9 +84,9 @@ namespace OpenMS
 public:
 
     ///Constructor
-    TOPPASBase(QWidget* parent = 0);
+    TOPPASBase(QWidget* parent = nullptr);
     ///Destructor
-    virtual ~TOPPASBase();
+    ~TOPPASBase() override;
 
     /**
 @brief Loads the preferences from the filename given.
@@ -189,7 +189,7 @@ protected slots:
     /// Shows the widget as window in the workspace (the special_id is only used for the first untitled widget (to be able to auto-close it later)
     void showAsWindow_(TOPPASWidget* sw, const String& caption, const int special_id = -1);
     /// Inserts a new TOPP tool in the current window at (x,y)
-    void insertNewVertex_(double x, double y, QTreeWidgetItem* item = 0);
+    void insertNewVertex_(double x, double y, QTreeWidgetItem* item = nullptr);
     /// Inserts the @p item in the middle of the current window
     void insertNewVertexInCenter_(QTreeWidgetItem* item);
 
@@ -263,8 +263,8 @@ protected:
 
     ///@name reimplemented Qt events
     //@{
-    void closeEvent(QCloseEvent* event);
-    void keyPressEvent(QKeyEvent* e);
+    void closeEvent(QCloseEvent* event) override;
+    void keyPressEvent(QKeyEvent* e) override;
     //@}
 
     ///Log message states
@@ -288,7 +288,7 @@ public:
     /// @name common functions used in TOPPAS and TOPPView
     //@{
     /// Creates and fills a tree widget with all available tools
-    static TOPPASTreeView* createTOPPToolsTreeWidget(QWidget* parent_widget = 0);
+    static TOPPASTreeView* createTOPPToolsTreeWidget(QWidget* parent_widget = nullptr);
 
     /// Saves the workflow in the provided TOPPASWidget to a user defined location.
     /// Returns the full file name or "" if no valid one is selected.

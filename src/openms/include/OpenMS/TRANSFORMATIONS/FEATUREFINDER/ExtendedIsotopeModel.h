@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Clemens Groepl $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: $
 // --------------------------------------------------------------------------
 
@@ -70,7 +70,7 @@ public:
     ExtendedIsotopeModel(const ExtendedIsotopeModel & source);
 
     /// destructor
-    virtual ~ExtendedIsotopeModel();
+    ~ExtendedIsotopeModel() override;
 
     /// assignment operator
     virtual ExtendedIsotopeModel & operator=(const ExtendedIsotopeModel & source);
@@ -96,16 +96,16 @@ public:
         standard deviations) but can get significant otherwise. In that case use setParameters()
         which enforces a recomputation of the model.
     */
-    void setOffset(CoordinateType offset);
+    void setOffset(CoordinateType offset) override;
 
     CoordinateType getOffset();
 
     /// set sample/supporting points of interpolation
-    void setSamples();
+    void setSamples() override;
 
     /** @brief get the monoisotopic mass of the Isotope model
     */
-    CoordinateType getCenter() const;
+    CoordinateType getCenter() const override;
 
 protected:
     CoordinateType isotope_stdev_;
@@ -116,7 +116,7 @@ protected:
     double trim_right_cutoff_;
     double isotope_distance_;
 
-    void updateMembers_();
+    void updateMembers_() override;
   };
 }
 

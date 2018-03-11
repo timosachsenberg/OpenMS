@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Erhan Kenar $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Vipul Patel $
 // --------------------------------------------------------------------------
 //
@@ -82,7 +82,7 @@ public:
     /// copy constructor
     SteinScottImproveScore(const SteinScottImproveScore & source);
     /// destructor
-    virtual ~SteinScottImproveScore();
+    ~SteinScottImproveScore() override;
     /// assignment operator
     SteinScottImproveScore & operator=(const SteinScottImproveScore & source);
     /**
@@ -90,13 +90,13 @@ public:
 
         This function return the similarity score of two Spectra based on SteinScott.
     */
-    double operator()(const PeakSpectrum & spec1, const PeakSpectrum & spec2) const;
+    double operator()(const PeakSpectrum & spec1, const PeakSpectrum & spec2) const override;
     /**
         @brief Similarity pairwise score itself
 
         This function return the similarity score of itself based on SteinScott.
     */
-    double operator()(const PeakSpectrum & spec) const;
+    double operator()(const PeakSpectrum & spec) const override;
     static PeakSpectrumCompareFunctor * create()
     {
       return new SteinScottImproveScore();

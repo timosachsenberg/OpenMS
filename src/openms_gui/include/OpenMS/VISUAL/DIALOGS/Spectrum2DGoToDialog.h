@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -59,9 +59,9 @@ namespace OpenMS
 
 public:
     ///Constructor
-    Spectrum2DGoToDialog(QWidget * parent = 0);
+    Spectrum2DGoToDialog(QWidget * parent = nullptr);
     ///Destructor
-    ~Spectrum2DGoToDialog();
+    ~Spectrum2DGoToDialog() override;
 
     /// Returns if a range should be display (true) or if a feature should be displayed (false)
     bool showRange() const;

@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,13 +28,14 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Erhan Kenar $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Erhan Kenar, Holger Franken $
 // --------------------------------------------------------------------------
 
 #ifndef OPENMS_FILTERING_DATAREDUCTION_MASSTRACEDETECTION_H
 #define OPENMS_FILTERING_DATAREDUCTION_MASSTRACEDETECTION_H
 
+#include <OpenMS/KERNEL/StandardTypes.h>
 #include <OpenMS/KERNEL/MassTrace.h>
 #include <OpenMS/KERNEL/MSExperiment.h>
 #include <OpenMS/DATASTRUCTURES/DefaultParamHandler.h>
@@ -78,7 +79,7 @@ public:
     MassTraceDetection();
 
     /// Default destructor
-    virtual ~MassTraceDetection();
+    ~MassTraceDetection() override;
 
     /** @name Helper methods
     */
@@ -90,23 +91,24 @@ public:
     */
 
     /// Main method of MassTraceDetection. Extracts mass traces of a @ref MSExperiment and gathers them into a vector container.
-    void run(const MSExperiment<Peak1D> &, std::vector<MassTrace> &);
+    void run(const PeakMap &, std::vector<MassTrace> &);
 
     /// Invokes the run method (see above) on merely a subregion of a @ref MSExperiment map.
-    void run(MSExperiment<Peak1D>::ConstAreaIterator & begin, MSExperiment<Peak1D>::ConstAreaIterator & end, std::vector<MassTrace> & found_masstraces);
+    void run(PeakMap::ConstAreaIterator & begin, PeakMap::ConstAreaIterator & end, std::vector<MassTrace> & found_masstraces);
 
     /** @name Private methods and members 
     */
 protected:
-    virtual void updateMembers_();
+    void updateMembers_() override;
 
 private:
 
     typedef std::multimap<double, std::pair<Size, Size> > MapIdxSortedByInt;
 
     /// The internal run method
-    void run_(const MapIdxSortedByInt& chrom_apices, Size peak_count, 
-              const MSExperiment<Peak1D> & work_exp,
+    void run_(const MapIdxSortedByInt& chrom_apices,
+              const Size peak_count, 
+              const PeakMap & work_exp,
               const std::vector<Size>& spec_offsets,
               std::vector<MassTrace> & found_masstraces);
 
@@ -114,6 +116,7 @@ private:
     double mass_error_ppm_;
     double noise_threshold_int_;
     double chrom_peak_snr_;
+    MassTrace::MT_QUANTMETHOD quant_method_;
 
     String trace_termination_criterion_;
     Size trace_termination_outliers_;

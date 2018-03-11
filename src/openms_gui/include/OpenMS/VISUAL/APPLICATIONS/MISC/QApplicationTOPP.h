@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -59,7 +59,7 @@ public:
     QApplicationTOPP(int& argc, char** argv);
 
     /// Destructor
-    virtual ~QApplicationTOPP();
+    ~QApplicationTOPP() override;
 
     /*
       @brief: Catch exceptions in Qt GUI applications, preventing ungraceful exit
@@ -67,12 +67,12 @@ public:
       Re-implementing QApplication::notify() to catch exception thrown in event
       handlers (which is most likely OpenMS code).
     */
-    virtual bool notify(QObject* rec, QEvent* ev);
+    bool notify(QObject* rec, QEvent* ev) override;
 
     /*
       Reimplemented from QApplication, to handle QEvent::FileOpen to enable handling of odoc event on MacOSX
     */
-    bool event(QEvent*);
+    bool event(QEvent*) override;
 
 signals:
     void fileOpen(QString file);

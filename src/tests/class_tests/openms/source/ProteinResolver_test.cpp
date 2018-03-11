@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry               
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 // 
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 // --------------------------------------------------------------------------
-// $Maintainer: David Wojnar$
+// $Maintainer: Timo Sachsenberg$
 // $Authors: David Wojnar$
 // --------------------------------------------------------------------------
 
@@ -47,8 +47,8 @@ START_TEST(ProteinResolver, "$Id$")
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
 
-ProteinResolver* ptr = 0;
-ProteinResolver* null_ptr = 0;
+ProteinResolver* ptr = nullptr;
+ProteinResolver* null_ptr = nullptr;
 START_SECTION(ProteinResolver())
 {
   ptr = new ProteinResolver();

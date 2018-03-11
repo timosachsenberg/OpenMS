@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -48,7 +48,6 @@
 */
 
 //QT
-#include <QtGui/QStyleFactory>
 #include <QtGui/QSplashScreen>
 #include <QMessageBox>
 
@@ -83,10 +82,11 @@ public:
     TOPPBase("TOPPView", "A viewer for mass spectrometry data.", false)
   {
   }
+
 protected:
   void registerOptionsAndFlags_()
   {
-    registerInputFileList_("in", "<file>", StringList(), "input file");
+    registerInputFileList_("in", "<file>", StringList(), "input file", false, false);
     setValidFormats_("in", ListUtils::create<String>("mzML,featureXML,idXML,consensusXML"));
   }
 
@@ -96,20 +96,6 @@ protected:
     {
       QApplicationTOPP a(argc, const_cast<char**>(argv));
       a.connect(&a, SIGNAL(lastWindowClosed()), &a, SLOT(quit()));
-
-      //set plastique style unless windows / mac style is available
-      if (QStyleFactory::keys().contains("windowsxp", Qt::CaseInsensitive))
-      {
-        a.setStyle("windowsxp");
-      }
-      else if (QStyleFactory::keys().contains("macintosh", Qt::CaseInsensitive))
-      {
-        a.setStyle("macintosh");
-      }
-      else if (QStyleFactory::keys().contains("plastique", Qt::CaseInsensitive))
-      {
-        a.setStyle("plastique");
-      }
 
       TOPPViewBase* mw = new TOPPViewBase();
       a.connect(&a, SIGNAL(fileOpen(QString)), mw, SLOT(loadFile(QString)));
@@ -131,10 +117,8 @@ protected:
       }
 
       // We are about to show the application.
-      // Proper time to  remove the splashscreen, if at least 1.5 seconds have passed...
-      while (stop_watch.getClockTime() < 1.5) /*wait*/
-      {
-      }
+      // Proper time to  remove the splashscreen, if at least 1 second has passed...
+      while (stop_watch.getClockTime() < 1.0) {}
       stop_watch.stop();
       splash_screen->close();
       delete splash_screen;
@@ -181,6 +165,7 @@ protected:
 
     return UNKNOWN_ERROR;
   }
+
 };
 
 int main(int argc, const char** argv)
@@ -198,9 +183,21 @@ int main(int argc, const char** argv)
   valid_options["-write_wsdl"] = "write_wsdl";
   param.parseCommandLine(argc, argv, valid_options, valid_flags, option_lists);
 
-  // check if tool was called without parameter names (e.g. from explorer, file manager)
-  if (argc > 1 && !param.exists("in") && !param.exists("write_ctd") && !param.exists("ini") 
-    && !param.exists("help") && !param.exists("helphelp") && !param.exists("write_ini") && !param.exists("write_wsdl"))
+  if (argc == 1)  // no parameters at all
+  {
+    TOPPView tool;
+    return static_cast<int>(tool.main(argc, argv, true));  // true: ignore empty argument list
+  }
+
+  // check for some odd mac parameter
+  if (argc > 1 
+   && !param.exists("in") 
+   && !param.exists("write_ctd") 
+   && !param.exists("ini") 
+   && !param.exists("help") 
+   && !param.exists("helphelp") 
+   && !param.exists("write_ini") 
+   && !param.exists("write_wsdl"))
   {
     // test if unknown options were given
     if (param.exists("unknown"))
@@ -208,29 +205,41 @@ int main(int argc, const char** argv)
       // if TOPPView is packed as Mac OS X bundle it will get a -psn_.. parameter by default from the OS
       // if this is the only unknown option it will be ignored .. maybe this should be solved directly
       // in Param.h
-      if (!(param.getValue("unknown").toString().hasSubstring("-psn") && !param.getValue("unknown").toString().hasSubstring(", ")))
+      if (!(param.getValue("unknown").toString().hasSubstring("-psn") 
+       && !param.getValue("unknown").toString().hasSubstring(", ")))
       {
-        cout << "Unknown option(s) '" << param.getValue("unknown").toString() << "' given. Aborting!" << endl;
+        cout << "Unknown option(s) '" 
+             << param.getValue("unknown").toString() 
+             << "' given. Aborting!" << endl;
         return 1;
       }
     }
 
-    // now try to make plain command line string compatible with TOPP tool cmd line options
+    // make plain command line string compatible with TOPP tool cmd line options
     // prepend -in to command line arguments
     int newc = argc + 1;
     char **newv = (char **)calloc((newc + 1), sizeof(*newv)); // newc + 1 for terminating 0
     memmove(newv + 2, argv + 1, sizeof(*newv) * (argc - 1)); // copy all arguments except the filename to newv[2..newc]
     memmove(newv, argv, sizeof(*newv)); // copy filename (first argument)
-    char* in_string = "-in";
+    const char* in_string = "-in";
     newv[1] = in_string;
     newv[newc] = 0; // terminating 0
 
     TOPPView tool;
     return static_cast<int>(tool.main(newc, (const char **)newv));
   }
-  else
+
+  // if "-in" or "-ini" parameter is given call the tool with current command line
+  if (param.exists("in") 
+   || param.exists("ini") 
+   || param.exists("help") 
+   || param.exists("helphelp")
+   || param.exists("write_ini")
+   || param.exists("write_ctd"))
   {
     TOPPView tool;
-    return static_cast<int>(tool.main(argc, argv));
+    return static_cast<int>(tool.main(argc, (const char **)argv));  
   }
+
 }
+

@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -39,6 +39,9 @@
 
 #include <OpenMS/DATASTRUCTURES/DefaultParamHandler.h>
 
+#include <OpenMS/KERNEL/MSSpectrum.h>
+#include <OpenMS/KERNEL/MSExperiment.h>
+
 #include <vector>
 
 namespace OpenMS
@@ -62,7 +65,7 @@ public:
     /// default constructor
     Normalizer();
     /// destructor
-    virtual ~Normalizer();
+    ~Normalizer() override;
 
     /// assignment operator
     Normalizer & operator=(const Normalizer & source);
@@ -108,7 +111,7 @@ public:
       // method unknown
       else
       {
-        throw Exception::InvalidValue(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Method not known", method_);
+        throw Exception::InvalidValue(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Method not known", method_);
       }
 
       // normalize
@@ -126,7 +129,7 @@ public:
     ///
     void filterPeakMap(PeakMap & exp) const;
 
-    virtual void updateMembers_();
+    void updateMembers_() override;
 
     // @}
 

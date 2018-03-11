@@ -4,6 +4,7 @@ set(directory include/OpenMS/ANALYSIS/ID)
 ### list all header files of the directory here
 set(sources_list_h
 AccurateMassSearchEngine.h
+AhoCorasickAmbiguous.h
 AScore.h
 ConsensusIDAlgorithm.h
 ConsensusIDAlgorithmAverage.h
@@ -21,13 +22,10 @@ IDMapper.h
 IDRipper.h
 MetaboliteSpectralMatching.h
 PeptideProteinResolution.h
-PILISIdentification.h
-PILISModel.h
-PILISModelGenerator.h
-PILISNeutralLossModel.h
-PILISScoring.h
-PILISCrossValidation.h
 ProtonDistributionModel.h
+PeptideIndexing.h
+PercolatorFeatureSetHelper.h
+SiriusMSConverter.h
 )
 
 ### add path to the filenames

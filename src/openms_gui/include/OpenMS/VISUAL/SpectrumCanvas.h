@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -151,10 +151,10 @@ public:
     //@}
 
     /// Default constructor
-    SpectrumCanvas(const Param & preferences, QWidget * parent = 0);
+    SpectrumCanvas(const Param & preferences, QWidget * parent = nullptr);
 
     /// Destructor
-    virtual ~SpectrumCanvas();
+    ~SpectrumCanvas() override;
 
     /**
         @brief Sets the spectrum widget.
@@ -681,13 +681,13 @@ protected:
 
     ///@name reimplemented QT events
     //@{
-    void resizeEvent(QResizeEvent * e);
-    void wheelEvent(QWheelEvent * e);
-    void keyPressEvent(QKeyEvent * e);
-    void keyReleaseEvent(QKeyEvent * e);
-    void focusOutEvent(QFocusEvent * e);
-    void leaveEvent(QEvent * e);
-    void enterEvent(QEvent * e);
+    void resizeEvent(QResizeEvent * e) override;
+    void wheelEvent(QWheelEvent * e) override;
+    void keyPressEvent(QKeyEvent * e) override;
+    void keyReleaseEvent(QKeyEvent * e) override;
+    void focusOutEvent(QFocusEvent * e) override;
+    void leaveEvent(QEvent * e) override;
+    void enterEvent(QEvent * e) override;
     //@}
 
     ///This method is called whenever the intensity mode changes. Reimplement if you need to react on such changes.
@@ -883,7 +883,7 @@ protected:
 
         This method is reimplemented in the 3D view to update the OpenGL widget.
 
-        @param caller_name Name of the calling function (use __PRETTY_FUNCTION__).
+        @param caller_name Name of the calling function (use OPENMS_PRETTY_FUNCTION).
     */
     virtual void update_(const char * caller_name);
 
@@ -934,8 +934,7 @@ protected:
     PeakIndex measurement_start_;
 
     /// Data processing setter for peak maps
-    template <typename PeakType>
-    void addDataProcessing_(MSExperiment<PeakType> & map, DataProcessing::ProcessingAction action) const
+    void addDataProcessing_(PeakMap & map, DataProcessing::ProcessingAction action) const
     {
       std::set<DataProcessing::ProcessingAction> actions;
       actions.insert(action);

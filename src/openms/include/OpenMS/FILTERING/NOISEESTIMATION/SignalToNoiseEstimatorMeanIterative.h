@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -66,7 +66,7 @@ namespace OpenMS
 
     @ingroup SignalProcessing
   */
-  template <typename Container = MSSpectrum<> >
+  template <typename Container = MSSpectrum>
   class SignalToNoiseEstimatorMeanIterative :
     public SignalToNoiseEstimator<Container>
   {
@@ -157,7 +157,7 @@ public:
 
 
     /// Destructor
-    virtual ~SignalToNoiseEstimatorMeanIterative()
+    ~SignalToNoiseEstimatorMeanIterative() override
     {}
 
 
@@ -169,7 +169,7 @@ protected:
                   @param scan_last_ last element in the scan (disregarded)
                   @exception Throws Exception::InvalidValue
            */
-    virtual void computeSTN_(const PeakIterator & scan_first_, const PeakIterator & scan_last_)
+    void computeSTN_(const PeakIterator & scan_first_, const PeakIterator & scan_last_) override
     {
       // reset counter for sparse windows
       double sparse_window_percent = 0;
@@ -193,7 +193,7 @@ protected:
           String s = auto_max_percentile_;
           throw Exception::InvalidValue(__FILE__,
                                         __LINE__,
-                                        __PRETTY_FUNCTION__,
+                                        OPENMS_PRETTY_FUNCTION,
                                         "auto_mode is on AUTOMAXBYPERCENT! auto_max_percentile is not in [0,100]. Use setAutoMaxPercentile(<value>) to change it!",
                                         s);
         }
@@ -243,7 +243,7 @@ protected:
           String s = max_intensity_;
           throw Exception::InvalidValue(__FILE__,
                                         __LINE__,
-                                        __PRETTY_FUNCTION__,
+                                        OPENMS_PRETTY_FUNCTION,
                                         "auto_mode is on MANUAL! max_intensity is <=0. Needs to be positive! Use setMaxIntensity(<value>) or enable auto_mode!",
                                         s);
         }
@@ -402,7 +402,7 @@ protected:
     }   // end of shiftWindow_
 
     /// overridden function from DefaultParamHandler to keep members up to date, when a parameter is changed
-    void updateMembers_()
+    void updateMembers_() override
     {
       max_intensity_         = (double)param_.getValue("max_intensity");
       auto_max_stdev_Factor_ = (double)param_.getValue("auto_max_stdev_factor");

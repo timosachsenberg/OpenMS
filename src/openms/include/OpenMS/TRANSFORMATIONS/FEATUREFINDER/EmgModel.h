@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Clemens Groepl $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: $
 // --------------------------------------------------------------------------
 
@@ -63,7 +63,7 @@ public:
     EmgModel(const EmgModel & source);
 
     /// destructor
-    virtual ~EmgModel();
+    ~EmgModel() override;
 
     /// assignment operator
     virtual EmgModel & operator=(const EmgModel & source);
@@ -81,13 +81,13 @@ public:
     }
 
     /// set offset without being computing all over and without any discrepancy
-    void setOffset(CoordinateType offset);
+    void setOffset(CoordinateType offset) override;
 
     /// set sample/supporting points of interpolation
-    void setSamples();
+    void setSamples() override;
 
     /// get the center of the Gaussian model i.e. the position of the maximum
-    CoordinateType getCenter() const;
+    CoordinateType getCenter() const override;
 
 protected:
     CoordinateType  min_;
@@ -98,7 +98,7 @@ protected:
     CoordinateType symmetry_;
     CoordinateType retention_;
 
-    void updateMembers_();
+    void updateMembers_() override;
   };
 }
 

@@ -1,8 +1,8 @@
-//// --------------------------------------------------------------------------
+// --------------------------------------------------------------------------
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -36,8 +36,11 @@
 #define OPENMS_TRANSFORMATIONS_FEATUREFINDER_MULTIPLEXDELTAMASSES_H
 
 #include <OpenMS/KERNEL/StandardTypes.h>
+#include <OpenMS/DATASTRUCTURES/String.h>
+#include <OpenMS/CONCEPT/LogStream.h>
 
 #include <vector>
+#include <set>
 #include <algorithm>
 #include <iostream>
 
@@ -47,12 +50,16 @@ namespace OpenMS
    * @brief data structure for mass shift pattern
    * 
    * Groups of labelled peptides appear with characteristic mass shifts.
+   * 
    * For example, for an Arg6 labeled SILAC peptide pair we expect to see
    * mass shifts of 0 and 6 Da. Or as second example, for a 
    * peptide pair of a dimethyl labelled sample with a single lysine
    * we will see mass shifts of 56 Da and 64 Da.
    * 28 Da (N-term) + 28 Da (K) and 34 Da (N-term) + 34 Da (K)
    * for light and heavy partners respectively.
+   * 
+   * The data structure stores the mass shifts and corresponding labels
+   * for a group of matching peptide features. 
    */
   class OPENMS_DLLAPI MultiplexDeltaMasses
   {
@@ -100,6 +107,11 @@ namespace OpenMS
      */
     const std::vector<DeltaMass>& getDeltaMasses() const;
     
+    /**
+     * @brief converts a label set to a string
+     */
+    static String labelSetToString(const LabelSet& ls);
+    
     private:
    
     /**
@@ -114,4 +126,5 @@ namespace OpenMS
   
 }
 
-#endif /* MULTIPLEXDELTAMASSES_H */
+#endif // OPENMS_TRANSFORMATIONS_FEATUREFINDER_MULTIPLEXDELTAMASSES_H
+

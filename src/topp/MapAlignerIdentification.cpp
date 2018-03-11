@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -34,6 +34,7 @@
 
 #include <OpenMS/ANALYSIS/MAPMATCHING/MapAlignmentAlgorithmIdentification.h>
 #include <OpenMS/APPLICATIONS/MapAlignerBase.h>
+#include <OpenMS/METADATA/ExperimentalDesign.h>
 
 using namespace OpenMS;
 using namespace std;
@@ -80,10 +81,11 @@ using namespace std;
     @see @ref TOPP_MapAlignerPoseClustering @ref TOPP_MapAlignerSpectrum @ref TOPP_MapRTTransformer
 
 		Note that alignment is based on the sequence including modifications, thus an exact match is required. I.e., a peptide with oxidised methionine will not be matched to its unmodified version. This behavior is generally desired since (some) modifications can cause retention time shifts.
-		
+
     Since %OpenMS 1.8, the extraction of data for the alignment has been separate from the modeling of RT transformations based on that data. It is now possible to use different models independently of the chosen algorithm. This algorithm has been tested mostly with the "b_spline" model. The different available models are:
     - @ref OpenMS::TransformationModelLinear "linear": Linear model.
     - @ref OpenMS::TransformationModelBSpline "b_spline": Smoothing spline (non-linear).
+    - @ref OpenMS::TransformationModelLowess "lowess": Local regression (non-linear).
     - @ref OpenMS::TransformationModelInterpolated "interpolated": Different types of interpolation.
 
     The following parameters control the modeling of RT transformations (they can be set in the "model" section of the INI file):
@@ -169,10 +171,16 @@ private:
         it->fitModel(model_type, model_params);
       }
     }
+  }
+
+  template <typename DataType>
+  void applyTransformations_(vector<DataType>& data,
+    const vector<TransformationDescription>& transformations)
+  {
     for (Size i = 0; i < data.size(); ++i)
     {
-      MapAlignmentTransformer::transformRetentionTimes(data[i], 
-                                                       transformations[i]);
+      MapAlignmentTransformer::transformRetentionTimes(data[i],
+        transformations[i]);
     }
   }
 
@@ -204,7 +212,7 @@ private:
       FileTypes::Type filetype = FileHandler::getType(reference_file);
       if (filetype == FileTypes::MZML)
       {
-        MSExperiment<> experiment;
+        PeakMap experiment;
         MzMLFile().load(reference_file, experiment);
         algorithm.setReference(experiment);
       }
@@ -232,16 +240,18 @@ private:
     return Int(reference_index) - 1; // internally, we count from zero
   }
 
-  void registerOptionsAndFlags_()
+  void registerOptionsAndFlags_() override
   {
     String formats = "featureXML,consensusXML,idXML";
     TOPPMapAlignerBase::registerOptionsAndFlags_(formats, REF_FLEXIBLE);
-
+    // TODO: potentially move to base class so every aligner has to support design
+    registerInputFile_("design", "<file>", "", "input file containing the experimental design", false);
+    setValidFormats_("design", ListUtils::create<String>("tsv"));
     registerSubsection_("algorithm", "Algorithm parameters section");
     registerSubsection_("model", "Options to control the modeling of retention time transformations from data");
   }
 
-  Param getSubsectionDefaults_(const String & section) const
+  Param getSubsectionDefaults_(const String & section) const override
   {
     if (section == "algorithm")
     {
@@ -256,7 +266,7 @@ private:
     return Param(); // this shouldn't happen
   }
 
-  ExitCodes main_(int, const char**)
+  ExitCodes main_(int, const char**) override
   {
     ExitCodes return_code = TOPPMapAlignerBase::checkParameters_();
     if (return_code != EXECUTION_OK) return return_code;
@@ -293,8 +303,71 @@ private:
       }
       loadInitialMaps_(feature_maps, input_files, fxml_file);
 
-      performAlignment_(algorithm, feature_maps, transformations,
-                        reference_index);
+      //-------------------------------------------------------------
+      // Extract (optional) fraction identifiers and associate with featureXMLs
+      //-------------------------------------------------------------
+      String design_file = getStringOption_("design");
+
+      // determine map of fractions to runs
+      map<unsigned, set<unsigned> > frac2run;
+
+      // TODO: check if can be put in common helper function
+      if (!design_file.empty())
+      {
+        // parse design file and determine fractions
+        ExperimentalDesign ed;
+        ExperimentalDesign().load(design_file, ed);
+
+        // determine if design defines more than one fraction (note: fraction and run IDs are one-based)
+        frac2run = ed.getFractionToRunsMapping();
+
+        // check if all fractions have the same number of MS runs associated
+        if (!ed.sameNrOfRunsPerFraction())
+        {
+          writeLog_("Error: Number of runs must match for every fraction!");
+          return ILLEGAL_PARAMETERS;
+        }
+      }
+      else // no design file given
+      {
+        for (Size i = 0; i != input_files.size(); ++i)
+        {
+          frac2run[1].insert(i + 1); // associate each run with fraction 1
+        }
+      }
+
+      // TODO: check and handle if featureXML order differs from run order
+
+      // perform fraction-based alignment
+      if (frac2run.size() == 1) // group one fraction
+      {
+        performAlignment_(algorithm, feature_maps, transformations,
+          reference_index);
+        applyTransformations_(feature_maps, transformations);
+      }
+      else // group multiple fractions
+      {
+        for (Size i = 1; i <= frac2run.size(); ++i)
+        {
+          vector<FeatureMap> fraction_maps;
+          vector<TransformationDescription> fraction_transformations;
+          for (set<unsigned>::const_iterator sit = frac2run[i].begin(); sit != frac2run[i].end(); ++sit)
+          {
+            fraction_maps.push_back(feature_maps[*sit - 1]); // TODO: *sit is currently the run identifier but we need to know the corresponding feature index in ins
+          }
+          performAlignment_(algorithm, fraction_maps, fraction_transformations,
+            reference_index);
+          applyTransformations_(fraction_maps, fraction_transformations);
+
+          // copy into transformations and feature maps
+          transformations.insert(transformations.end(), fraction_transformations.begin(), fraction_transformations.end());
+          Size f = 0;
+          for (set<unsigned>::const_iterator sit = frac2run[i].begin(); sit != frac2run[i].end(); ++sit, ++f)
+          {
+            feature_maps[*sit - 1].swap(fraction_maps[f]); // TODO: *sit is currently the run identifier but we need to know the corresponding feature index in ins
+          }
+        }
+      }
 
       if (!output_files.empty())
       {
@@ -313,6 +386,7 @@ private:
 
       performAlignment_(algorithm, consensus_maps, transformations,
                         reference_index);
+      applyTransformations_(consensus_maps, transformations);
 
       if (!output_files.empty())
       {
@@ -341,6 +415,7 @@ private:
 
       performAlignment_(algorithm, peptide_ids, transformations,
                         reference_index);
+      applyTransformations_(peptide_ids, transformations);
 
       if (!output_files.empty())
       {

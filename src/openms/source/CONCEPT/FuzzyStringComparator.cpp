@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,20 +28,16 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Stephan Aiche $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Clemens Groepl, Stephan Aiche $
 // --------------------------------------------------------------------------
 
 #include <OpenMS/CONCEPT/FuzzyStringComparator.h>
 #include <OpenMS/SYSTEM/File.h>
 #include <QDir>
-#include <sstream>
-#include <cstdlib> // for strtod()
-#include <cctype> // for isspace()
-#include <limits> // for NaN
 #include <fstream>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 namespace OpenMS
 {
@@ -228,7 +224,7 @@ namespace OpenMS
         << QDir::toNativeSeparators(File::absolutePath(input_2_name_).toQString()).toStdString() << ':' << line_num_2_ << ":" << prefix2.line_column << ":\n"
         << "\n"
         #ifdef WIN32
-        << "TortoiseMerge"
+        << "TortoiseGitMerge"
         << " /base:\"" << QDir::toNativeSeparators(File::absolutePath(input_1_name_).toQString()).toStdString() << "\""
         << " /mine:\"" << QDir::toNativeSeparators(File::absolutePath(input_2_name_).toQString()).toStdString() << "\""
         #else
@@ -567,7 +563,7 @@ namespace OpenMS
 
   void FuzzyStringComparator::readNextLine_(std::istream& input_stream, std::string& line_string, int& line_number) const
   {
-    for (line_string.clear(); ++line_number, std::getline(input_stream, line_string); )
+    for (line_string.clear(); static_cast<void>(++line_number), std::getline(input_stream, line_string); )
     {
       if (line_string.empty())
         continue; // shortcut

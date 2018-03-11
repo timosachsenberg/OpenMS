@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Johannes Junker $
+// $Maintainer: Johannes Veit $
 // $Authors: Johannes Junker $
 // --------------------------------------------------------------------------
 
@@ -63,9 +63,9 @@ namespace OpenMS
     Q_OBJECT
 public:
     /// Constructor
-    TOPPASTabBar(QWidget * parent = 0);
+    TOPPASTabBar(QWidget * parent = nullptr);
     /// Destructor
-    ~TOPPASTabBar();
+    ~TOPPASTabBar() override;
 
     /// Adds a new tab with the name @p text and the identifier @p id
     int addTab(const String & text, int id);
@@ -90,8 +90,8 @@ signals:
 protected:
     ///@name Reimplemented Qt events
     //@{
-    void mouseDoubleClickEvent(QMouseEvent * e);
-    void contextMenuEvent(QContextMenuEvent * e);
+    void mouseDoubleClickEvent(QMouseEvent * e) override;
+    void contextMenuEvent(QContextMenuEvent * e) override;
     //void dragEnterEvent(QDragEnterEvent* e);
     //void dropEvent(QDropEvent* e);
     //@}

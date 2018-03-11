@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -82,7 +82,7 @@ public:
     */
     ToolsDialog(QWidget * parent, String ini_file, String default_dir, LayerData::DataType layertype);
     ///Destructor
-    ~ToolsDialog();
+    ~ToolsDialog() override;
 
     /// to get the parameter name for output. Empty if no output was selected.
     String getOutput();

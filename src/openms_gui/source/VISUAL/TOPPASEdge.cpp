@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Johannes Junker $
+// $Maintainer: Johannes Veit $
 // $Authors: Johannes Junker, Chris Bielow $
 // --------------------------------------------------------------------------
 
@@ -54,8 +54,8 @@ namespace OpenMS
   TOPPASEdge::TOPPASEdge() :
     QObject(),
     QGraphicsItem(),
-    from_(0),
-    to_(0),
+    from_(nullptr),
+    to_(nullptr),
     hover_pos_(),
     color_(),
     source_out_param_(-1),
@@ -68,7 +68,7 @@ namespace OpenMS
     QObject(),
     QGraphicsItem(),
     from_(from),
-    to_(0),
+    to_(nullptr),
     hover_pos_(hover_pos),
     color_(),
     source_out_param_(-1),

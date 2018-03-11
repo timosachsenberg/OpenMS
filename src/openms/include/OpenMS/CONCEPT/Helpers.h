@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2013.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -62,11 +62,11 @@ namespace OpenMS
     {
        // We are not interested whether the pointers are equal but whether the
        // contents are equal
-      if (a == NULL && b == NULL)
+      if (a == nullptr && b == nullptr)
       {
         return true;
       }
-      else if (a == NULL || b == NULL)
+      else if (a == nullptr || b == nullptr)
       {
         return false; // one is null the other is not
       }

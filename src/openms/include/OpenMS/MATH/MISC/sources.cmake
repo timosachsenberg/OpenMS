@@ -11,7 +11,9 @@ MathFunctions.h
 NonNegativeLeastSquaresSolver.h
 MSNumpress.h
 RANSAC.h
-Spline2d.h
+RANSACModel.h
+RANSACModelLinear.h
+RANSACModelQuadratic.h
 )
 
 ### add path to the filenames

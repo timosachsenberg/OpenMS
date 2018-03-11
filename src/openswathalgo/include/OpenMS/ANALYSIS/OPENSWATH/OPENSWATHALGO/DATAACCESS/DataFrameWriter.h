@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Witold Wolski $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Witold Wolski $
 // --------------------------------------------------------------------------
 
@@ -63,9 +63,9 @@ public:
     DataMatrix();
 
     void store(const std::string& rowname,
-               const std::vector<double>& values);
+               const std::vector<double>& values) override;
 
-    void colnames(const std::vector<std::string>& colnames);
+    void colnames(const std::vector<std::string>& colnames) override;
 
   };
 
@@ -81,11 +81,11 @@ public:
     explicit CSVWriter(std::string filename);
 
     void store(const std::string& rowname,
-               const std::vector<double>& values);
+               const std::vector<double>& values) override;
 
-    virtual ~CSVWriter();
+    ~CSVWriter() override;
 
-    void colnames(const std::vector<std::string>& colnames);
+    void colnames(const std::vector<std::string>& colnames) override;
 
   };
 }

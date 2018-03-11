@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Stephan Aiche $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Stephan Aiche, Hendrik Weisser $
 // --------------------------------------------------------------------------
 
@@ -83,7 +83,7 @@ public:
     TransformationModelInterpolated(const DataPoints& data, const Param& params);
 
     /// Destructor
-    ~TransformationModelInterpolated();
+    ~TransformationModelInterpolated() override;
 
     /**
      * @brief Evaluate the interpolation model at the given value
@@ -92,7 +92,7 @@ public:
      *
      * @return The interpolated value.
      */
-    double evaluate(double value) const;
+    double evaluate(double value) const override;
 
     /// Gets the default parameters
     static void getDefaultParameters(Param& params);

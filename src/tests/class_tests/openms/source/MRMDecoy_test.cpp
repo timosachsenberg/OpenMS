@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -32,17 +32,19 @@
 // $Authors: George Rosenberger, Hannes Roest, Witold Wolski $
 // --------------------------------------------------------------------------
 
-#include <OpenMS/CONCEPT/ClassTest.h>
 #include <OpenMS/test_config.h>
-#include <OpenMS/FORMAT/TraMLFile.h>
-
-#include <boost/assign/std/vector.hpp>
-#include <boost/assign/list_of.hpp>
+#include <OpenMS/CONCEPT/ClassTest.h>
 
 ///////////////////////////
 #include <OpenMS/ANALYSIS/OPENSWATH/MRMDecoy.h>
-#include <OpenMS/CHEMISTRY/ModificationsDB.h>
 ///////////////////////////
+
+#include <OpenMS/FORMAT/TraMLFile.h>
+#include <OpenMS/FORMAT/TraMLFile.h>
+#include <OpenMS/CHEMISTRY/ModificationsDB.h>
+
+#include <boost/assign/std/vector.hpp>
+#include <boost/assign/list_of.hpp>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
@@ -50,13 +52,30 @@
 using namespace OpenMS;
 using namespace std;
 
+class MRMDecoyHelper : public MRMDecoy
+{
+public:
+  OpenMS::TargetedExperiment::Peptide pseudoreversePeptide_helper(
+    const OpenMS::TargetedExperiment::Peptide& peptide) const
+  {
+    return pseudoreversePeptide_(peptide);
+  }
+  OpenMS::TargetedExperiment::Peptide reversePeptide_helper(
+    const OpenMS::TargetedExperiment::Peptide& peptide) const
+  {
+    return reversePeptide_(peptide);
+  }
+  IndexType findFixedResidues_helper(const std::string& sequence) const {return findFixedResidues_(sequence);}
+  IndexType findFixedAndTermResidues_helper(const std::string& sequence) const {return findFixedAndTermResidues_(sequence);}
+};
+
 START_TEST(MRMDecoy, "$Id$")
 
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
 
-MRMDecoy * ptr = 0;
-MRMDecoy* nullPointer = 0;
+MRMDecoy * ptr = nullptr;
+MRMDecoy* nullPointer = nullptr;
 
 START_SECTION(MRMDecoy())
 {
@@ -72,46 +91,26 @@ START_SECTION(~MRMDecoy())
 
 END_SECTION
 
-START_SECTION((std::pair<String, double> getDecoyIon(String ionid, std::map<String, std::map<String, double> >&decoy_ionseries)))
+START_SECTION((std::vector<std::pair<std::string::size_type, std::string> > findFixedResidues(std::string sequence)))
 {
-  MRMDecoy gen;
+  MRMDecoyHelper gen;
 
-  OpenMS::TargetedExperiment::Peptide peptide;
-  peptide.sequence = "TESTPEPTIDE";
-
-  OpenMS::AASequence aas = TargetedExperimentHelper::getAASequence(peptide);
-
-  double ProductMZ = 371.66692;
-  double mz_threshold = 0.8;
-  int precursor_charge = 2;
-
-  MRMDecoy::IonSeries reference_ionseries = gen.getIonSeries(aas, precursor_charge);
-  std::pair<String, double> targetion = gen.getTargetIon(ProductMZ, mz_threshold, reference_ionseries, 1);
-  std::pair<String, double> decoyion = gen.getDecoyIon("b7^2", reference_ionseries);
-  std::pair<String, double> decoyion_missing = gen.getDecoyIon("b17^2", reference_ionseries);
-
-  TEST_EQUAL(targetion.first, "b7^2")
-  TEST_REAL_SIMILAR(targetion.second, decoyion.second)
-  TEST_REAL_SIMILAR(decoyion_missing.second, -1)
+  String sequence = "TRESTPEPTIKDE";
+  MRMDecoy::IndexType tryptic_results = gen.findFixedResidues_helper(sequence);
+  MRMDecoy::IndexType tryptic_expect = {1, 5, 7, 10};
+  TEST_EQUAL(tryptic_results == tryptic_expect, true)
 }
 
 END_SECTION
 
-START_SECTION((std::vector<std::pair<std::string::size_type, std::string> > find_all_tryptic(std::string sequence)))
+START_SECTION((std::vector<std::pair<std::string::size_type, std::string> > findFixedAndTermResidues(std::string sequence)))
 {
-  MRMDecoy gen;
+  MRMDecoyHelper gen;
 
   String sequence = "TRESTPEPTIKDE";
-  std::vector<pair<std::string::size_type, std::string> > tryptic_results = gen.find_all_tryptic(sequence);
-  std::vector<pair<std::string::size_type, std::string> > tryptic_control = boost::assign::list_of(std::make_pair(1, "R")) (std::make_pair(5, "P")) (std::make_pair(7, "P")) (std::make_pair(10, "K"));
-
-  for (Size i = 0; i < tryptic_results.size(); i++)
-  {
-    pair<std::string::size_type, std::string> result = tryptic_results[i];
-    pair<std::string::size_type, std::string> control = tryptic_control[i];
-    TEST_EQUAL(result.first, control.first)
-    TEST_EQUAL(result.second, control.second)
-  }
+  MRMDecoy::IndexType tryptic_results = gen.findFixedAndTermResidues_helper(sequence);
+  MRMDecoy::IndexType tryptic_expect = {0, 1, 5, 7, 10, 12};
+  TEST_EQUAL(tryptic_results == tryptic_expect, true)
 }
 
 END_SECTION
@@ -127,8 +126,8 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide shufflePeptide(OpenMS::Targete
   modification.mono_mass_delta = 79.966331;
   peptide.mods.push_back(modification);
 
-  OpenMS::String expected_sequence = "TETTPEPESID";
-  OpenMS::Size expected_location = 8;
+  OpenMS::String expected_sequence = "TIDEPEPSTTE";
+  OpenMS::Size expected_location = 7;
 
   OpenMS::TargetedExperiment::Peptide shuffled = gen.shufflePeptide(peptide, 0.7, 43);
 
@@ -147,7 +146,7 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide shufflePeptide(OpenMS::Targete
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_target_sequence_07;
   shuffleAASequence_target_sequence_07.sequence = "TESTPEPTIDE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_expected_07;
-  shuffleAASequence_expected_07.sequence = "ETSTPDPEETI";
+  shuffleAASequence_expected_07.sequence = "TTETPEPIDSE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_07;
   shuffleAASequence_result_07 = gen.shufflePeptide(shuffleAASequence_target_sequence_07, 0.7, 42);
   TEST_EQUAL(shuffleAASequence_result_07.sequence, shuffleAASequence_expected_07.sequence)
@@ -155,7 +154,7 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide shufflePeptide(OpenMS::Targete
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_target_sequence_09;
   shuffleAASequence_target_sequence_09.sequence = "TESTPEPTIDE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_expected_09;
-  shuffleAASequence_expected_09.sequence = "ETSTPDPEETI";
+  shuffleAASequence_expected_09.sequence = "TTETPEPIDSE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_09;
   shuffleAASequence_result_09 = gen.shufflePeptide(shuffleAASequence_target_sequence_09, 0.9, 42);
   TEST_EQUAL(shuffleAASequence_result_09.sequence, shuffleAASequence_expected_09.sequence)
@@ -163,7 +162,7 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide shufflePeptide(OpenMS::Targete
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_target_sequence_01;
   shuffleAASequence_target_sequence_01.sequence = "TESTPEPTIDE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_expected_01;
-  shuffleAASequence_expected_01.sequence = "SIECPAPDEETTT";
+  shuffleAASequence_expected_01.sequence = "TNGCADQQEAE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_01;
   shuffleAASequence_result_01 = gen.shufflePeptide(shuffleAASequence_target_sequence_01, 0.2, 42, 10000);
   TEST_EQUAL(shuffleAASequence_result_01.sequence, shuffleAASequence_expected_01.sequence)
@@ -171,7 +170,7 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide shufflePeptide(OpenMS::Targete
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_target_sequence_00;
   shuffleAASequence_target_sequence_00.sequence = "TESTPEPTIDE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_expected_00;
-  shuffleAASequence_expected_00.sequence = "TEEDPTPDGATECIS";
+  shuffleAASequence_expected_00.sequence = "TEIEPAPTQTE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_00;
   shuffleAASequence_result_00 = gen.shufflePeptide(shuffleAASequence_target_sequence_00, 0.0, 42, 20);
   TEST_EQUAL(shuffleAASequence_result_00.sequence, shuffleAASequence_expected_00.sequence)
@@ -179,23 +178,23 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide shufflePeptide(OpenMS::Targete
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_target_sequence_01b;
   shuffleAASequence_target_sequence_01b.sequence = "TESTPEPTIDE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_expected_01b;
-  shuffleAASequence_expected_01b.sequence = "TCTTPDPISEE";
+  shuffleAASequence_expected_01b.sequence = "TNGCADQQEAE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_01b;
-  shuffleAASequence_result_01b = gen.shufflePeptide(shuffleAASequence_target_sequence_01b, 0.2, 42, 10000, true);
+  shuffleAASequence_result_01b = gen.shufflePeptide(shuffleAASequence_target_sequence_01b, 0.2, 42, 10000);
   TEST_EQUAL(shuffleAASequence_result_01b.sequence, shuffleAASequence_expected_01b.sequence)
 
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_target_sequence_00b;
   shuffleAASequence_target_sequence_00b.sequence = "TESTPEPTIDE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_expected_00b;
-  shuffleAASequence_expected_00b.sequence = "HGCGPDPCCHG";
+  shuffleAASequence_expected_00b.sequence = "TNDQIADNNEE";
   OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_00b;
-  shuffleAASequence_result_00b = gen.shufflePeptide(shuffleAASequence_target_sequence_00b, 0.0, 42, 2000, true);
+  shuffleAASequence_result_00b = gen.shufflePeptide(shuffleAASequence_target_sequence_00b, 0.0, 42, 2000);
   TEST_EQUAL(shuffleAASequence_result_00b.sequence, shuffleAASequence_expected_00b.sequence)
   // ensure that C-terminal K and R are preserved
   {
     OpenMS::TargetedExperiment::Peptide original_input;
     original_input.sequence = "TESTPEPTIDEK";
-    expected_sequence = "ETSTPDPEETIK";
+    expected_sequence = "TTETPEPEDSIK";
     OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_00;
     shuffled = gen.shufflePeptide(original_input, 0.7, 42, 20);
     TEST_EQUAL(shuffled.sequence[shuffled.sequence.size() - 1], 'K')
@@ -206,11 +205,52 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide shufflePeptide(OpenMS::Targete
   {
     OpenMS::TargetedExperiment::Peptide original_input;
     original_input.sequence = "TESTPEPTIDER";
-    expected_sequence = "ETSTPDPEETIR";
+    expected_sequence = "TTETPEPEDSIR";
     OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_00;
     shuffled = gen.shufflePeptide(original_input, 0.7, 42, 20);
     TEST_EQUAL(shuffled.sequence[shuffled.sequence.size() - 1], 'R')
     TEST_EQUAL(shuffled.sequence, expected_sequence)
+  }
+
+  {
+    OpenMS::TargetedExperiment::Peptide original_input;
+    OpenMS::TargetedExperiment::Peptide::Modification mod;
+    // std::vector<TargetedExperiment::Peptide::Modification> mods;
+    std::vector<TargetedExperiment::Peptide::Modification> mods;
+    // original_input.sequence = "EPAHLMSLFGGKPM(UniMod:35)";
+    original_input.sequence = "EPAHLMSLFGGKPM";
+    mod.location = 13; // non-C terminal
+    mod.unimod_id = 35;
+    mods.push_back(mod);
+    original_input.mods = mods;
+    expected_sequence = "EPSALMGGHLFKPM";
+    OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_00;
+    shuffled = gen.shufflePeptide(original_input, 0.7, 42, 20);
+    TEST_EQUAL(shuffled.sequence[shuffled.sequence.size() - 1], 'M')
+    TEST_EQUAL(shuffled.sequence, expected_sequence)
+    TEST_EQUAL(shuffled.mods.size(), 1)
+    TEST_EQUAL(shuffled.mods[0].location, 13) // the second M remained at position 13
+  }
+
+  {
+    OpenMS::TargetedExperiment::Peptide original_input;
+    OpenMS::TargetedExperiment::Peptide::Modification mod;
+    // std::vector<TargetedExperiment::Peptide::Modification> mods;
+    std::vector<TargetedExperiment::Peptide::Modification> mods;
+    // original_input.sequence = "EPAHLMSLFGGKPM(UniMod:35)";
+    original_input.sequence = "EPAHLMSLFGGKPM";
+    mod.location = 14; // C terminal
+    mod.unimod_id = 35;
+    mods.push_back(mod);
+    original_input.mods = mods;
+    expected_sequence = "EPSALMGGHLFKPM";
+    OpenMS::TargetedExperiment::Peptide shuffleAASequence_result_00;
+    shuffled = gen.shufflePeptide(original_input, 0.7, 42, 20);
+    TEST_EQUAL(shuffled.sequence[shuffled.sequence.size() - 1], 'M')
+    TEST_EQUAL(shuffled.sequence, expected_sequence)
+    TEST_EQUAL(shuffled.mods.size(), 1)
+    TEST_EQUAL(shuffled.mods[0].location, 14) // Problem: this modification cannot be C terminal any more for F!
+    // TODO: report and fix this
   }
 
 }
@@ -239,9 +279,9 @@ START_SECTION([EXTRA] shuffle_peptide_with_modifications_and2attempts)
   modification.mono_mass_delta = 79.966331;
   peptide.mods.push_back(modification);
 
-  OpenMS::String expected_sequence = "GPPEVSGPGSPPPDPR";
-  OpenMS::Size expected_location_1 = 5;
-  OpenMS::Size expected_location_2 = 9;
+  OpenMS::String expected_sequence = "GPPGDSEPGSPPPVPR";
+  OpenMS::Size expected_location_1 = 9;
+  OpenMS::Size expected_location_2 = 5;
 
   OpenMS::TargetedExperiment::Peptide shuffled = gen.shufflePeptide(peptide, 0.7, 130);
 
@@ -278,7 +318,7 @@ START_SECTION([EXTRA] shuffle_peptide_with_terminal_modifications)
   modification.mono_mass_delta = 4.008491;
   peptide.mods.push_back(modification);
 
-  OpenMS::String expected_sequence = "TETTPEPESID";
+  OpenMS::String expected_sequence = "TIDEPEPSTTE";
 
   OpenMS::TargetedExperiment::Peptide shuffled = gen.shufflePeptide(peptide, 0.7, 43);
 
@@ -295,7 +335,7 @@ START_SECTION([EXTRA] shuffle_peptide_with_KPR)
   MRMDecoy gen;
   OpenMS::TargetedExperiment::Peptide peptide;
   peptide.sequence = "KPRKPRPK";
-  OpenMS::String expected_sequence = "KPRKPRPKNL";
+  OpenMS::String expected_sequence = "KNRKPRPK";
   OpenMS::TargetedExperiment::Peptide shuffled = gen.shufflePeptide(peptide, 0.7, 130, 17);
   TEST_EQUAL(shuffled.sequence, expected_sequence)
 }
@@ -315,9 +355,68 @@ START_SECTION(float AASequenceIdentity(const String& sequence, const String& dec
 
 END_SECTION
 
-START_SECTION(OpenMS::TargetedExperiment::Peptide pseudoreversePeptide(OpenMS::TargetedExperiment::Peptide peptide))
+START_SECTION((OpenMS::TargetedExperiment::Peptide MRMDecoy::reversePeptide(
+      OpenMS::TargetedExperiment::Peptide peptide, const bool keepN, const bool keepC, 
+      const String& const_pattern) const))
 {
   MRMDecoy gen;
+
+  OpenMS::TargetedExperiment::Peptide peptide;
+  peptide.sequence = "TESTPEPTIDE";
+  OpenMS::TargetedExperiment::Peptide::Modification modification;
+  modification.avg_mass_delta = 79.9799;
+  modification.location = 2;
+  modification.mono_mass_delta = 79.966331;
+  peptide.mods.push_back(modification);
+
+  {
+    OpenMS::String expected_sequence = "DITPEPTSETE";
+    OpenMS::Size expected_location = 7;
+
+    OpenMS::TargetedExperiment::Peptide pseudoreverse = MRMDecoy::reversePeptide(peptide, false, true);
+    TEST_EQUAL(pseudoreverse.sequence, expected_sequence)
+    TEST_EQUAL(pseudoreverse.mods.size(), 1)
+    TEST_EQUAL(pseudoreverse.mods[0].location, expected_location)
+  }
+
+  {
+    modification.avg_mass_delta = 49.9799;
+    modification.mono_mass_delta = 49.966331;
+    modification.location = 0;
+    peptide.mods.push_back(modification);
+
+    OpenMS::String expected_sequence = "TDITPEPTSEE";
+
+    OpenMS::TargetedExperiment::Peptide pseudoreverse = MRMDecoy::reversePeptide(peptide, true, true);
+    TEST_EQUAL(pseudoreverse.sequence, expected_sequence)
+    TEST_EQUAL(pseudoreverse.mods.size(), 2)
+    TEST_EQUAL(pseudoreverse.mods[0].location, 8)
+    TEST_REAL_SIMILAR(pseudoreverse.mods[0].mono_mass_delta, 79.966331)
+
+    TEST_EQUAL(pseudoreverse.mods[1].location, 0)
+    TEST_REAL_SIMILAR(pseudoreverse.mods[1].mono_mass_delta, 49.966331)
+  }
+
+  {
+    String const_pattern = "I";
+    OpenMS::String expected_sequence = "TDTPEPTSIEE"; // "I" stays in place
+
+    OpenMS::TargetedExperiment::Peptide pseudoreverse = MRMDecoy::reversePeptide(peptide, true, true, const_pattern);
+    TEST_EQUAL(pseudoreverse.sequence, expected_sequence)
+    TEST_EQUAL(pseudoreverse.mods.size(), 2)
+    TEST_EQUAL(pseudoreverse.mods[0].location, 7)
+    TEST_REAL_SIMILAR(pseudoreverse.mods[0].mono_mass_delta, 79.966331)
+
+    TEST_EQUAL(pseudoreverse.mods[1].location, 0)
+    TEST_REAL_SIMILAR(pseudoreverse.mods[1].mono_mass_delta, 49.966331)
+  }
+
+}
+END_SECTION
+
+START_SECTION(OpenMS::TargetedExperiment::Peptide pseudoreversePeptide(OpenMS::TargetedExperiment::Peptide peptide))
+{
+  MRMDecoyHelper gen;
 
   OpenMS::TargetedExperiment::Peptide peptide;
   peptide.sequence = "TESTPEPTIDE";
@@ -330,7 +429,7 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide pseudoreversePeptide(OpenMS::T
   OpenMS::String expected_sequence = "DITPEPTSETE";
   OpenMS::Size expected_location = 7;
 
-  OpenMS::TargetedExperiment::Peptide pseudoreverse = gen.pseudoreversePeptide(peptide);
+  OpenMS::TargetedExperiment::Peptide pseudoreverse = gen.pseudoreversePeptide_helper(peptide);
   TEST_EQUAL(pseudoreverse.sequence, expected_sequence)
   TEST_EQUAL(pseudoreverse.mods.size(), 1)
   TEST_EQUAL(pseudoreverse.mods[0].location, expected_location)
@@ -340,15 +439,14 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide pseudoreversePeptide(OpenMS::T
   OpenMS::TargetedExperiment::Peptide pseudoreverseAASequence_expected;
   pseudoreverseAASequence_expected.sequence = "DITPEPTSETE";
   OpenMS::TargetedExperiment::Peptide pseudoreverseAASequence_result;
-  pseudoreverseAASequence_result = gen.pseudoreversePeptide(pseudoreverseAASequence_target_sequence);
+  pseudoreverseAASequence_result = gen.pseudoreversePeptide_helper(pseudoreverseAASequence_target_sequence);
   TEST_EQUAL(pseudoreverseAASequence_result.sequence, pseudoreverseAASequence_expected.sequence)
 }
-
 END_SECTION
 
 START_SECTION(OpenMS::TargetedExperiment::Peptide reversePeptide(OpenMS::TargetedExperiment::Peptide peptide))
 {
-  MRMDecoy gen;
+  MRMDecoyHelper gen;
 
   OpenMS::TargetedExperiment::Peptide peptide;
   peptide.sequence = "TESTPEPTIDE";
@@ -361,7 +459,7 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide reversePeptide(OpenMS::Targete
   OpenMS::String expected_sequence = "EDITPEPTSET";
   OpenMS::Size expected_location = 8;
 
-  OpenMS::TargetedExperiment::Peptide reverse = gen.reversePeptide(peptide);
+  OpenMS::TargetedExperiment::Peptide reverse = gen.reversePeptide_helper(peptide);
   TEST_EQUAL(reverse.sequence, expected_sequence)
   TEST_EQUAL(reverse.mods.size(), 1)
   TEST_EQUAL(reverse.mods[0].location, expected_location)
@@ -371,32 +469,40 @@ START_SECTION(OpenMS::TargetedExperiment::Peptide reversePeptide(OpenMS::Targete
   OpenMS::TargetedExperiment::Peptide reverseAASequence_expected;
   reverseAASequence_expected.sequence = "EDITPEPTSET";
   OpenMS::TargetedExperiment::Peptide reverseAASequence_result;
-  reverseAASequence_result = gen.reversePeptide(reverseAASequence_target_sequence);
+  reverseAASequence_result = gen.reversePeptide_helper(reverseAASequence_target_sequence);
   TEST_EQUAL(reverseAASequence_result.sequence, reverseAASequence_expected.sequence)
 }
 
 END_SECTION
 
 /// Public methods
-START_SECTION((void generateDecoys(OpenMS::TargetedExperiment & exp,
-                                   OpenMS::TargetedExperiment & dec, String method, String decoy_tag,
-                                   double identity_threshold, int max_attempts, double mz_threshold,
-                                   bool theoretical, double mz_shift, bool exclude_similar,
-                                   double similarity_threshold, bool remove_CNterm_mods, double precursor_mass_shift,
-                                   bool enable_losses, bool skip_unannotated); ))
+
+START_SECTION((void generateDecoys(OpenMS::TargetedExperiment& exp, OpenMS::TargetedExperiment& dec,
+                                   String method, String decoy_tag, int max_attempts, double identity_threshold,
+                                   double precursor_mz_shift, double product_mz_shift, double product_mz_threshold,
+                                   std::vector<String> fragment_types, std::vector<size_t> fragment_charges,
+                                   bool enable_specific_losses, bool enable_unspecific_losses, int round_decPow); ))
 {
   String method = "pseudo-reverse";
-  double identity_threshold = 1.0;
+  double identity_threshold = 0.7;
   Int max_attempts = 5;
-  double mz_threshold = 0.8;
-  double mz_shift = 20;
+  double product_mz_threshold = 0.8;
+  double precursor_mz_shift = 0.1;
+  double product_mz_shift = 20;
   String decoy_tag = "DECOY_";
-  Int min_transitions = 2;
-  Int max_transitions = 6;
-  bool theoretical = 1;
-  bool exclude_similar = 1;
-  bool remove_CNterminal_mods = false;
-  double similarity_threshold = 0.1;
+  std::vector<String> fragment_types;
+  fragment_types.push_back(String("b"));
+  fragment_types.push_back(String("y"));
+  fragment_types.push_back(String("a"));
+  std::vector<size_t> fragment_charges;
+  fragment_charges.push_back(1);
+  fragment_charges.push_back(2);
+  fragment_charges.push_back(3);
+  fragment_charges.push_back(4);
+  fragment_charges.push_back(5);
+  bool enable_unspecific_losses = false;
+  bool enable_specific_losses = true;
+
   String in = "MRMDecoyGenerator_input.TraML";
   String out = "MRMDecoyGenerator_output.TraML";
   String test;
@@ -409,168 +515,30 @@ START_SECTION((void generateDecoys(OpenMS::TargetedExperiment & exp,
   traml.load(OPENMS_GET_TEST_DATA_PATH(in), targeted_exp);
 
   MRMDecoy decoys = MRMDecoy();
-  decoys.restrictTransitions(targeted_exp, min_transitions, max_transitions);
   TEST_EQUAL(targeted_exp.getPeptides().size(), 13)
-  TEST_EQUAL(targeted_exp.getTransitions().size(), 33)
-  decoys.generateDecoys(targeted_exp, targeted_decoy, method, decoy_tag, identity_threshold, max_attempts, mz_threshold, theoretical, mz_shift, exclude_similar, similarity_threshold, remove_CNterminal_mods, 0.1, 1, 0);  traml.store(test, targeted_decoy);
+  TEST_EQUAL(targeted_exp.getTransitions().size(), 36)
+  decoys.generateDecoys(targeted_exp, 
+                        targeted_decoy,
+                        method,
+                        decoy_tag,
+                        max_attempts,
+                        identity_threshold,
+                        precursor_mz_shift, 
+                        product_mz_shift, 
+                        product_mz_threshold,
+                        fragment_types, 
+                        fragment_charges,
+                        enable_specific_losses, 
+                        enable_unspecific_losses); 
+  traml.store(test, targeted_decoy);
 
   TEST_FILE_EQUAL(test.c_str(), OPENMS_GET_TEST_DATA_PATH(out))
 }
 
 END_SECTION
 
-START_SECTION(void restrictTransitions(OpenMS::TargetedExperiment& exp, int min_transitions, int max_transitions))
-{
-  // see above
-  NOT_TESTABLE
-}
-
-END_SECTION
-
-START_SECTION((extra))
-{
-  MRMDecoy gen;
-
-  AASequence target_sequence = AASequence::fromString("ADSTGTLVITDPTR(UniMod:267)");
-  AASequence decoy_sequence = AASequence::fromString("ALDSTTGVDTTPIR(UniMod:267)");
-  MRMDecoy::IonSeries target_ionseries = gen.getIonSeries(target_sequence, 2);
-  MRMDecoy::IonSeries decoy_ionseries = gen.getIonSeries(decoy_sequence, 2);
-
-  {
-    double target_mz = 924.539;
-    double mz_threshold = 0.1;
-
-    std::pair<String, double> targetion = gen.getTargetIon(target_mz, mz_threshold, target_ionseries, 1);
-    std::pair<String, double> decoyion = gen.getDecoyIon(targetion.first, decoy_ionseries);
-
-    TEST_EQUAL(targetion.first, "y8^1")
-    TEST_REAL_SIMILAR(targetion.second, 924.539)
-
-    TEST_EQUAL(decoyion.first, "y8^1")
-    TEST_REAL_SIMILAR(decoyion.second, 868.47682)
-  }
-
-  {
-    double target_mz = 1082.608;
-    double mz_threshold = 0.8;
-
-    std::pair<String, double> targetion = gen.getTargetIon(target_mz, mz_threshold, target_ionseries, 1);
-    std::pair<String, double> decoyion = gen.getDecoyIon(targetion.first, decoy_ionseries);
-
-    TEST_EQUAL(targetion.first, "y10^1")
-    TEST_REAL_SIMILAR(targetion.second, 1082.60856)
-
-    TEST_EQUAL(decoyion.first, "y10^1")
-    TEST_REAL_SIMILAR(decoyion.second, 1070.57217)
-  }
-
-  {
-    AASequence peptide = AASequence::fromString("KVGLDPSQLPVGENGIV");
-    MRMDecoy::IonSeries target_ionseries = gen.getIonSeries(peptide, 2);
-
-    double target_mz_1 = 737.394;
-    double target_mz_2 = 793.936;
-    double mz_threshold = 0.8;
-
-    std::pair<String, double> targetion1 = gen.getTargetIon(target_mz_1, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion1.first, "b15-18^2")
-
-    std::pair<String, double> targetion2 = gen.getTargetIon(target_mz_2, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion2.first, "b16-18^2")
-  }
-  {
-    // Neutral loss of H2ONH3, H2OH2O, CH3NO, HCOOH
-    AASequence peptide = AASequence::fromString("AAAAAAAAAPAAAATAPTTAATTAATAAQ");
-    MRMDecoy::IonSeries target_ionseries = gen.getIonSeries(peptide, 3);
-
-    double mz_threshold = 0.05;
-
-    std::pair<String, double> targetion3 = gen.getTargetIon(510.2660, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion3.first, "b20-35^3")
-
-    std::pair<String, double> targetion4 = gen.getTargetIon(678.3557, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion4.first, "b18-36^2")
-  }
-  {
-    // Neutral loss of H2O, NH3
-    AASequence peptide = AASequence::fromString("AAAAAAALQAK");
-    MRMDecoy::IonSeries target_ionseries = gen.getIonSeries(peptide, 2);
-
-    double mz_threshold = 0.05;
-
-    std::pair<String, double> targetion1 = gen.getTargetIon(328.1980, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion1.first, "y3-18^1")
-
-    std::pair<String, double> targetion2 = gen.getTargetIon(329.1833, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion2.first, "y3-17^1")
-
-    std::pair<String, double> targetion3 = gen.getTargetIon(885.5169, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion3.first, "y10^1")
-  }
-  {
-    // Neutral loss of NH3NH3
-    AASequence peptide = AASequence::fromString("AALQEELQLC(UniMod:4)K");
-    MRMDecoy::IonSeries target_ionseries = gen.getIonSeries(peptide, 2);
-
-    double mz_threshold = 0.05;
-
-    std::pair<String, double> targetion1 = gen.getTargetIon(240.0975, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion1.first, "b5-34^2")
-  }
-  {
-    // Neutral loss (oxidation) of methionine only
-    AASequence peptide = AASequence::fromString("AFADALEVIPMALSENSGM(UniMod:35)NPIQTMTEVR");
-    MRMDecoy::IonSeries target_ionseries = gen.getIonSeries(peptide, 3);
-
-    double mz_threshold = 0.05;
-
-    std::pair<String, double> targetion1 = gen.getTargetIon(933.4456, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion1.first, "y26-64^3")
-
-    std::pair<String, double> targetion2 = gen.getTargetIon(1112.5415, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion2.first, "b22-64^2")
-  }
-  {
-    // Neutral losses (phospho) of serine and threonine only
-    AASequence peptide = AASequence::fromString("AFADALEVIPMALSENS(Phospho)GM(UniMod:35)NPIQTMTEVR");
-    MRMDecoy::IonSeries target_ionseries = gen.getIonSeries(peptide, 3);
-
-    double mz_threshold = 0.05;
-
-    std::pair<String, double> targetion3 = gen.getTargetIon(1144.541, mz_threshold, target_ionseries, 1);
-
-    TEST_EQUAL(targetion3.first, "b22-80^2")
-
-    std::pair<String, double> targetion4 = gen.getTargetIon(1135.535, mz_threshold, target_ionseries, 1);
-    TEST_EQUAL(targetion4.first, "b22-98^2")
-  }
-}
-
-END_SECTION
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
-  END_TEST
-
-
-
-/*
-Tests of unknown methods:
-  - 'vector find_all_tryptic(string sequence)'
-Missing tests:
-  - 'std::pair<String, double> getTargetIon(double ProductMZ, double mz_threshold, std::map< String, std::map< String, double > > target_ionseries)'
-  - 'std::map<String, std::map<String, double> > getIonSeries(AASequence sequence, int precursor_charge)'
-  - 'std::vector<std::pair<std::string::size_type, std::string> > find_all_tryptic(std::string sequence)'
-*/
-
+END_TEST
 
 #pragma clang diagnostic pop

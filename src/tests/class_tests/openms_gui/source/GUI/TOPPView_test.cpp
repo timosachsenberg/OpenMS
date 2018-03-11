@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -81,9 +81,9 @@ class TestTOPPView: public QObject
 			delay(p_delay)
 		{}
 
-		QString keys; //< key sequence
+		QString keys; ///< key sequence
 		QString title;//< expected window title
-		int delay;    //< delay in ms when event is fired off
+		int delay;    ///< delay in ms when event is fired off
 	};
 
 public slots:
@@ -184,8 +184,8 @@ void TestTOPPView::simulateClick_()
 				QTimer::singleShot(100, this, SLOT(simulateClick_()));
 				return;
 			}
-			QTest::keyClicks(0,entry.keys,Qt::NoModifier,20);
-			QTest::keyClick(0,Qt::Key_Return,Qt::NoModifier,20);
+			QTest::keyClicks(nullptr,entry.keys,Qt::NoModifier,20);
+			QTest::keyClick(nullptr,Qt::Key_Return,Qt::NoModifier,20);
 			QApplication::processEvents();
 
 			// remove from queue

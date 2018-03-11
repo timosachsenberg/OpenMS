@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Stephan Aiche $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Anton Pervukhin <Anton.Pervukhin@CeBiTec.Uni-Bielefeld.DE> $
 // --------------------------------------------------------------------------
 //
@@ -64,14 +64,14 @@ public:
 
         @return The parsed data.
       */
-      virtual ContainerType & getElements() { return elements_; }
+      ContainerType & getElements() override { return elements_; }
 
       /**
         Parses the input stream @c is.
 
         @param is The input stream to be parsed
       */
-      virtual void parse(std::istream & is);
+      void parse(std::istream & is) override;
     };
 
   } // namespace ims

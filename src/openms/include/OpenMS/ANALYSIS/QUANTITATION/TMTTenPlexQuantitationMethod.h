@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Stephan Aiche $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Stephan Aiche $
 // --------------------------------------------------------------------------
 
@@ -54,7 +54,7 @@ public:
     TMTTenPlexQuantitationMethod();
 
     /// d'tor
-    ~TMTTenPlexQuantitationMethod();
+    ~TMTTenPlexQuantitationMethod() override;
 
     /// Copy c'tor
     TMTTenPlexQuantitationMethod(const TMTTenPlexQuantitationMethod& other);
@@ -65,15 +65,15 @@ public:
     /// @brief Methods to implement from IsobaricQuantitationMethod
     /// @{
 
-    const String& getName() const;
+    const String& getName() const override;
 
-    const IsobaricChannelList& getChannelInformation() const;
+    const IsobaricChannelList& getChannelInformation() const override;
 
-    Size getNumberOfChannels() const;
+    Size getNumberOfChannels() const override;
 
-    virtual Matrix<double> getIsotopeCorrectionMatrix() const;
+    Matrix<double> getIsotopeCorrectionMatrix() const override;
 
-    Size getReferenceChannel() const;
+    Size getReferenceChannel() const override;
 
     /// @}
 
@@ -95,7 +95,7 @@ public:
     void setDefaultParams_();
 
     /// implemented for DefaultParamHandler
-    void updateMembers_();
+    void updateMembers_() override;
 
   };
 } // namespace

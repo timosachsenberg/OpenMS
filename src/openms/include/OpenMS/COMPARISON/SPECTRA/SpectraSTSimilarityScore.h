@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: David Wojnar $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: David Wojnar $
 // --------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ public:
     SpectraSTSimilarityScore(const SpectraSTSimilarityScore & source);
 
     /// destructor
-    virtual ~SpectraSTSimilarityScore();
+    ~SpectraSTSimilarityScore() override;
     // @}
 
     /// assignment operator
@@ -83,7 +83,7 @@ public:
     /**
         @brief: calculates the dot product of the two spectra
     */
-    double operator()(const PeakSpectrum & spec1, const PeakSpectrum & spec2) const;
+    double operator()(const PeakSpectrum & spec1, const PeakSpectrum & spec2) const override;
     /**
         @brief: calculates the dot product of the two spectra
     */
@@ -91,7 +91,7 @@ public:
     /**
         @brief: calculates the dot product of itself
     */
-    double operator()(const PeakSpectrum & spec) const;
+    double operator()(const PeakSpectrum & spec) const override;
 
     /**
         @brief Preprocesses the spectrum

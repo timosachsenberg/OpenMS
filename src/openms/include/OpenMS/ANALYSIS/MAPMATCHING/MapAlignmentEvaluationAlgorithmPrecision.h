@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Clemens Groepl $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Katharina Albers $
 // --------------------------------------------------------------------------
 
@@ -54,12 +54,12 @@ public:
     MapAlignmentEvaluationAlgorithmPrecision();
 
     /// Destructor
-    virtual ~MapAlignmentEvaluationAlgorithmPrecision();
+    ~MapAlignmentEvaluationAlgorithmPrecision() override;
 
     /**
         @brief Applies the algorithm
     */
-    virtual void evaluate(const ConsensusMap & consensus_map_in, const ConsensusMap & consensus_map_gt, const double & rt_dev, const double & mz_dev, const Peak2D::IntensityType & int_dev, const bool use_charge, double & out);
+    void evaluate(const ConsensusMap & consensus_map_in, const ConsensusMap & consensus_map_gt, const double & rt_dev, const double & mz_dev, const Peak2D::IntensityType & int_dev, const bool use_charge, double & out) override;
 
     /// Creates a new instance of this class (for Factory)
     static MapAlignmentEvaluationAlgorithm * create()

@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -37,33 +37,38 @@
 
 #include <OpenMS/INTERFACES/IMSDataConsumer.h>
 
+#include <OpenMS/KERNEL/StandardTypes.h>
+#include <OpenMS/KERNEL/MSSpectrum.h>
+#include <OpenMS/KERNEL/MSChromatogram.h>
+#include <OpenMS/KERNEL/Peak1D.h>
+#include <OpenMS/KERNEL/ChromatogramPeak.h>
+
 namespace OpenMS
 {
 
     /**
       @brief Empty (NOP) function
     */
-    OPENMS_DLLAPI extern void FunctionSpectrumNOP (MSSpectrum<Peak1D> & /* s */);
+    OPENMS_DLLAPI extern void FunctionSpectrumNOP (MSSpectrum & /* s */);
 
     /**
       @brief Empty (NOP) function
     */
-    OPENMS_DLLAPI extern void FunctionChromatogramNOP (MSChromatogram<ChromatogramPeak> & /* c */);
+    OPENMS_DLLAPI extern void FunctionChromatogramNOP (MSChromatogram & /* c */);
 
     /**
       @brief Transforming consumer of MS data
 
       Is able to transform a spectra on the fly while it is read using a
       function pointer that can be set on the object.
+
+      Note that the spectrum gets transformed in-place.
     */
     class OPENMS_DLLAPI MSDataTransformingConsumer :
-      public Interfaces::IMSDataConsumer<>
+      public Interfaces::IMSDataConsumer
     {
 
     public:
-      typedef MSExperiment<> MapType;
-      typedef MapType::SpectrumType SpectrumType;
-      typedef MapType::ChromatogramType ChromatogramType;
 
       /**
         @brief Constructor
@@ -75,14 +80,14 @@ namespace OpenMS
       }
 
       /// Default destructor
-      virtual ~MSDataTransformingConsumer() { }
+      ~MSDataTransformingConsumer() override { }
 
-      virtual void setExpectedSize(Size /* expectedSpectra */, Size /* expectedChromatograms */)
+      void setExpectedSize(Size /* expectedSpectra */, Size /* expectedChromatograms */) override
       {
         // do nothing
       }
 
-      virtual void consumeSpectrum(SpectrumType & s)
+      void consumeSpectrum(SpectrumType & s) override
       {
         // apply the given function to it
         (*sprocessing_ptr_)(s);
@@ -93,7 +98,7 @@ namespace OpenMS
         sprocessing_ptr_ = sproptr;
       }
 
-      virtual void consumeChromatogram(ChromatogramType & c)
+      void consumeChromatogram(ChromatogramType & c) override
       {
         // apply the given function to it
         (*cprocessing_ptr_)(c);
@@ -104,7 +109,7 @@ namespace OpenMS
         cprocessing_ptr_ = cproptr;
       }
 
-      virtual void setExperimentalSettings(const OpenMS::ExperimentalSettings&) {}
+      void setExperimentalSettings(const OpenMS::ExperimentalSettings&) override {}
 
     protected:
       void (*sprocessing_ptr_)(SpectrumType&);

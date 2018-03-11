@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Alexandra Scherbart $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: $
 // --------------------------------------------------------------------------
 //
@@ -37,7 +37,6 @@
 #include <OpenMS/SYSTEM/File.h>
 
 #include <fstream>
-#include <string>
 
 using namespace std;
 
@@ -89,7 +88,7 @@ namespace OpenMS
     else
     {
       //Throw Exception when file not found for codebooks.data
-      throw Exception::FileNotFound(__FILE__, __LINE__, __PRETTY_FUNCTION__, String("LocalLinearMap could not open 'codebooks.data' at: ") + codefile);
+      throw Exception::FileNotFound(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, String("LocalLinearMap could not open 'codebooks.data' at: ") + codefile);
     }
 
     // read in file containing Matrix< double > A
@@ -127,7 +126,7 @@ namespace OpenMS
     else
     {
       //Throw Exception when file not found for codebooks.data
-      throw Exception::FileNotFound(__FILE__, __LINE__, __PRETTY_FUNCTION__, String("LocalLinearMap could not open 'linearMapping.data' at: ") + a_file);
+      throw Exception::FileNotFound(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, String("LocalLinearMap could not open 'linearMapping.data' at: ") + a_file);
     }
     //init 2 dimensional grid of size xdim x ydim and store in coordinates
     cord_ = genCord_(param_.xdim, param_.ydim);

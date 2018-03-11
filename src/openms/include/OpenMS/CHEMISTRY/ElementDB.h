@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -77,8 +77,8 @@ public:
     /// returns a pointer to the singleton instance of the element db
     inline static const ElementDB * getInstance()
     {
-      static ElementDB * db_ = 0;
-      if (db_ == 0)
+      static ElementDB * db_ = nullptr;
+      if (db_ == nullptr)
       {
         db_ = new ElementDB;
       }

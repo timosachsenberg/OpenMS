@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -44,6 +44,7 @@
 
 namespace OpenMS
 {
+
   /**
      @brief Class for reading Percolator tab-delimited output files.
 
@@ -53,7 +54,7 @@ namespace OpenMS
   {
 
   public:
-    
+
     /// Types of Percolator scores
     enum ScoreType { QVALUE, POSTERRPROB, SCORE, SIZE_OF_SCORETYPE };
 
@@ -62,21 +63,22 @@ namespace OpenMS
 
     /// Return a score type given its name
     static enum ScoreType getScoreType(String score_type_name);
-    
+
     /// Constructor
     PercolatorOutfile();
 
     /// Loads a Percolator output file
-    void load(const String& filename, ProteinIdentification& proteins, 
+    void load(const String& filename, ProteinIdentification& proteins,
               std::vector<PeptideIdentification>& peptides,
               SpectrumMetaDataLookup& lookup,
               enum ScoreType output_score = QVALUE);
 
   private:
-
     /// Converts the peptide string to an 'AASequence' instance
     void getPeptideSequence_(String peptide, AASequence& seq) const;
 
+    /// Resolve cases where N-terminal modifications may be misassigned to the first residue (for X! Tandem results)
+    void resolveMisassignedNTermMods_(String& peptide) const;
   };
 
 } // namespace OpenMS

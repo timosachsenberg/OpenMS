@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -53,6 +53,15 @@ namespace OpenMS
   {
   }
 
+  PeptideEvidence::PeptideEvidence(const String& accession, Int start, Int end, char aa_before, char aa_after)
+    : accession_(accession),
+      start_(start),
+      end_(end),
+      aa_before_(aa_before),
+      aa_after_(aa_after)
+  {
+  }
+
   PeptideEvidence::PeptideEvidence(const PeptideEvidence& rhs)
   {
     accession_ = rhs.accession_;
@@ -81,9 +90,28 @@ namespace OpenMS
            aa_after_ == rhs.aa_after_;
   }
 
+  bool PeptideEvidence::operator<(const PeptideEvidence& rhs) const
+  {
+    if (accession_ != rhs.accession_) return accession_ < rhs.accession_;
+    if (start_ != rhs.start_) return start_ < rhs.start_;
+    if (end_ != rhs.end_) return end_ < rhs.end_;
+    if (aa_before_ != rhs.aa_before_) return aa_before_ < rhs.aa_before_;
+    if (aa_after_ != rhs.aa_after_) return aa_after_ < rhs.aa_after_;
+    return false;
+  }
+
+  
   bool PeptideEvidence::operator!=(const PeptideEvidence& rhs) const
   {
     return !operator==(rhs);
+  }
+  
+  bool PeptideEvidence::hasValidLimits() const
+  {
+    return !(
+      getStart() == UNKNOWN_POSITION ||
+      getEnd() == UNKNOWN_POSITION ||
+      getEnd() == N_TERMINAL_POSITION);
   }
 
   void PeptideEvidence::setProteinAccession(const String& s)

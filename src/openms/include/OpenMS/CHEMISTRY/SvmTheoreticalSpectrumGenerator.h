@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Sandro Andreotti $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Sandro Andreotti $
 // --------------------------------------------------------------------------
 
@@ -38,8 +38,12 @@
 
 #include <OpenMS/config.h>
 #include <OpenMS/CHEMISTRY/TheoreticalSpectrumGenerator.h>
-#include <OpenMS/SIMULATION/SimTypes.h>
 #include <OpenMS/ANALYSIS/SVM/SVMWrapper.h>
+
+#include <OpenMS/KERNEL/StandardDeclarations.h>
+#include <OpenMS/KERNEL/StandardTypes.h>
+#include <OpenMS/KERNEL/MSSpectrum.h>
+#include <OpenMS/KERNEL/MSExperiment.h>
 
 #include <boost/random/mersenne_twister.hpp>
 
@@ -203,12 +207,12 @@ public:
 
 
     /// Destructor
-    virtual ~SvmTheoreticalSpectrumGenerator();
+    ~SvmTheoreticalSpectrumGenerator() override;
     //@}
 
 
     /// Generate the MS/MS according to the given probabilistic model
-    void simulate(RichPeakSpectrum & spectrum, const AASequence & peptide, boost::random::mt19937_64& rng, Size precursor_charge);
+    void simulate(PeakSpectrum & spectrum, const AASequence & peptide, boost::random::mt19937_64& rng, Size precursor_charge);
 
     ///Load a trained Svm and Prob. models
     void load();
@@ -261,7 +265,7 @@ protected:
     /// flag to indicate if the hydrophobicity, helicity, and basicity maps were already initialized
     static bool initializedMaps_;
 
-    void updateMembers_();
+    void updateMembers_() override;
   };
 
   void inline SvmTheoreticalSpectrumGenerator::scaleSingleFeature_(double & value, double lower, double upper, double feature_min, double feature_max)

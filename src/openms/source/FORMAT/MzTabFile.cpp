@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -32,11 +32,12 @@
 // $Authors: Timo Sachsenberg $
 // --------------------------------------------------------------------------
 
-#include <OpenMS/FORMAT/MzTab.h>
+#include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/FORMAT/MzTabFile.h>
+
 #include <OpenMS/FORMAT/TextFile.h>
+
 #include <boost/regex.hpp>
-#include <fstream>
 
 using namespace std;
 
@@ -155,7 +156,7 @@ void MzTabFile::load(const String& filename, MzTab& mz_tab)
   Size peptide_retention_time_window_index = 0;
   Size peptide_charge_index = 0;
   Size peptide_mass_to_charge_index = 0;
-  Size peptide_uri_index = 0;
+  // Size peptide_uri_index = 0;
   Size peptide_spectra_ref_index = 0;
   map<Size, Size> peptide_abundance_assay_indices;
   map<Size, Size> peptide_abundance_study_variable_to_column_indices;
@@ -177,7 +178,7 @@ void MzTabFile::load(const String& filename, MzTab& mz_tab)
   Size psm_charge_index = 0;
   Size psm_exp_mass_to_charge_index = 0;
   Size psm_calc_mass_to_charge_index = 0;
-  Size psm_uri_index = 0;
+  // Size psm_uri_index = 0;
   Size psm_spectra_ref_index = 0;
   Size psm_pre_index = 0;
   Size psm_post_index = 0;
@@ -248,7 +249,7 @@ void MzTabFile::load(const String& filename, MzTab& mz_tab)
 
     if (cells.size() < 3)
     {
-      throw Exception::ParseError(__FILE__, __LINE__, __PRETTY_FUNCTION__, filename, "Error parsing MzTab line: " + String(s) + ". Did you forget to use tabulator as separator?");
+      throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename, "Error parsing MzTab line: " + String(s) + ". Did you forget to use tabulator as separator?");
     }
 
     // parse metadata section
@@ -1090,10 +1091,11 @@ void MzTabFile::load(const String& filename, MzTab& mz_tab)
       row.charge.fromCellString(cells[peptide_charge_index]);
       row.mass_to_charge.fromCellString(cells[peptide_mass_to_charge_index]);
 
-      if (peptide_uri_index != 0)
-      {
-        row.uri.fromCellString(cells[peptide_uri_index]);
-      }
+      // always false
+      // if (peptide_uri_index != 0)
+      // {
+      //   row.uri.fromCellString(cells[peptide_uri_index]);
+      // }
 
       row.spectra_ref.fromCellString(cells[peptide_spectra_ref_index]);
 
@@ -1233,10 +1235,11 @@ void MzTabFile::load(const String& filename, MzTab& mz_tab)
       row.exp_mass_to_charge.fromCellString(cells[psm_exp_mass_to_charge_index]);
       row.calc_mass_to_charge.fromCellString(cells[psm_calc_mass_to_charge_index]);
 
-      if (psm_uri_index != 0)
-      {
-        row.uri.fromCellString(cells[psm_uri_index]);
-      }
+      // always false
+      // if (psm_uri_index != 0)
+      // {
+      //   row.uri.fromCellString(cells[psm_uri_index]);
+      // }
 
       row.spectra_ref.fromCellString(cells[psm_spectra_ref_index]);
       row.pre.fromCellString(cells[psm_pre_index]);
@@ -2499,6 +2502,12 @@ String MzTabFile::generateMzTabSmallMoleculeSectionRow_(const MzTabSmallMolecule
 
 void MzTabFile::store(const String& filename, const MzTab& mz_tab) const
 {
+
+  if (!FileHandler::hasValidExtension(filename, FileTypes::TSV))
+  {
+    throw Exception::UnableToCreateFile(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename, "invalid file extension, expected '" + FileTypes::typeToName(FileTypes::TSV) + "'");
+  }
+
   StringList out;
 
   generateMzTabMetaDataSection_(mz_tab.getMetaData(), out);

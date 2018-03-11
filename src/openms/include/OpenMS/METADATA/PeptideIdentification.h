@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Nico Pfeifer $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: $
 // --------------------------------------------------------------------------
 
@@ -160,13 +160,6 @@ public:
     /// returns all peptide hits which reference to a given protein accession (i.e. filter by protein accession)
     static std::vector<PeptideHit> getReferencingHits(const std::vector<PeptideHit>&, const std::set<String>& accession);
 
-    /// remove the two helper functions below a some point, when we are sure that we did not miss or merge in deprecated code!
-    /// re-implemented from MetaValueInterface as a precaution against deprecated usage of "RT" and "MZ" values
-    const DataValue& getMetaValue(const String& name) const;
-    /// re-implemented from MetaValueInterface as a precaution against deprecated usage of "RT" and "MZ" values
-    void setMetaValue(const String& name, const DataValue& value);
-
-
 protected:
 
     String id_; ///< Identifier by which ProteinIdentification and PeptideIdentification are matched
@@ -174,6 +167,7 @@ protected:
     double significance_threshold_; ///< the peptide significance threshold
     String score_type_; ///< The score type (Mascot, Sequest, e-value, p-value)
     bool higher_score_better_; ///< The score orientation
+    // hint: here is an alignment gap of 7 bytes <-- here --> use it when introducing new members with sizeof(m)<=4
     String base_name_;
     double mz_;
     double rt_;

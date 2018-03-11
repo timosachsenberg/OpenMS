@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Erhan Kenar$
+// $Maintainer: Timo Sachsenberg$
 // $Authors: Erhan Kenar, Holger Franken $
 // --------------------------------------------------------------------------
 
@@ -82,7 +82,7 @@ public:
     ElutionPeakDetection();
 
     /// Destructor
-    virtual ~ElutionPeakDetection();
+    ~ElutionPeakDetection() override;
 
     /** @brief Extracts chromatographic peaks from a single MassTrace and
      *         stores the resulting split traces in a vector of new mass traces.
@@ -149,7 +149,7 @@ public:
     void smoothData(MassTrace& mt, int win_size) const;
 
 protected:
-    virtual void updateMembers_();
+    void updateMembers_() override;
 
 private:
     double chrom_fwhm_;

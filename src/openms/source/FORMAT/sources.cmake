@@ -3,10 +3,13 @@ set(directory source/FORMAT)
 
 ### list all filenames of the directory here
 set(sources_list
+AbsoluteQuantitationMethodFile.cpp
+AbsoluteQuantitationStandardsFile.cpp
 Base64.cpp
 Bzip2Ifstream.cpp
 Bzip2InputStream.cpp
 CachedMzML.cpp
+ChromeleonFile.cpp
 CompressedInputSource.cpp
 CVMappingFile.cpp
 ConsensusXMLFile.cpp
@@ -31,6 +34,8 @@ InspectInfile.cpp
 InspectOutfile.cpp
 KroenikFile.cpp
 LibSVMEncoder.cpp
+MRMFeaturePickerFile.cpp
+MRMFeatureQCFile.cpp
 MS2File.cpp
 MSNumpressCoder.cpp
 MSPFile.cpp
@@ -40,12 +45,15 @@ MascotRemoteQuery.cpp
 MascotXMLFile.cpp
 MsInspectFile.cpp
 MzDataFile.cpp
+MzIdentMLFile.cpp
+MzMLFile.cpp
+MzQuantMLFile.cpp
 MzTab.cpp
 MzTabFile.cpp
-MzMLFile.cpp
 MzXMLFile.cpp
 OMSSACSVFile.cpp
 OMSSAXMLFile.cpp
+OSWFile.cpp
 ParamXMLFile.cpp
 PTMXMLFile.cpp
 PeakTypeEstimator.cpp
@@ -55,23 +63,24 @@ PepXMLFile.cpp
 PepXMLFileMascot.cpp
 PercolatorOutfile.cpp
 ProtXMLFile.cpp
+QcMLFile.cpp
 SequestInfile.cpp
 SequestOutfile.cpp
 SpecArrayFile.cpp
+SqMassFile.cpp
 SwathFile.cpp
 SVOutStream.cpp
 TextFile.cpp
 ToolDescriptionFile.cpp
+TraMLFile.cpp
 TransformationXMLFile.cpp
 UnimodXMLFile.cpp
 XMassFile.cpp
 XMLFile.cpp
+XQuestResultXMLFile.cpp
 XTandemInfile.cpp
 XTandemXMLFile.cpp
-MzIdentMLFile.cpp
-MzQuantMLFile.cpp
-QcMLFile.cpp
-TraMLFile.cpp
+ZlibCompression.cpp
 )
 
 ### add path to the filenames

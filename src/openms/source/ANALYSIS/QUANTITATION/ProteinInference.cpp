@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -36,7 +36,6 @@
 #include <OpenMS/ANALYSIS/QUANTITATION/ProteinInference.h>
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
-#include <OpenMS/DATASTRUCTURES/Map.h>
 
 #include <OpenMS/KERNEL/ConsensusMap.h>
 
@@ -223,7 +222,7 @@ namespace OpenMS
     }
 
     //-> lets see if its unique:
-    std::set<String> protein_accessions = peptide_hits_local[0].extractProteinAccessions();
+    std::set<String> protein_accessions = peptide_hits_local[0].extractProteinAccessionsSet();
     if (protein_accessions.size() != 1)
     {
       // this is a shared peptide --> do not use it

@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Alexandra Zerck $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Alexandra Zerck $
 // --------------------------------------------------------------------------
 
@@ -47,8 +47,9 @@
 // include them in LPWrapper.cpp where they do not harm
 // only declare them here
 class CoinModel;
-#define GLP_PROB_DEFINED
 
+#ifndef GLP_PROB_DEFINED
+#define GLP_PROB_DEFINED
 // depending on the glpk version
 // define glp_prob as forward or struct
 #if OPENMS_GLPK_VERSION_MINOR < 48
@@ -58,6 +59,7 @@ typedef struct
 } glp_prob;
 #else
 class glp_prob;
+#endif
 #endif
 
 namespace OpenMS

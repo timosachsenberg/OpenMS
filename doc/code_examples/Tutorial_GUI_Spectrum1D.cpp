@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -49,7 +49,7 @@ Int main(int argc, const char ** argv)
   exp.resize(1);
   DTAFile().load(tutorial_data_path + "/data/Tutorial_Spectrum1D.dta", exp[0]);
   LayerData::ExperimentSharedPtrType exp_sptr(new PeakMap(exp));
-  Spectrum1DWidget * widget = new Spectrum1DWidget(Param(), 0);
+  Spectrum1DWidget * widget = new Spectrum1DWidget(Param(), nullptr);
   widget->canvas()->addLayer(exp_sptr);
   widget->show();
 

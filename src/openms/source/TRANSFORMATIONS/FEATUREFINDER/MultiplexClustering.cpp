@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -35,22 +35,14 @@
 #include <OpenMS/KERNEL/StandardTypes.h>
 #include <OpenMS/KERNEL/ConsensusMap.h>
 #include <OpenMS/FORMAT/ConsensusXMLFile.h>
-#include <OpenMS/CONCEPT/Constants.h>
 #include <OpenMS/TRANSFORMATIONS/RAW2PEAK/PeakPickerHiRes.h>
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/MultiplexFilterResult.h>
-#include <OpenMS/FILTERING/DATAREDUCTION/SplinePackage.h>
 #include <OpenMS/FILTERING/DATAREDUCTION/SplineSpectrum.h>
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/MultiplexFiltering.h>
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/MultiplexClustering.h>
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/PeakWidthEstimator.h>
 #include <OpenMS/MATH/STATISTICS/StatisticFunctions.h>
-#include <OpenMS/MATH/MISC/BSpline2d.h>
-#include <OpenMS/COMPARISON/CLUSTERING/GridBasedCluster.h>
 #include <OpenMS/COMPARISON/CLUSTERING/GridBasedClustering.h>
-
-#include <vector>
-#include <algorithm>
-#include <iostream>
 
 #include<QDir>
 
@@ -59,12 +51,12 @@ using namespace std;
 namespace OpenMS
 {
 
-  MultiplexClustering::MultiplexClustering(const MSExperiment<Peak1D>& exp_profile, const MSExperiment<Peak1D>& exp_picked, const std::vector<std::vector<PeakPickerHiRes::PeakBoundary> >& boundaries, double rt_typical, double rt_minimum) :
+  MultiplexClustering::MultiplexClustering(const PeakMap& exp_profile, const PeakMap& exp_picked, const std::vector<std::vector<PeakPickerHiRes::PeakBoundary> >& boundaries, double rt_typical, double rt_minimum) :
     rt_typical_(rt_typical), rt_minimum_(rt_minimum)
   {
     if (exp_picked.size() != boundaries.size())
     {
-      throw Exception::IllegalArgument(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Centroided data and the corresponding list of peak boundaries do not contain same number of spectra.");
+      throw Exception::IllegalArgument(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Centroided data and the corresponding list of peak boundaries do not contain same number of spectra.");
     }
     
     // ranges of the experiment
@@ -72,6 +64,12 @@ namespace OpenMS
     double mz_max = exp_profile.getMaxMZ();
     double rt_min = exp_profile.getMinRT();
     double rt_max = exp_profile.getMaxRT();
+    
+    // extend the grid by a small machine-epsilon-dependent margin
+    mz_min -= 2 * std::abs(mz_min) * std::numeric_limits<double>::epsilon();
+    mz_max += 2 * std::abs(mz_max) * std::numeric_limits<double>::epsilon();
+    rt_min -= 2 * std::abs(rt_min) * std::numeric_limits<double>::epsilon();
+    rt_max += 2 * std::abs(rt_max) * std::numeric_limits<double>::epsilon();
     
     // generate grid spacing
     PeakWidthEstimator estimator(exp_picked, boundaries);
@@ -92,10 +90,10 @@ namespace OpenMS
 
     // determine RT scaling
     std::vector<double> mz;
-    MSExperiment<Peak1D>::ConstIterator it_rt;
+    PeakMap::ConstIterator it_rt;
     for (it_rt = exp_picked.begin(); it_rt < exp_picked.end(); ++it_rt)
     {
-      MSSpectrum<Peak1D>::ConstIterator it_mz;
+      MSSpectrum::ConstIterator it_mz;
       for (it_mz = it_rt->begin(); it_mz < it_rt->end(); ++it_mz)
       {
         mz.push_back(it_mz->getMZ());
@@ -106,7 +104,7 @@ namespace OpenMS
 
   }
 
-  MultiplexClustering::MultiplexClustering(const MSExperiment<Peak1D>& exp, double mz_tolerance, bool mz_tolerance_unit, double rt_typical, double rt_minimum) :
+  MultiplexClustering::MultiplexClustering(const PeakMap& exp, double mz_tolerance, bool mz_tolerance_unit, double rt_typical, double rt_minimum) :
     rt_typical_(rt_typical), rt_minimum_(rt_minimum)
   {
     // ranges of the experiment
@@ -114,6 +112,12 @@ namespace OpenMS
     double mz_max = exp.getMaxMZ();
     double rt_min = exp.getMinRT();
     double rt_max = exp.getMaxRT();
+    
+    // extend the grid by a small machine-epsilon-dependent margin
+    mz_min -= 2 * std::abs(mz_min) * std::numeric_limits<double>::epsilon();
+    mz_max += 2 * std::abs(mz_max) * std::numeric_limits<double>::epsilon();
+    rt_min -= 2 * std::abs(rt_min) * std::numeric_limits<double>::epsilon();
+    rt_max += 2 * std::abs(rt_max) * std::numeric_limits<double>::epsilon();
     
     // generate grid spacing
     // We assume that the jitter of the peak centres are less than <scaling> times the user specified m/z tolerance.
@@ -143,10 +147,10 @@ namespace OpenMS
 
     // determine RT scaling
     std::vector<double> mz;
-    MSExperiment<Peak1D>::ConstIterator it_rt;
+    PeakMap::ConstIterator it_rt;
     for (it_rt = exp.begin(); it_rt < exp.end(); ++it_rt)
     {
-      MSSpectrum<Peak1D>::ConstIterator it_mz;
+      MSSpectrum::ConstIterator it_mz;
       for (it_mz = it_rt->begin(); it_mz < it_rt->end(); ++it_mz)
       {
         mz.push_back(it_mz->getMZ());

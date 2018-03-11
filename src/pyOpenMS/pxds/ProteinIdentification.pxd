@@ -5,7 +5,7 @@ from String cimport *
 from Types cimport *
 from MetaInfoInterface cimport *
 from ProteinHit cimport *
-from Enzyme cimport *
+from DigestionEnzymeProtein cimport *
 from PeptideIdentification cimport *
 from DateTime cimport *
 
@@ -72,7 +72,7 @@ cdef extern from "<OpenMS/METADATA/ProteinIdentification.h>" namespace "OpenMS":
         void assignRanks() nogil except +
 
         # Compute the coverage (in percent) of all ProteinHits given PeptideHits
-        Size computeCoverage(libcpp_vector[PeptideIdentification] pep_ids) nogil except +
+        void computeCoverage(libcpp_vector[PeptideIdentification] pep_ids) nogil except +
 
         # Returns the date of the protein identification run
         DateTime getDateTime() nogil except +
@@ -96,7 +96,7 @@ cdef extern from "<OpenMS/METADATA/ProteinIdentification.h>" namespace "OpenMS":
         void setIdentifier(String id_) nogil except +
 
         void setPrimaryMSRunPath(StringList& s) nogil except +
-        StringList getPrimaryMSRunPath() nogil except +
+        void getPrimaryMSRunPath(StringList& toFill) nogil except +
 
 cdef extern from "<OpenMS/METADATA/ProteinIdentification.h>" namespace "OpenMS::ProteinIdentification":
 
@@ -120,7 +120,7 @@ cdef extern from "<OpenMS/METADATA/ProteinIdentification.h>" namespace "OpenMS::
     cdef cppclass SearchParameters(MetaInfoInterface):
         # wrap-inherits:
         #    MetaInfoInterface
-    
+
       SearchParameters()  nogil except +
       SearchParameters(SearchParameters) nogil except +
 
@@ -134,6 +134,6 @@ cdef extern from "<OpenMS/METADATA/ProteinIdentification.h>" namespace "OpenMS::
       UInt missed_cleavages            #< The number of allowed missed cleavages
       double fragment_mass_tolerance            #< Mass tolerance of fragment ions (Dalton)
       bool fragment_mass_tolerance_ppm
-      double precursor_tolerance            #< Mass tolerance of precursor ions (Dalton)
+      double precursor_mass_tolerance            #< Mass tolerance of precursor ions (Dalton)
       bool precursor_mass_tolerance_ppm
-      Enzyme digestion_enzyme            #< The enzyme for cleavage
+      DigestionEnzymeProtein digestion_enzyme            #< The enzyme for cleavage

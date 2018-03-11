@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -38,6 +38,7 @@
 // OpenMS_GUI config
 #include <OpenMS/VISUAL/OpenMS_GUIConfig.h>
 
+#include <OpenMS/KERNEL/StandardTypes.h>
 #include <OpenMS/KERNEL/MSExperiment.h>
 #include <OpenMS/KERNEL/FeatureMap.h>
 #include <OpenMS/KERNEL/ConsensusMap.h>
@@ -117,7 +118,7 @@ public:
     typedef boost::shared_ptr<ConsensusMap> ConsensusMapSharedPtrType;
 
     /// Main data type (experiment)
-    typedef MSExperiment<> ExperimentType;
+    typedef PeakMap ExperimentType;
 
     /// SharedPtr on MSExperiment
     typedef boost::shared_ptr<ExperimentType> ExperimentSharedPtrType;
@@ -137,9 +138,12 @@ public:
       gradient(),
       filters(),
       annotations_1d(),
+      peak_colors_1d(),
       modifiable(false),
       modified(false),
       label(L_NONE),
+      peptide_id_index(-1),
+      peptide_hit_index(-1),
       features(new FeatureMapType()),
       consensus(new ConsensusMapType()),
       peaks(new ExperimentType()),
@@ -268,6 +272,13 @@ public:
       }
     }
 
+    /// updates the PeakAnnotations in the current PeptideHit with manually changed annotations
+    /// if no PeptideIdentification or PeptideHit for the spectrum exist, it is generated
+    void synchronizePeakAnnotations();
+
+    /// remove peak annotations in the given list from the currently active PeptideHit
+    void removePeakAnnotationsFromPeptideHit(const std::vector<Annotation1DItem*>& selected_annotations);
+
     /// if this layer is visible
     bool visible;
 
@@ -298,6 +309,9 @@ public:
     /// Annotations of all spectra of the experiment (1D view)
     std::vector<Annotations1DContainer> annotations_1d;
 
+    /// Peak colors of the currently shown spectrum
+    std::vector<QColor> peak_colors_1d;
+
     /// Flag that indicates if the layer data can be modified (so far used for features only)
     bool modifiable;
 
@@ -307,7 +321,14 @@ public:
     /// Label type
     LabelType label;
 
+    /// Selected peptide id and hit index (-1 if none is selected)
+    int peptide_id_index;
+    int peptide_hit_index;
+
 private:
+    /// updates the PeakAnnotations in the current PeptideHit with manually changed annotations
+    void updatePeptideHitAnnotations_(PeptideHit& hit);
+
     /// feature data
     FeatureMapSharedPtrType features;
 

@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -36,7 +36,7 @@
 #include <OpenMS/VISUAL/VISUALIZER/ProteinIdentificationVisualizer.h>
 #include <OpenMS/DATASTRUCTURES/DateTime.h>
 #include <OpenMS/VISUAL/MetaDataBrowser.h>
-#include <OpenMS/CHEMISTRY/EnzymesDB.h>
+#include <OpenMS/CHEMISTRY/ProteaseDB.h>
 //QT
 #include <QtGui/QLineEdit>
 #include <QtGui/QValidator>
@@ -109,7 +109,7 @@ namespace OpenMS
     charges_->setText(temp_.getSearchParameters().charges.toQString());
     missed_cleavages_->setText(QString::number(temp_.getSearchParameters().missed_cleavages));
     peak_tolerance_->setText(QString::number(temp_.getSearchParameters().fragment_mass_tolerance));
-    precursor_tolerance_->setText(QString::number(temp_.getSearchParameters().precursor_tolerance));
+    precursor_tolerance_->setText(QString::number(temp_.getSearchParameters().precursor_mass_tolerance));
     enzyme_->setText(temp_.getSearchParameters().digestion_enzyme.getName().toQString());
 
     if (!isEditable())
@@ -167,8 +167,8 @@ namespace OpenMS
     tmp.charges = charges_->text();
     tmp.missed_cleavages = missed_cleavages_->text().toInt();
     tmp.fragment_mass_tolerance = peak_tolerance_->text().toFloat();
-    tmp.precursor_tolerance = precursor_tolerance_->text().toFloat();
-    tmp.digestion_enzyme = *EnzymesDB::getInstance()->getEnzyme(enzyme_->text());
+    tmp.precursor_mass_tolerance = precursor_tolerance_->text().toFloat();
+    tmp.digestion_enzyme = *(ProteaseDB::getInstance()->getEnzyme(enzyme_->text()));
     tmp.mass_type = (ProteinIdentification::PeakMassType)(mass_type_->currentIndex());
     ptr_->setSearchParameters(tmp);
 

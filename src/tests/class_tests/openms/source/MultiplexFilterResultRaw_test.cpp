@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry               
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 // 
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -53,7 +53,7 @@ intensities.push_back(1492.1012);
 intensities.push_back(333.1105);
 intensities.push_back(325.0520);
 
-MultiplexFilterResultRaw* nullPointer = 0;
+MultiplexFilterResultRaw* nullPointer = nullptr;
 MultiplexFilterResultRaw* ptr;
 
 START_SECTION(MultiplexFilterResultRaw(double mz, std::vector<double> mz_shifts, std::vector<double> intensities))

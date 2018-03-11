@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,14 +28,22 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Andreas Bertsch $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: $
 // --------------------------------------------------------------------------
 //
 #ifndef OPENMS_COMPARISON_SPECTRA_SPECTRUMALIGNMENTSCORE_H
 #define OPENMS_COMPARISON_SPECTRA_SPECTRUMALIGNMENTSCORE_H
 
+#include <OpenMS/KERNEL/MSSpectrum.h>
+#include <OpenMS/KERNEL/Peak1D.h>
+#include <OpenMS/COMPARISON/SPECTRA/SpectrumAlignment.h>
+#include <OpenMS/DATASTRUCTURES/ListUtils.h>
+#include <OpenMS/KERNEL/StandardTypes.h>
 #include <OpenMS/COMPARISON/SPECTRA/PeakSpectrumCompareFunctor.h>
+
+#include <boost/math/special_functions/erf.hpp>
+#include <cmath>
 
 namespace OpenMS
 {
@@ -73,7 +81,7 @@ public:
     SpectrumAlignmentScore(const SpectrumAlignmentScore & source);
 
     /// destructor
-    virtual ~SpectrumAlignmentScore();
+    ~SpectrumAlignmentScore() override;
     // @}
 
     // @name Operators
@@ -82,9 +90,9 @@ public:
     SpectrumAlignmentScore & operator=(const SpectrumAlignmentScore & source);
 
     ///
-    double operator()(const PeakSpectrum & spec1, const PeakSpectrum & spec2) const;
+    double operator()(const PeakSpectrum & spec1, const PeakSpectrum & spec2) const override;
 
-    double operator()(const PeakSpectrum & spec) const;
+    double operator()(const PeakSpectrum & spec) const override;
     // @}
 
     // @name Accessors

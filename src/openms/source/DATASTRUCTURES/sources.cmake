@@ -6,6 +6,7 @@ set(sources_list
 Adduct.cpp
 BigString.cpp
 BinaryTreeNode.cpp
+CalibrationData.cpp
 ChargePair.cpp
 Compomer.cpp
 ConstRefVector.cpp
@@ -23,24 +24,20 @@ Date.cpp
 DateTime.cpp
 DefaultParamHandler.cpp
 DistanceMatrix.cpp
+FASTAContainer.cpp
 GridFeature.cpp
 ListUtils.cpp
 ListUtilsIO.cpp
+LPWrapper.cpp
 Map.cpp
 MassExplainer.cpp
 Matrix.cpp
 Param.cpp
 QTCluster.cpp
-SparseVector.cpp
 String.cpp
 StringListUtils.cpp
-SuffixArray.cpp
-SuffixArrayPeptideFinder.cpp
-SuffixArraySeqan.cpp
-SuffixArrayTrypticCompressed.cpp
-SuffixArrayTrypticSeqan.cpp
+StringUtils.cpp
 ToolDescription.cpp
-LPWrapper.cpp
 )
 
 ### add path to the filenames

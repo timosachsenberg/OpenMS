@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -59,7 +59,7 @@ namespace OpenMS
     The caret symbol follows "^" with a positive integer indicating the fragment ion charge.
     If no caret symbol is present, a charge of 1 is assumed. In case of neutral loss, a
     negative symbol "-" followed by the integer mass (e.g. 17 for ammonia) OR the molecular
-    composition, compatible with EmpricalFormula (e.g. N1H3 for ammonia) is allowed.
+    composition, compatible with EmpiricalFormula (e.g. N1H3 for ammonia) is allowed.
 
     Valid examples: y3, y3^1, y3^1-18, y3^1-H2O, y3-H2O
 
@@ -69,7 +69,7 @@ namespace OpenMS
   class OPENMS_DLLAPI MRMIonSeries
   {
 private:
-    CVTermList annotationToCVTermList_(String annotation);
+    TargetedExperiment::Interpretation annotationToCVTermList_(String annotation);
 
     void annotationToCV_(ReactionMonitoringTransition& tr);
 

@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry               
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 // 
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // 
 // --------------------------------------------------------------------------
-// $Maintainer: Andreas Bertsch $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Marc Sturm $
 // --------------------------------------------------------------------------
 
@@ -37,6 +37,7 @@
 
 ///////////////////////////
 
+#include <OpenMS/KERNEL/StandardTypes.h>
 #include <OpenMS/FORMAT/PeakTypeEstimator.h>
 #include <OpenMS/FORMAT/DTAFile.h>
 #include <OpenMS/KERNEL/MSExperiment.h>
@@ -52,8 +53,8 @@ START_TEST(String, "$Id$")
 
 /////////////////////////////////////////////////////////////
 
-PeakTypeEstimator* ptr = 0;
-PeakTypeEstimator* nullPointer = 0;
+PeakTypeEstimator* ptr = nullptr;
+PeakTypeEstimator* nullPointer = nullptr;
 
 START_SECTION(([EXTRA]PeakTypeEstimator()))
 	ptr = new PeakTypeEstimator();
@@ -66,7 +67,7 @@ END_SECTION
 
 START_SECTION((template<typename PeakConstIterator> SpectrumSettings::SpectrumType estimateType(const PeakConstIterator& begin, const PeakConstIterator& end) const))
 	DTAFile file;
-	MSExperiment<> exp;
+	PeakMap exp;
 	exp.resize(4);
 	PeakTypeEstimator pte;
 	// raw data (with zeros)
@@ -78,9 +79,9 @@ START_SECTION((template<typename PeakConstIterator> SpectrumSettings::SpectrumTy
 	//too few data points
 	exp[3].resize(4);
 	
-	TEST_EQUAL(pte.estimateType(exp[0].begin(),exp[0].end()), SpectrumSettings::RAWDATA);
-	TEST_EQUAL(pte.estimateType(exp[1].begin(),exp[1].end()), SpectrumSettings::RAWDATA);
-	TEST_EQUAL(pte.estimateType(exp[2].begin(),exp[2].end()), SpectrumSettings::PEAKS);
+	TEST_EQUAL(pte.estimateType(exp[0].begin(),exp[0].end()), SpectrumSettings::PROFILE);
+	TEST_EQUAL(pte.estimateType(exp[1].begin(),exp[1].end()), SpectrumSettings::PROFILE);
+	TEST_EQUAL(pte.estimateType(exp[2].begin(),exp[2].end()), SpectrumSettings::CENTROID);
 	TEST_EQUAL(pte.estimateType(exp[3].begin(),exp[3].end()), SpectrumSettings::UNKNOWN);
 END_SECTION
 

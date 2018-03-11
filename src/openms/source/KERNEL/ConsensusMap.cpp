@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,19 +28,14 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Erhan Kenar $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: $
 // --------------------------------------------------------------------------
 
 #include <OpenMS/KERNEL/ComparatorUtils.h>
 #include <OpenMS/KERNEL/ConsensusMap.h>
 
-#include <OpenMS/CONCEPT/Exception.h>
-#include <OpenMS/CONCEPT/LogStream.h>
-#include <OpenMS/CONCEPT/UniqueIdInterface.h>
 #include <OpenMS/DATASTRUCTURES/Map.h>
-#include <OpenMS/METADATA/DocumentIdentifier.h>
-#include <OpenMS/METADATA/MetaInfoInterface.h>
 #include <OpenMS/METADATA/DataProcessing.h>
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
@@ -150,6 +145,14 @@ namespace OpenMS
     DocumentIdentifier::operator=(empty_map);
     UniqueIdInterface::operator=(empty_map);
 
+    // append spectra_data information
+    StringList thisRuns_;
+    this->getPrimaryMSRunPath(thisRuns_);
+    StringList rhsRuns_;
+    rhs.getPrimaryMSRunPath(rhsRuns_);
+    thisRuns_.insert(thisRuns_.end(), rhsRuns_.begin(), rhsRuns_.end());
+    this->setPrimaryMSRunPath(thisRuns_);
+
     // append dataProcessing
     data_processing_.insert(data_processing_.end(),
                             rhs.data_processing_.begin(),
@@ -168,7 +171,7 @@ namespace OpenMS
       getFileDescriptions()[it->first].size = it->second.size + it2->second.size;
     }
 
-    // append proteinIdenficiation
+    // append proteinIdentification
     protein_identifications_.insert(protein_identifications_.end(),
                                     rhs.protein_identifications_.begin(),
                                     rhs.protein_identifications_.end());
@@ -193,7 +196,7 @@ namespace OpenMS
       fixMod.resize(it_2 - fixMod.begin());
     }
 
-    // append unassignedPeptideIdentifiactions
+    // append unassignedPeptideIdentifications
     unassigned_peptide_identifications_.insert(unassigned_peptide_identifications_.end(),
                                                rhs.unassigned_peptide_identifications_.begin(),
                                                rhs.unassigned_peptide_identifications_.end());
@@ -311,6 +314,37 @@ namespace OpenMS
     std::stable_sort(Base::begin(), Base::end(), ConsensusFeature::MapsLess());
   }
 
+  void ConsensusMap::sortPeptideIdentificationsByMapIndex()
+  {
+    // lambda predicate
+    auto mapIndexLess = [] (const PeptideIdentification & a, const PeptideIdentification & b) -> bool
+    {
+      const bool has_a = a.metaValueExists("map_index");
+      const bool has_b = b.metaValueExists("map_index");
+
+      // moves IDs without meta value to end
+      if (has_a && !has_b) { return true; }
+      if (!has_a && has_b) { return false; }
+
+      // both have map index annotated
+      if (has_a && has_b)
+      {
+        return a.getMetaValue("map_index") < b.getMetaValue("map_index");
+      }
+
+      // no map index annotated in both
+      return false;
+    };
+
+    std::transform(begin(), end(), begin(),
+      [mapIndexLess](ConsensusFeature& c) 
+      { 
+        vector<PeptideIdentification> & pids = c.getPeptideIdentifications();
+        stable_sort(pids.begin(), pids.end(), mapIndexLess);
+        return c;
+      });
+  }
+
   void ConsensusMap::swap(ConsensusMap& from)
   {
     ConsensusMap tmp;
@@ -399,19 +433,17 @@ namespace OpenMS
   {
     if (!s.empty())
     {
-      this->setMetaValue("ms_run-location", DataValue(s));
+      this->setMetaValue("spectra_data", DataValue(s));
     }
   }
 
   /// get the file path to the first MS run
-  StringList ConsensusMap::getPrimaryMSRunPath() const
+  void ConsensusMap::getPrimaryMSRunPath(StringList& toFill) const
   {
-    StringList ret;
-    if (this->metaValueExists("ms_run-location"))
+    if (this->metaValueExists("spectra_data"))
     {
-      ret = this->getMetaValue("ms_run-location");
+      toFill = this->getMetaValue("spectra_data");
     }
-    return ret;
   }
 
   /// Equality operator
@@ -512,7 +544,7 @@ namespace OpenMS
 
     if (maps.size() != file_description_.size())
     {
-      if (stream != 0)
+      if (stream != nullptr)
       {
         *stream << "Map descriptions (file name + label) in ConsensusMap are not unique:\n" << all_maps << std::endl;
       }
@@ -536,7 +568,7 @@ namespace OpenMS
 
     if (stats_wrongMID > 0)
     {
-      if (stream != 0)
+      if (stream != nullptr)
       {
         *stream << "ConsensusMap contains " << stats_wrongMID << " invalid references to maps:\n";
         for (Map<Size, Size>::ConstIterator it = wrong_ID_count.begin(); it != wrong_ID_count.end(); ++it)

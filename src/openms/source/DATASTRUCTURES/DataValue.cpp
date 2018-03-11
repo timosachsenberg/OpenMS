@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,25 +28,16 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Stephan Aiche$
+// $Maintainer: Timo Sachsenberg$
 // $Authors: Marc Sturm $
 // --------------------------------------------------------------------------
 
 #include <OpenMS/DATASTRUCTURES/DataValue.h>
-#include <OpenMS/DATASTRUCTURES/String.h>
 #include <OpenMS/DATASTRUCTURES/ListUtilsIO.h>
 
 #include <OpenMS/CONCEPT/PrecisionWrapper.h>
 
-#include <OpenMS/config.h>
-
 #include <QtCore/QString>
-
-#include <cstddef>
-#include <cmath>
-#include <cstdlib>
-#include <iostream>
-#include <sstream>
 
 using namespace std;
 
@@ -431,7 +422,7 @@ namespace OpenMS
   {
     if (value_type_ == EMPTY_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert DataValue::EMPTY to long double");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert DataValue::EMPTY to long double");
     }
     else if (value_type_ == INT_VALUE)
     {
@@ -444,7 +435,7 @@ namespace OpenMS
   {
     if (value_type_ == EMPTY_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert DataValue::EMPTY to double");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert DataValue::EMPTY to double");
     }
     else if (value_type_ == INT_VALUE)
     {
@@ -457,7 +448,7 @@ namespace OpenMS
   {
     if (value_type_ == EMPTY_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert DataValue::EMPTY to float");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert DataValue::EMPTY to float");
     }
     else if (value_type_ == INT_VALUE)
     {
@@ -470,7 +461,7 @@ namespace OpenMS
   {
     if (value_type_ != INT_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-integer DataValue to short int");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-integer DataValue to short int");
     }
     return data_.ssize_;
   }
@@ -479,11 +470,11 @@ namespace OpenMS
   {
     if (value_type_ != INT_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-integer DataValue to UInt");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-integer DataValue to UInt");
     }
     if (data_.ssize_ < 0.0)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert negative integer DataValue to unsigned short int");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert negative integer DataValue to unsigned short int");
     }
     return data_.ssize_;
   }
@@ -492,7 +483,7 @@ namespace OpenMS
   {
     if (value_type_ != INT_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-integer DataValue to int");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-integer DataValue to int");
     }
     return data_.ssize_;
   }
@@ -501,11 +492,11 @@ namespace OpenMS
   {
     if (value_type_ != INT_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-integer DataValue to unsigned int");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-integer DataValue to unsigned int");
     }
     if (data_.ssize_ < 0.0)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert negative integer DataValue to unsigned int");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert negative integer DataValue to unsigned int");
     }
     return data_.ssize_;
   }
@@ -514,7 +505,7 @@ namespace OpenMS
   {
     if (value_type_ != INT_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-integer DataValue to long int");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-integer DataValue to long int");
     }
     return data_.ssize_;
   }
@@ -523,11 +514,11 @@ namespace OpenMS
   {
     if (value_type_ != INT_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-integer DataValue to unsigned long int");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-integer DataValue to unsigned long int");
     }
     if (data_.ssize_ < 0.0)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert negative integer DataValue to unsigned long int");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert negative integer DataValue to unsigned long int");
     }
     return data_.ssize_;
   }
@@ -536,7 +527,7 @@ namespace OpenMS
   {
     if (value_type_ != INT_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-integer DataValue to Int");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-integer DataValue to Int");
     }
     return data_.ssize_;
   }
@@ -545,11 +536,11 @@ namespace OpenMS
   {
     if (value_type_ != INT_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-integer DataValue to UInt");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-integer DataValue to UInt");
     }
     if (data_.ssize_ < 0.0)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert negative integer DataValue to UInt");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert negative integer DataValue to UInt");
     }
     return data_.ssize_;
   }
@@ -558,7 +549,7 @@ namespace OpenMS
   {
     if (value_type_ != STRING_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-string DataValue to string");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-string DataValue to string");
     }
     return *(data_.str_);
   }
@@ -585,9 +576,9 @@ namespace OpenMS
     {
     case DataValue::STRING_VALUE: return const_cast<const char*>(data_.str_->c_str());
 
-    case DataValue::EMPTY_VALUE: return NULL;
+    case DataValue::EMPTY_VALUE: return nullptr;
 
-    default: throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert DataValue to char*");
+    default: throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert DataValue to char*");
     }
   }
 
@@ -595,7 +586,7 @@ namespace OpenMS
   {
     if (value_type_ != STRING_LIST)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-StringList DataValue to StringList");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-StringList DataValue to StringList");
     }
     return *(data_.str_list_);
   }
@@ -604,7 +595,7 @@ namespace OpenMS
   {
     if (value_type_ != INT_LIST)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-IntList DataValue to IntList");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-IntList DataValue to IntList");
     }
     return *(data_.int_list_);
   }
@@ -613,7 +604,7 @@ namespace OpenMS
   {
     if (value_type_ != DOUBLE_LIST)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-DoubleList DataValue to DoubleList");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-DoubleList DataValue to DoubleList");
     }
     return *(data_.dou_list_);
   }
@@ -638,7 +629,7 @@ namespace OpenMS
 
     case DataValue::DOUBLE_VALUE: ss << precisionWrapper(data_.dou_); break;
 
-    default: throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert DataValue to String");
+    default: throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert DataValue to String");
     }
     return ss.str();
   }
@@ -662,7 +653,7 @@ namespace OpenMS
 
     case DataValue::DOUBLE_VALUE: result.setNum(data_.dou_, 'f'); break;
 
-    default: throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert DataValue to QString");
+    default: throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert DataValue to QString");
     }
     return result;
   }
@@ -671,11 +662,11 @@ namespace OpenMS
   {
     if (value_type_ != STRING_VALUE)
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, "Could not convert non-string DataValue to bool.");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Could not convert non-string DataValue to bool.");
     }
     else if (*(data_.str_) != "true" &&  *(data_.str_) != "false")
     {
-      throw Exception::ConversionError(__FILE__, __LINE__, __PRETTY_FUNCTION__, String("Could not convert '") + *(data_.str_) + "' to bool. Valid stings are 'true' and 'false'.");
+      throw Exception::ConversionError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, String("Could not convert '") + *(data_.str_) + "' to bool. Valid stings are 'true' and 'false'.");
     }
 
     return *(data_.str_) == "true";

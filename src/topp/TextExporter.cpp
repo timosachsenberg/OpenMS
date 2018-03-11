@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -314,7 +314,7 @@ namespace OpenMS
     param_line += sp.digestion_enzyme.getName();
     param_line += ", missed_cleavages=" + String(sp.missed_cleavages) +
                   ", peak_mass_tolerance=" + String(sp.fragment_mass_tolerance) +
-                  ", precursor_mass_tolerance=" + String(sp.precursor_tolerance);
+                  ", precursor_mass_tolerance=" + String(sp.precursor_mass_tolerance);
     out << param_line;
     return out;
   }
@@ -413,7 +413,7 @@ namespace OpenMS
       out << *hit_it << pid.getScoreType() << pid.getIdentifier();
 
       String accessions;
-      set<String> protein_accessions = hit_it->extractProteinAccessions();
+      set<String> protein_accessions = hit_it->extractProteinAccessionsSet();
       for (set<String>::const_iterator acc_it = protein_accessions.begin(); acc_it != protein_accessions.end(); ++acc_it)
       {
         if (acc_it != protein_accessions.begin())
@@ -470,7 +470,7 @@ public:
 
 protected:
 
-    void registerOptionsAndFlags_()
+    void registerOptionsAndFlags_() override
     {
       registerInputFile_("in", "<file>", "", "Input file ");
       setValidFormats_("in", ListUtils::create<String>("featureXML,consensusXML,idXML,mzML"));
@@ -515,7 +515,7 @@ protected:
       registerFlag_("consensus:sort_by_size", "Apply a stable sort by decreasing size (i.e., the number of elements)", false);
     }
 
-    ExitCodes main_(int, const char**)
+    ExitCodes main_(int, const char**) override
     {
       //-------------------------------------------------------------
       // parameter handling
@@ -561,34 +561,49 @@ protected:
         FeatureXMLFile f;
         f.load(in, feature_map);
 
+        // extract common id and hit meta values
+        StringList peptide_id_meta_keys;
+        StringList peptide_hit_meta_keys;
+
+        vector<PeptideIdentification> pids;
+        if (add_id_metavalues >= 0 || add_hit_metavalues >= 0)
+        {
+                const vector<PeptideIdentification>& uapids = feature_map.getUnassignedPeptideIdentifications();
+                pids.insert(pids.end(), uapids.begin(), uapids.end());
+                for (FeatureMap::const_iterator cmit = feature_map.begin(); cmit != feature_map.end(); ++cmit)
+                {
+                        const vector<PeptideIdentification>& cpids = cmit->getPeptideIdentifications();
+                        pids.insert(pids.end(), cpids.begin(), cpids.end());
+                }
+                if (add_id_metavalues >= 0)
+                {
+                        peptide_id_meta_keys = MetaInfoInterfaceUtils::findCommonMetaKeys<vector<PeptideIdentification>, StringList>(pids.begin(), pids.end(), add_id_metavalues);
+                        // currently there is some hardcoded logic to create extra columns for these meta values so remove them to prevent duplication
+                        peptide_id_meta_keys.erase(std::remove(peptide_id_meta_keys.begin(), peptide_id_meta_keys.end(), "predicted_RT"), peptide_id_meta_keys.end());
+                        peptide_id_meta_keys.erase(std::remove(peptide_id_meta_keys.begin(), peptide_id_meta_keys.end(), "predicted_RT_first_dim"), peptide_id_meta_keys.end());
+                        peptide_id_meta_keys.erase(std::remove(peptide_id_meta_keys.begin(), peptide_id_meta_keys.end(), "first_dim_rt"), peptide_id_meta_keys.end());
+                        peptide_id_meta_keys.erase(std::remove(peptide_id_meta_keys.begin(), peptide_id_meta_keys.end(), "predicted_PT"), peptide_id_meta_keys.end());
+                }
+                if (add_hit_metavalues >= 0)
+                {
+                        vector<PeptideHit> temp_hits;
+                        for (Size i = 0; i != pids.size(); ++i)
+                        {
+                                const vector<PeptideHit>& hits = pids[i].getHits();
+                                temp_hits.insert(temp_hits.end(), hits.begin(), hits.end());
+                        }
+
+                        // siehe oben / analog machen
+                        peptide_hit_meta_keys = MetaInfoInterfaceUtils::findCommonMetaKeys<vector<PeptideHit>, StringList>(temp_hits.begin(), temp_hits.end(), add_hit_metavalues);
+                }
+        }
+
         if (add_feature_metavalues >= 0) 
         {
           meta_keys = MetaInfoInterfaceUtils::findCommonMetaKeys<FeatureMap, StringList>(feature_map.begin(), feature_map.end(), add_feature_metavalues);
         }
 
-        // compute protein coverage
         vector<ProteinIdentification> prot_ids = feature_map.getProteinIdentifications();
-        vector<PeptideIdentification> pep_ids;
-        // collect all peptide ids:
-        for (Size i = 0; i < feature_map.size(); ++i)
-        {
-          vector<PeptideIdentification> pep_ids_bf = feature_map[i].getPeptideIdentifications();
-          pep_ids.insert(pep_ids.end(), pep_ids_bf.begin(), pep_ids_bf.end());
-        }
-        pep_ids.insert(pep_ids.end(), feature_map.getUnassignedPeptideIdentifications().begin(), feature_map.getUnassignedPeptideIdentifications().end());
-
-        try // might throw Exception::MissingInformation()
-        {
-          for (Size i = 0; i < prot_ids.size(); ++i)
-          {
-            prot_ids[i].computeCoverage(pep_ids);
-          }
-        }
-        catch (Exception::MissingInformation& e)
-        {
-          LOG_WARN << "Non-critical exception: " << e.what() << "\n";
-        }
-        feature_map.setProteinIdentifications(prot_ids);
 
         // text output
         ofstream outstr(out.c_str());
@@ -605,6 +620,8 @@ protected:
           writeRunHeader(output);
           writeProteinHeader(output);
           writePeptideHeader(output, "UNASSIGNEDPEPTIDE");
+          writeMetaValuesHeader(output, peptide_id_meta_keys);
+          writeMetaValuesHeader(output, peptide_hit_meta_keys);
           output << nl;
           output << "#FEATURE";
           comment = false;
@@ -620,6 +637,8 @@ protected:
         if (!no_ids)
         {
           writePeptideHeader(output);
+          writeMetaValuesHeader(output, peptide_id_meta_keys);
+          writeMetaValuesHeader(output, peptide_hit_meta_keys);
           output << nl;
         }
         output.modifyStrings(true);
@@ -636,7 +655,7 @@ protected:
                pit != feature_map.getUnassignedPeptideIdentifications().end();
                ++pit)
           {
-            writePeptideId(output, *pit, "UNASSIGNEDPEPTIDE");
+            writePeptideId(output, *pit, "UNASSIGNEDPEPTIDE", false, false, false, peptide_id_meta_keys, peptide_hit_meta_keys);
           }
         }
 
@@ -675,7 +694,7 @@ protected:
                    citer->getPeptideIdentifications().begin(); pit !=
                  citer->getPeptideIdentifications().end(); ++pit)
             {
-              writePeptideId(output, *pit);
+              writePeptideId(output, *pit, "PEPTIDE", false, false, false, peptide_id_meta_keys, peptide_hit_meta_keys);
             }
           }
         }
@@ -695,28 +714,42 @@ protected:
 
         consensus_xml_file.load(in, consensus_map);
 
-        // compute protein coverage
-        vector<ProteinIdentification> prot_ids = consensus_map.getProteinIdentifications();
-        vector<PeptideIdentification> pep_ids;
-        for (Size i = 0; i < consensus_map.size(); ++i) // collect all peptide ids
+        // extract common id and hit meta values
+        StringList peptide_id_meta_keys;
+        StringList peptide_hit_meta_keys;
+
+        vector<PeptideIdentification> pids;
+        if (add_id_metavalues >= 0 || add_hit_metavalues >= 0)
         {
-          vector<PeptideIdentification> pep_ids_bf = consensus_map[i].getPeptideIdentifications();
-          pep_ids.insert(pep_ids.end(), pep_ids_bf.begin(), pep_ids_bf.end());
-        }
-        pep_ids.insert(pep_ids.end(), consensus_map.getUnassignedPeptideIdentifications().begin(), consensus_map.getUnassignedPeptideIdentifications().end());
-        try // might throw Exception::MissingInformation()
-        {
-          for (Size i = 0; i < prot_ids.size(); ++i)
+          const vector<PeptideIdentification>& uapids = consensus_map.getUnassignedPeptideIdentifications();
+          pids.insert(pids.end(), uapids.begin(), uapids.end());
+          for (ConsensusMap::const_iterator cmit = consensus_map.begin(); cmit != consensus_map.end(); ++cmit)
           {
-            prot_ids[i].computeCoverage(pep_ids);
+              const vector<PeptideIdentification>& cpids = cmit->getPeptideIdentifications();
+              pids.insert(pids.end(), cpids.begin(), cpids.end());
+          }
+          if (add_id_metavalues >= 0)
+          {
+            peptide_id_meta_keys = MetaInfoInterfaceUtils::findCommonMetaKeys<vector<PeptideIdentification>, StringList>(pids.begin(), pids.end(), add_id_metavalues);
+              // currently there is some hardcoded logic to create extra columns for these meta values so remove them to prevent duplication
+              peptide_id_meta_keys.erase(std::remove(peptide_id_meta_keys.begin(), peptide_id_meta_keys.end(), "predicted_RT"), peptide_id_meta_keys.end());
+              peptide_id_meta_keys.erase(std::remove(peptide_id_meta_keys.begin(), peptide_id_meta_keys.end(), "predicted_RT_first_dim"), peptide_id_meta_keys.end());
+              peptide_id_meta_keys.erase(std::remove(peptide_id_meta_keys.begin(), peptide_id_meta_keys.end(), "first_dim_rt"), peptide_id_meta_keys.end());
+              peptide_id_meta_keys.erase(std::remove(peptide_id_meta_keys.begin(), peptide_id_meta_keys.end(), "predicted_PT"), peptide_id_meta_keys.end());
+          }
+          if (add_hit_metavalues >= 0)
+          {
+            vector<PeptideHit> temp_hits;
+            for (Size i = 0; i != pids.size(); ++i)
+            {
+              const vector<PeptideHit>& hits = pids[i].getHits();
+              temp_hits.insert(temp_hits.end(), hits.begin(), hits.end());
+            }
+
+            // siehe oben / analog machen
+              peptide_hit_meta_keys = MetaInfoInterfaceUtils::findCommonMetaKeys<vector<PeptideHit>, StringList>(temp_hits.begin(), temp_hits.end(), add_hit_metavalues);
           }
         }
-        catch (Exception::MissingInformation& e)
-        {
-          LOG_WARN << "Non-critical exception: " << e.what() << "\n";
-        }
-        consensus_map.setProteinIdentifications(prot_ids);
-
 
         if (sorting_method == "none")
         {
@@ -755,7 +788,7 @@ protected:
           if (!consensus_centroids_file)
           {
             throw Exception::UnableToCreateFile(__FILE__, __LINE__,
-                                                __PRETTY_FUNCTION__,
+                                                OPENMS_PRETTY_FUNCTION,
                                                 consensus_centroids);
           }
 
@@ -783,7 +816,7 @@ protected:
           if (!consensus_elements_file)
           {
             throw Exception::UnableToCreateFile(__FILE__, __LINE__,
-                                                __PRETTY_FUNCTION__,
+                                                OPENMS_PRETTY_FUNCTION,
                                                 consensus_elements);
           }
 
@@ -823,7 +856,7 @@ protected:
           if (!consensus_features_file)
           {
             throw Exception::UnableToCreateFile(__FILE__, __LINE__,
-                                                __PRETTY_FUNCTION__,
+                                                OPENMS_PRETTY_FUNCTION,
                                                 consensus_features);
           }
 
@@ -937,7 +970,7 @@ protected:
                      ++hit_it)
                 {
                   peptides_by_source[index].insert(hit_it->getSequence().toString());
-                  set<String> protein_accessions = hit_it->extractProteinAccessions();
+                  set<String> protein_accessions = hit_it->extractProteinAccessionsSet();
                   proteins_by_source[index].insert(protein_accessions.begin(), protein_accessions.end());
                 }
               }
@@ -969,7 +1002,7 @@ protected:
           if (!outstr)
           {
             throw Exception::UnableToCreateFile(__FILE__, __LINE__,
-                                                __PRETTY_FUNCTION__, out);
+                                                OPENMS_PRETTY_FUNCTION, out);
           }
 
           SVOutStream output(outstr, sep, replacement, quoting_method);
@@ -1025,6 +1058,8 @@ protected:
             writeRunHeader(output);
             writeProteinHeader(output);
             writePeptideHeader(output, "UNASSIGNEDPEPTIDE");
+            writeMetaValuesHeader(output, peptide_id_meta_keys);
+            writeMetaValuesHeader(output, peptide_hit_meta_keys);
             output << nl;
           }
           output << "#CONSENSUS";
@@ -1039,6 +1074,8 @@ protected:
           if (!no_ids)
           {
             writePeptideHeader(output, "PEPTIDE");
+      writeMetaValuesHeader(output, peptide_id_meta_keys);
+      writeMetaValuesHeader(output, peptide_hit_meta_keys);
             output << nl;
           }
           output.modifyStrings(true);
@@ -1076,7 +1113,7 @@ protected:
             // unassigned peptides
             for (vector<PeptideIdentification>::const_iterator pit = consensus_map.getUnassignedPeptideIdentifications().begin(); pit != consensus_map.getUnassignedPeptideIdentifications().end(); ++pit)
             {
-              writePeptideId(output, *pit, "UNASSIGNEDPEPTIDE");
+              writePeptideId(output, *pit, "UNASSIGNEDPEPTIDE", false, false, false, peptide_id_meta_keys, peptide_hit_meta_keys);
               // first_dim_... stuff not supported for now
             }
           }
@@ -1106,7 +1143,7 @@ protected:
                      cmit->getPeptideIdentifications().begin(); pit !=
                    cmit->getPeptideIdentifications().end(); ++pit)
               {
-                writePeptideId(output, *pit);
+                writePeptideId(output, *pit, "PEPTIDE", false, false, false, peptide_id_meta_keys, peptide_hit_meta_keys);
               }
             }
           }
@@ -1144,18 +1181,6 @@ protected:
           peptide_hit_meta_keys = MetaInfoInterfaceUtils::findCommonMetaKeys<vector<PeptideHit>, StringList>(temp_hits.begin(), temp_hits.end(), add_hit_metavalues);
         }
 
-        try // might throw Exception::MissingInformation()
-        {
-          for (Size i = 0; i < prot_ids.size(); ++i)
-          {
-            prot_ids[i].computeCoverage(pep_ids);
-          }
-        }
-        catch (Exception::MissingInformation& e)
-        {
-          LOG_WARN << "Non-critical exception: " << e.what() << "\n";
-        }
-
         ofstream txt_out(out.c_str());
         SVOutStream output(txt_out, sep, replacement, quoting_method);
 
@@ -1163,7 +1188,7 @@ protected:
         bool peptides_only = getFlag_("id:peptides_only");
         if (proteins_only && peptides_only)
         {
-          throw Exception::InvalidParameter(__FILE__, __LINE__, __PRETTY_FUNCTION__, "'id:proteins_only' and 'id:peptides_only' cannot be used together");
+          throw Exception::InvalidParameter(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "'id:proteins_only' and 'id:peptides_only' cannot be used together");
         }
 
         String what = peptides_only ? "" : "PEPTIDE";
@@ -1229,7 +1254,7 @@ protected:
           Size output_count(0);
 
           output << "#MS" << "level" << "rt" << "mz" << "charge" << "peaks" << "index" << "name" << nl;
-          for (MSExperiment<>::const_iterator it = exp.getSpectra().begin(); it != exp.getSpectra().end(); ++it)
+          for (PeakMap::const_iterator it = exp.getSpectra().begin(); it != exp.getSpectra().end(); ++it)
           {
             int index = (it - exp.getSpectra().begin());
             String name = it->getName();
@@ -1269,13 +1294,13 @@ protected:
           Size output_count(0);
           Size unsupported_chromatogram_count(0);
 
-          for (vector<MSChromatogram<> >::const_iterator it = exp.getChromatograms().begin(); it != exp.getChromatograms().end(); ++it)
+          for (vector<MSChromatogram >::const_iterator it = exp.getChromatograms().begin(); it != exp.getChromatograms().end(); ++it)
           {
             if (it->getChromatogramType() == ChromatogramSettings::SELECTED_REACTION_MONITORING_CHROMATOGRAM)
             {
               ++output_count;
               output << "MRM Q1=" << it->getPrecursor().getMZ() << " Q3=" << it->getProduct().getMZ() << nl;
-              for (MSChromatogram<>::ConstIterator cit = it->begin(); cit != it->end(); ++cit)
+              for (MSChromatogram::ConstIterator cit = it->begin(); cit != it->end(); ++cit)
               {
                 output << cit->getRT() << " " << cit->getIntensity() << nl;
               }

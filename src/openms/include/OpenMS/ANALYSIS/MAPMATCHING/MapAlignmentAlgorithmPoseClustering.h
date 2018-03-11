@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Clemens Groepl $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Eva Lange, Clemens Groepl $
 // --------------------------------------------------------------------------
 
@@ -77,10 +77,10 @@ public:
     MapAlignmentAlgorithmPoseClustering();
 
     /// Destructor
-    virtual ~MapAlignmentAlgorithmPoseClustering();
+    ~MapAlignmentAlgorithmPoseClustering() override;
 
     void align(const FeatureMap& map, TransformationDescription& trafo);
-    void align(const MSExperiment<>& map, TransformationDescription& trafo);
+    void align(const PeakMap& map, TransformationDescription& trafo);
     void align(const ConsensusMap& map, TransformationDescription& trafo);
 
     /// Sets the reference for the alignment
@@ -93,7 +93,7 @@ public:
 
 protected:
 
-    virtual void updateMembers_();
+    void updateMembers_() override;
 
     PoseClusteringAffineSuperimposer superimposer_;
 

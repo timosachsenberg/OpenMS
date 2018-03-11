@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -34,10 +34,8 @@
 
 #include <OpenMS/FORMAT/MascotRemoteQuery.h>
 #include <OpenMS/CONCEPT/LogStream.h>
-#include <OpenMS/DATASTRUCTURES/ListUtils.h>
 
 #include <QtGui/QTextDocument>
-#include <iostream>
 
 // #define MASCOTREMOTEQUERY_DEBUG
 
@@ -81,7 +79,7 @@ namespace OpenMS
     defaults_.setValidStrings("use_ssl", ListUtils::create<String>("true,false"));
 
     // Mascot export options
-    defaults_.setValue("export_params", "_sigthreshold=0.99&_showsubsets=1&show_same_sets=1&report=0&percolate=0&query_master=0", "Adjustable export parameters (passed to Mascot's 'export_dat_2.pl' script). Generally only parameters that control which hits to export are safe to adjust/add. Many settings that govern what types of information to include are required by OpenMS and cannot be changed. Note that setting 'query_master' to 1 may lead to incorrect protein references for peptides.", ListUtils::create<String>("advanced"));
+    defaults_.setValue("export_params", "_ignoreionsscorebelow=0&_sigthreshold=0.99&_showsubsets=1&show_same_sets=1&report=0&percolate=0&query_master=0", "Adjustable export parameters (passed to Mascot's 'export_dat_2.pl' script). Generally only parameters that control which hits to export are safe to adjust/add. Many settings that govern what types of information to include are required by OpenMS and cannot be changed. Note that setting 'query_master' to 1 may lead to incorrect protein references for peptides.", ListUtils::create<String>("advanced"));
     defaults_.setValue("skip_export", "false", "For use with an external Mascot Percolator (via GenericWrapper): Run the Mascot search, but do not export the results. The output file produced by MascotAdapterOnline will contain only the Mascot search number.", ListUtils::create<String>("advanced"));
     defaults_.setValidStrings("skip_export", ListUtils::create<String>("true,false"));
     defaultsToParam_();
@@ -92,7 +90,7 @@ namespace OpenMS
     if (http_->state() != QHttp::Unconnected)
     {
 #ifdef MASCOTREMOTEQUERY_DEBUG
-      std::cerr << "Aborting open connection!\n";
+      std::cerr << "Aborting open connection in destructor!\n";
 #endif
       http_->abort(); // hardcore close connection (otherwise server might have too many dangling requests)
     }
@@ -102,6 +100,9 @@ namespace OpenMS
   void MascotRemoteQuery::timedOut()
   {
     LOG_FATAL_ERROR << "Mascot request timed out after " << to_ << " seconds! See 'timeout' parameter for details!" << std::endl;
+#ifdef MASCOTREMOTEQUERY_DEBUG
+      std::cerr << "Aborting open connection in MascotRemoteQuery::timedOut!\n";
+#endif
     http_->abort(); // one might try to resend the job here instead...
   }
 
@@ -311,21 +312,24 @@ namespace OpenMS
 #endif
 
     if (to_ > 0)
+    {
       timeout_.start();
+    }
     http_->request(header, querybytes);
   }
 
   void MascotRemoteQuery::httpRequestFinished(int requestId, bool error)
   {
+#ifdef MASCOTREMOTEQUERY_DEBUG
+    cerr << "MascotRemoteQuery::httpRequestFinished" << "\n";
+    cerr << "Request finished: " << requestId << "\n";
+    cerr << "Error: " << error << " (" << http_->errorString().toStdString() << ")" << "\n";
+#endif
+
     if (error)
     {
       cerr << "MascotRemoteQuery: An error occurred (requestId=" << requestId << "): " << http_->errorString().toStdString() << " (QT Error Code: " << int(http_->error()) << ")\n";
     }
-#ifdef MASCOTREMOTEQUERY_DEBUG
-    cerr << "Request Finished Id: " << requestId << "\n";
-    cerr << "Error: " << error << "(" << http_->errorString().toStdString() << ")" << "\n";
-#endif
-
   }
 
 #ifdef MASCOTREMOTEQUERY_DEBUG
@@ -365,7 +369,8 @@ namespace OpenMS
                                              )
   {
 #ifdef MASCOTREMOTEQUERY_DEBUG
-    cout << "Request started: " << requestId << "\n";
+    cerr << "MascotRemoteQuery::httpRequestStarted" << "\n";
+    cerr << "Request started: " << requestId << "\n";
 #endif
   }
 
@@ -379,31 +384,31 @@ namespace OpenMS
     switch (state)
     {
     case QHttp::Closing:
-      cout << "State change to QHttp::Closing\n";
+      cerr << "State change to QHttp::Closing\n";
       break;
 
     case QHttp::Unconnected:
-      cout << "State change to QHttp::Unconnected\n";
+      cerr << "State change to QHttp::Unconnected\n";
       break;
 
     case QHttp::HostLookup:
-      cout << "State change to QHttp::HostLookup\n";
+      cerr << "State change to QHttp::HostLookup\n";
       break;
 
     case QHttp::Sending:
-      cout << "State change to QHttp::Sending\n";
+      cerr << "State change to QHttp::Sending\n";
       break;
 
     case QHttp::Reading:
-      cout << "State change to QHttp::Reading\n";
+      cerr << "State change to QHttp::Reading\n";
       break;
 
     case QHttp::Connected:
-      cout << "State change to QHttp::Connected\n";
+      cerr << "State change to QHttp::Connected\n";
       break;
 
     case QHttp::Connecting:
-      cout << "State change to QHttp::Connecting\n";
+      cerr << "State change to QHttp::Connecting\n";
       break;
     }
 #endif
@@ -456,7 +461,9 @@ namespace OpenMS
       cookie_.append(mascot_user_ID);
 
 #ifdef MASCOTREMOTEQUERY_DEBUG
-      cout << "Cookie created:" << cookie_.toStdString() << "\n";
+      cerr << "===================================" << "\n";
+      cerr << "Cookie created:" << cookie_.toStdString() << "\n";
+      cerr << "===================================" << "\n";
 #endif
     }
   }
@@ -497,9 +504,9 @@ namespace OpenMS
     QByteArray new_bytes = http_->readAll();
 #ifdef MASCOTREMOTEQUERY_DEBUG
     cerr << "Response of query: " << "\n";
-    QTextDocument doc;
-    doc.setHtml(new_bytes.constData());
-    cerr << doc.toPlainText().toStdString() << "\n";
+    cerr << "-----------------------------------" << "\n";
+    cerr << QString(new_bytes.constData()).toStdString() << "\n";
+    cerr << "-----------------------------------" << "\n";
 #endif
 
     if (QString(new_bytes).trimmed().size() == 0 && !(http_->lastResponse().isValid() && http_->lastResponse().statusCode() == 303))
@@ -509,10 +516,10 @@ namespace OpenMS
       return;
     }
 
-    //Successful login? fire off the search
+    // Successful login? fire off the search
     if (new_bytes.contains("Logged in successfu")) // Do not use the whole string. Currently Mascot writes 'successfuly', but that might change...
     {
-      //Successful login? fire off the search
+      // Successful login? fire off the search
       LOG_INFO << "Login successful!" << std::endl;
       execQuery();
     }
@@ -536,7 +543,7 @@ namespace OpenMS
       QRegExp rx("file=(.+/\\d+/\\w+\\.dat)");
       rx.setMinimal(true);
       rx.indexIn(response);
-      search_number_ = getSearchNumberFromFilePath_(rx.cap(1));
+      search_identifier_ = getSearchIdentifierFromFilePath(rx.cap(1));
 
       if (param_.exists("skip_export") && 
           (param_.getValue("skip_export") == "true"))
@@ -598,8 +605,8 @@ namespace OpenMS
         if (mascot_error_regex.cap() == "[M00380]")
         {
           // we know this error, so we give a much shorter and readable error message for the user
-          LOG_ERROR << "You must enter an email address and user name when using the Matrix Science public web site [M00380]." << std::endl;
           error_message_ = "You must enter an email address and user name when using the Matrix Science public web site [M00380].";
+          LOG_ERROR << error_message_ << std::endl;
         }
         else
         {
@@ -640,9 +647,9 @@ namespace OpenMS
     return error_message_;
   }
 
-  Int MascotRemoteQuery::getSearchNumber() const
+  String MascotRemoteQuery::getSearchIdentifier() const
   {
-    return search_number_;
+    return search_identifier_;
   }
 
   void MascotRemoteQuery::updateMembers_()
@@ -703,6 +710,9 @@ namespace OpenMS
     if (!url.startsWith(host_name_.toQString()))
     {
       LOG_ERROR << "Invalid location returned by mascot! Abort." << std::endl;
+#ifdef MASCOTREMOTEQUERY_DEBUG
+      std::cerr << "Aborting open connection in MascotRemoteQuery::removeHostName_!\n";
+#endif
       endRun_();
       return;
     }
@@ -715,18 +725,27 @@ namespace OpenMS
   void MascotRemoteQuery::logHeader_(const QHttpHeader& header,
                                      const String& what)
   {
-    cerr << ">>>> Header to " << what << " (begin):\n"
+    cerr << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << "\n"
+         << ">>>> Header to " << what << " (begin):\n"
          << header.toString().toStdString()
-         << "<<<< Header to " << what << " (end)." << endl;
+         << "<<<< Header to " << what << " (end)." << "\n"
+         << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<
+         endl;
   }
 
-  Int MascotRemoteQuery::getSearchNumberFromFilePath_(const String& path) const
+  String MascotRemoteQuery::getSearchIdentifierFromFilePath(const String& path) const
   {
+#ifdef MASCOTREMOTEQUERY_DEBUG
+    std::cerr << "MascotRemoteQuery::getSearchIdentifierFromFilePath " << path << std::endl;
+#endif
     int pos = path.find_last_of("/\\");
     String tmp = path.substr(pos + 1);
     pos = tmp.find_last_of(".");
     tmp = tmp.substr(1, pos - 1);
-   
-    return tmp.toInt();
+
+#ifdef MASCOTREMOTEQUERY_DEBUG
+    std::cerr << "MascotRemoteQuery::getSearchIdentifierFromFilePath will return" << tmp << std::endl;
+#endif
+    return tmp;
   }
 }

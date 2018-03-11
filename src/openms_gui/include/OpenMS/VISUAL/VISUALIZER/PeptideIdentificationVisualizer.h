@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -60,7 +60,7 @@ namespace OpenMS
 
 public:
     ///Constructor
-    PeptideIdentificationVisualizer(bool editable = FALSE, QWidget * parent = 0, MetaDataBrowser * caller = 0);
+    PeptideIdentificationVisualizer(bool editable = FALSE, QWidget * parent = nullptr, MetaDataBrowser * caller = nullptr);
 
     /// Loads the meta data from the object to the viewer. Gets the id of the item in the tree as parameter.
     void load(PeptideIdentification & s, int tree_item_id);
@@ -68,7 +68,7 @@ public:
 public slots:
 
     //Docu in base class
-    void store();
+    void store() override;
 
 protected slots:
 

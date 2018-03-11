@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -28,7 +28,7 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Stephan Aiche $
+// $Maintainer: Timo Sachsenberg $
 // $Authors: Stephan Aiche$
 // --------------------------------------------------------------------------
 
@@ -56,7 +56,7 @@ public:
     O18Labeler();
 
     /// destructor
-    virtual ~O18Labeler();
+    ~O18Labeler() override;
 
     /// create new object (needed by Factory)
     static BaseLabeler* create()
@@ -71,21 +71,21 @@ public:
     }
 
     // redeclaration of virtual methods
-    void preCheck(Param& param) const;
+    void preCheck(Param& param) const override;
 
-    void setUpHook(SimTypes::FeatureMapSimVector& /* channels */);
+    void setUpHook(SimTypes::FeatureMapSimVector& /* channels */) override;
 
-    void postDigestHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */);
+    void postDigestHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */) override;
 
-    void postRTHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */);
+    void postRTHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */) override;
 
-    void postDetectabilityHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */);
+    void postDetectabilityHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */) override;
 
-    void postIonizationHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */);
+    void postIonizationHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */) override;
 
-    void postRawMSHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */);
+    void postRawMSHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */) override;
 
-    void postRawTandemMSHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */, SimTypes::MSSimExperiment& /* simulated map */);
+    void postRawTandemMSHook(SimTypes::FeatureMapSimVector& /* features_to_simulate */, SimTypes::MSSimExperiment& /* simulated map */) override;
 
 protected:
     void addModificationToPeptideHit_(Feature& feature, const String& modification) const;

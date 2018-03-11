@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -37,10 +37,16 @@
 
 #include <OpenMS/INTERFACES/IMSDataConsumer.h>
 
+#include <OpenMS/KERNEL/StandardTypes.h>
+
 #include <OpenMS/FORMAT/CachedMzML.h>
+
 
 namespace OpenMS
 {
+  class MSSpectrum;
+  class MSChromatogram;
+
     /**
       @brief Transforming and cached writing consumer of MS data
 
@@ -50,11 +56,10 @@ namespace OpenMS
     */
     class OPENMS_DLLAPI MSDataCachedConsumer :
       public CachedmzML,
-      public Interfaces::IMSDataConsumer<>
+      public Interfaces::IMSDataConsumer
     {
-      typedef MSExperiment<> MapType;
-      typedef MapType::SpectrumType SpectrumType;
-      typedef MapType::ChromatogramType ChromatogramType;
+      typedef MSSpectrum SpectrumType;
+      typedef MSChromatogram ChromatogramType;
 
     public:
 
@@ -63,61 +68,28 @@ namespace OpenMS
   
         Opens the output file and writes the header.
       */
-      MSDataCachedConsumer(String filename, bool clearData=true) :
-        ofs_(filename.c_str(), std::ios::binary),
-        clearData_(clearData),
-        spectra_written_(0),
-        chromatograms_written_(0)
-      {
-        int file_identifier = CACHED_MZML_FILE_IDENTIFIER;
-        ofs_.write((char*)&file_identifier, sizeof(file_identifier));
-      }
+      MSDataCachedConsumer(const String& filename, bool clearData=true);
 
       /**
         @brief Destructor
   
         Closes the output file and writes the footer.
       */
-      ~MSDataCachedConsumer()
-      {
-        // Write size of file (to the end of the file)
-        ofs_.write((char*)&spectra_written_, sizeof(spectra_written_));
-        ofs_.write((char*)&chromatograms_written_, sizeof(chromatograms_written_));
-
-        // Close file stream: close() _should_ call flush() but it might not in
-        // all cases. To be sure call flush() first.
-        ofs_.flush();
-        ofs_.close();
-      }
+      ~MSDataCachedConsumer() override;
 
       /**
         @brief Write a spectrum to the output file
       */
-      void consumeSpectrum(SpectrumType & s)
-      {
-        if (chromatograms_written_ > 0)
-        {
-          throw Exception::IllegalArgument(__FILE__, __LINE__, __PRETTY_FUNCTION__,
-            "Cannot write spectra after writing chromatograms.");
-        }
-        writeSpectrum_(s, ofs_);
-        spectra_written_++;
-        if (clearData_) {s.clear(false);}
-      }
+      void consumeSpectrum(SpectrumType & s) override;
 
       /**
         @brief Write a chromatogram to the output file
       */
-      void consumeChromatogram(ChromatogramType & c)
-      {
-        writeChromatogram_(c, ofs_);
-        chromatograms_written_++;
-        if (clearData_) {c.clear(false);}
-      }
+      void consumeChromatogram(ChromatogramType & c) override;
 
-      void setExpectedSize(Size /* expectedSpectra */, Size /* expectedChromatograms */) {;}
+      void setExpectedSize(Size /* expectedSpectra */, Size /* expectedChromatograms */) override {;}
 
-      void setExperimentalSettings(const ExperimentalSettings& /* exp */) {;}
+      void setExperimentalSettings(const ExperimentalSettings& /* exp */) override {;}
 
     protected:
       std::ofstream ofs_;

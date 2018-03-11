@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -48,7 +48,6 @@
 #include <OpenMS/VISUAL/SpectraIdentificationViewWidget.h>
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
 
-#include <OpenMS/VISUAL/TOPPViewBehaviorInterface.h>
 #include <OpenMS/VISUAL/TOPPViewSpectraViewBehavior.h>
 #include <OpenMS/VISUAL/TOPPViewIdentificationViewBehavior.h>
 
@@ -134,9 +133,9 @@ public:
     //@}
 
     ///Constructor
-    TOPPViewBase(QWidget* parent = 0);
+    TOPPViewBase(QWidget* parent = nullptr);
     ///Destructor
-    ~TOPPViewBase();
+    ~TOPPViewBase() override;
 
     /**
       @brief Opens and displays data from a file
@@ -242,12 +241,6 @@ public slots:
     void linkZoom();
     /// gets called if a layer got deactivated
     void layerDeactivated();
-    /// Activation of 1D spectrum
-    void activate1DSpectrum(int index);
-    /// Activation of 1D with multiple entries (e.g. chromatograms)
-    void activate1DSpectrum(std::vector<int, std::allocator<int> > indices);
-    /// Deactivation of 1D spectrum
-    void deactivate1DSpectrum(int index);
     /// closes the active window
     void closeFile();
     /// updates the toolbar
@@ -514,7 +507,7 @@ protected:
     void checkPreferences_();
     ///@name reimplemented Qt events
     //@{
-    void closeEvent(QCloseEvent* event);
+    void closeEvent(QCloseEvent* event) override;
     //@}
 
     ///Log message states
@@ -539,8 +532,7 @@ protected:
 
     /// Tabwidget that hold the different views on the loaded data
     QTabWidget* views_tabwidget_;
-    /// The current TOPPView view behavior
-    TOPPViewBehaviorInterface* view_behavior_;
+
     /// TOPPView behavior for the identification view
     TOPPViewIdentificationViewBehavior* identificationview_behavior_;
     /// TOPPView behavior for the spectra view
@@ -554,8 +546,8 @@ public:
     /// Estimates the noise by evaluating n_scans random scans of MS level 1. Assumes that 4/5 of intensities is noise.
     float estimateNoiseFromRandomMS1Scans(const ExperimentType& exp, UInt n_scans = 10);
 
-    /// Counts the number of exact zero valued intensities in all MS1 spectra
-    static UInt countMS1Zeros(const ExperimentType& exp);
+    /// Returns true of experiment has at least one exact zero valued peak in any of its MS1 spectra
+    static bool hasMS1Zeros(const ExperimentType& exp);
 
     /// Returns true if the experiment map contains peptide identifications
     static bool hasPeptideIdentifications(const ExperimentType& map);

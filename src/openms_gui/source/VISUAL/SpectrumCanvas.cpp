@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -70,11 +70,11 @@ namespace OpenMS
     zoom_pos_(zoom_stack_.end()),
     update_buffer_(false),
     current_layer_(0),
-    spectrum_widget_(0),
+    spectrum_widget_(nullptr),
     percentage_factor_(1.0),
     snap_factors_(1, 1.0),
     rubber_band_(QRubberBand::Rectangle, this),
-    context_add_(0),
+    context_add_(nullptr),
     show_timing_(false),
     selected_peak_(),
     measurement_start_()
@@ -115,14 +115,14 @@ namespace OpenMS
   void SpectrumCanvas::resizeEvent(QResizeEvent * /* e */)
   {
 #ifdef DEBUG_TOPPVIEW
-    cout << "BEGIN " << __PRETTY_FUNCTION__ << endl;
+    cout << "BEGIN " << OPENMS_PRETTY_FUNCTION << endl;
 #endif
     buffer_ = QImage(width(), height(), QImage::Format_RGB32);
     update_buffer_ = true;
     updateScrollbars_();
-    update_(__PRETTY_FUNCTION__);
+    update_(OPENMS_PRETTY_FUNCTION);
 #ifdef DEBUG_TOPPVIEW
-    cout << "END   " << __PRETTY_FUNCTION__ << endl;
+    cout << "END   " << OPENMS_PRETTY_FUNCTION << endl;
 #endif
   }
 
@@ -132,21 +132,21 @@ namespace OpenMS
     layers_[current_layer_].filters = filters;
     //update the content
     update_buffer_ = true;
-    update_(__PRETTY_FUNCTION__);
+    update_(OPENMS_PRETTY_FUNCTION);
   }
 
   void SpectrumCanvas::showGridLines(bool show)
   {
     show_grid_ = show;
     update_buffer_ = true;
-    update_(__PRETTY_FUNCTION__);
+    update_(OPENMS_PRETTY_FUNCTION);
   }
 
   void SpectrumCanvas::intensityModeChange_()
   {
     recalculateSnapFactor_();
     update_buffer_ = true;
-    update_(__PRETTY_FUNCTION__);
+    update_(OPENMS_PRETTY_FUNCTION);
   }
 
   void SpectrumCanvas::mzToXAxis(bool mz_to_x_axis)
@@ -161,7 +161,7 @@ namespace OpenMS
 
     updateScrollbars_();
     update_buffer_ = true;
-    update_(__PRETTY_FUNCTION__);
+    update_(OPENMS_PRETTY_FUNCTION);
   }
 
   void SpectrumCanvas::changeVisibleArea_(const AreaType & new_area, bool repaint, bool add_to_stack)
@@ -189,7 +189,7 @@ namespace OpenMS
     if (repaint)
     {
       update_buffer_ = true;
-      update_(__PRETTY_FUNCTION__);
+      update_(OPENMS_PRETTY_FUNCTION);
     }
   }
 
@@ -210,13 +210,13 @@ namespace OpenMS
     AreaType new_area;
     for (int dim = 0; dim < AreaType::DIMENSION; dim++)
     {
-      new_area.min_[dim] = visible_area_.min_[dim] + (1.0 - zoom_factor) * (visible_area_.max_[dim] - visible_area_.min_[dim])
-                           * ((dim == 0) == isMzToXAxis()
-                              ? (PointType::CoordinateType)x / width()
-                              : (PointType::CoordinateType)(height() - y) / height());
-      new_area.max_[dim] = new_area.min_[dim] + zoom_factor * (visible_area_.max_[dim] - visible_area_.min_[dim]);
-      new_area.min_[dim] = max(new_area.min_[dim], overall_data_range_.min_[dim]);
-      new_area.max_[dim] = min(new_area.max_[dim], overall_data_range_.max_[dim]);
+      // don't assign to "new_area.min_"/"max_" immediately, as this can lead to strange crashes at the min/max calls below on some platforms
+      // (GCC 4.6.3; faulty out-of-order execution?):
+      AreaType::CoordinateType coef = ((dim == 0) == isMzToXAxis()) ? (AreaType::CoordinateType(x) / width()) : (AreaType::CoordinateType(height() - y) / height());
+      AreaType::CoordinateType min_pos = visible_area_.min_[dim] + (1.0 - zoom_factor) * (visible_area_.max_[dim] - visible_area_.min_[dim]) * coef;
+      AreaType::CoordinateType max_pos = min_pos + zoom_factor * (visible_area_.max_[dim] - visible_area_.min_[dim]);
+      new_area.min_[dim] = max(min_pos, overall_data_range_.min_[dim]);
+      new_area.max_[dim] = min(max_pos, overall_data_range_.max_[dim]);
     }
     if (new_area != visible_area_)
     {
@@ -301,7 +301,7 @@ namespace OpenMS
 
   void SpectrumCanvas::setVisibleArea(AreaType area)
   {
-    //cout << __PRETTY_FUNCTION__ << endl;
+    //cout << OPENMS_PRETTY_FUNCTION << endl;
     changeVisibleArea_(area);
   }
 
@@ -471,7 +471,7 @@ namespace OpenMS
     {
       layer.visible = b;
       update_buffer_ = true;
-      update_(__PRETTY_FUNCTION__);
+      update_(OPENMS_PRETTY_FUNCTION);
     }
   }
 
@@ -483,7 +483,7 @@ namespace OpenMS
     {
       layer.filters.setActive(b);
       update_buffer_ = true;
-      update_(__PRETTY_FUNCTION__);
+      update_(OPENMS_PRETTY_FUNCTION);
     }
   }
 
@@ -551,6 +551,11 @@ namespace OpenMS
 
     // add 4% margin (2% left, 2% right) to RT, m/z and intensity
     overall_data_range_.extend(1.04);
+
+    // set minimum intensity to 0
+    DRange<3>::PositionType new_min = overall_data_range_.minPosition();
+    new_min[it_dim] = 0;
+    overall_data_range_.setMin(new_min);
   }
 
   double SpectrumCanvas::getSnapFactor()
@@ -598,7 +603,7 @@ namespace OpenMS
     measurement_start_.clear();
 
     //update
-    update_(__PRETTY_FUNCTION__);
+    update_(OPENMS_PRETTY_FUNCTION);
   }
 
   void SpectrumCanvas::leaveEvent(QEvent * /*e*/)
@@ -941,9 +946,9 @@ namespace OpenMS
     {
       layer.modified = modified;
 #ifdef DEBUG_TOPPVIEW
-      cout << "BEGIN " << __PRETTY_FUNCTION__ << endl;
+      cout << "BEGIN " << OPENMS_PRETTY_FUNCTION << endl;
       cout << "emit: layerModificationChange" << endl;
-      cout << "END " << __PRETTY_FUNCTION__ << endl;
+      cout << "END " << OPENMS_PRETTY_FUNCTION << endl;
 #endif
       emit layerModficationChange(activeLayerIndex(), modified);
     }
@@ -967,7 +972,7 @@ namespace OpenMS
       width = max(width, 4 + metrics.width(text[i]));
     }
 
-    //draw backgrond for text
+    //draw background for text
     painter.fillRect(2, 3, width, height, QColor(255, 255, 255, 200));
 
     //draw text
@@ -976,7 +981,6 @@ namespace OpenMS
     {
       painter.drawText(3, 3 + (i + 1) * line_spacing, text[i]);
     }
-
     painter.restore();
   }
 

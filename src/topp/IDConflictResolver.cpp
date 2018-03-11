@@ -2,7 +2,7 @@
 //                   OpenMS -- Open-Source Mass Spectrometry
 // --------------------------------------------------------------------------
 // Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2015.
+// ETH Zurich, and Freie Universitaet Berlin 2002-2017.
 //
 // This software is released under a three-clause BSD license:
 //  * Redistributions of source code must retain the above copyright
@@ -103,9 +103,13 @@ protected:
   // compare peptide IDs by score of best hit (hits must be sorted first!)
   // (note to self: the "static" is necessary to avoid cryptic "no matching
   // function" errors from gcc when the comparator is used below)
-  static bool compareIDs_(const PeptideIdentification & left,
+  static bool compareIDsSmallerScores_(const PeptideIdentification & left,
                           const PeptideIdentification & right)
   {
+    // if any of them is empty, the other is considered "greater"
+    // independent of the score in the first hit
+    if (left.getHits().empty()) return true;
+    if (right.getHits().empty()) return false;
     if (left.getHits()[0].getScore() < right.getHits()[0].getScore())
     {
       return true;
@@ -125,20 +129,24 @@ protected:
     vector<PeptideIdentification>::iterator pos;
     if (peptides[0].isHigherScoreBetter())     // find highest-scoring ID
     {
-      pos = max_element(peptides.begin(), peptides.end(), compareIDs_);
+      pos = max_element(peptides.begin(), peptides.end(), compareIDsSmallerScores_);
     }
-    else     // find lowest-scoring ID
+    else  // find lowest-scoring ID
     {
-      pos = min_element(peptides.begin(), peptides.end(), compareIDs_);
+      pos = min_element(peptides.begin(), peptides.end(), compareIDsSmallerScores_);
     }
     peptides[0] = *pos;
     peptides.resize(1);
-    // remove all but the best hit:
-    vector<PeptideHit> best_hit(1, peptides[0].getHits()[0]);
-    peptides[0].setHits(best_hit);
+
+    if (!peptides[0].getHits().empty())
+    {
+      // remove all but the best hit:
+      vector<PeptideHit> best_hit(1, peptides[0].getHits()[0]);
+      peptides[0].setHits(best_hit);
+    }
   }
 
-  void registerOptionsAndFlags_()
+  void registerOptionsAndFlags_() override
   {
     registerInputFile_("in", "<file>", "", "Input file (data annotated with identifications)");
     setValidFormats_("in", ListUtils::create<String>("featureXML,consensusXML"));
@@ -146,7 +154,7 @@ protected:
     setValidFormats_("out", ListUtils::create<String>("featureXML,consensusXML"));
   }
 
-  ExitCodes main_(int, const char **)
+  ExitCodes main_(int, const char **) override
   {
     String in = getStringOption_("in"), out = getStringOption_("out");
     FileTypes::Type in_type = FileHandler::getType(in);

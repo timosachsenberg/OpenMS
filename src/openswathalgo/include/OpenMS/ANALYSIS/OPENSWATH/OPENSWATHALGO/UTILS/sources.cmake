@@ -6,7 +6,8 @@ set(sources_list_h
 MRMIonSeries.h
 MRMAssay.h
 MRMDecoy.h
-TransitionTSVReader.h
+TransitionTSVFile.h
+TransitionPQPFile.h
 OpenSwathHelper.h
 ChromatogramExtractor.h
 )
