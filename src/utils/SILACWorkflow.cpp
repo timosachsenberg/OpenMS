@@ -32,6 +32,11 @@
 // $Authors: Nantia Leonidou $
 // --------------------------------------------------------------------------
 
+#include <vector>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <OpenMS/MATH/STATISTICS/PosteriorErrorProbabilityModel.h>
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
@@ -39,7 +44,7 @@
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
 #include <OpenMS/ANALYSIS/ID/PeptideIndexing.h>
-#include <vector>
+
 
 using namespace OpenMS;
 using namespace std;
@@ -76,14 +81,13 @@ public:
     {}
 
 protected:
-// this function will be used to register the tool parameters
+  // register the tool parameters
   // it gets automatically called on tool execution
   void registerOptionsAndFlags_()
   {
     //Input mzML file list
     registerInputFileList_("in", "<files>", StringList(), "Input MzMLFile");
     setValidFormats_("in", ListUtils::create<String>("mzML"));
-
 
     registerInputFileList_("in_ids_light", "<files>", StringList(), "Input idXML light");
     setValidFormats_("in_ids_light", ListUtils::create<String>("idXML"));
@@ -104,7 +108,7 @@ protected:
     //setValidFormats_("out", ListUtils::create<String>("fasta"));
   }
 
-
+//gives indexes to all protein and peptide ids
 public:
   PeptideIndexing::ExitCodes indexPepAndProtIds(vector<ProteinIdentification>& protein_ids, vector<PeptideIdentification>& peptide_ids)
   {
@@ -124,12 +128,68 @@ public:
   }
 
 
-
 //iterates over idXML files
 public:
-  void indexFiles(const StringList & inp)
+  void calculatePEP(vector<ProteinIdentification>& protein_identifications,vector<PeptideIdentification>& peptide_identifications)
   {
-     for(unsigned int i = 0; i < inp.size(); i++)
+    //generate PEP_model
+    Param pep_param = getParam_().copy("Posterior Error Probability:", true);
+    writeDebug_("Parameters passed to PEP algorithm", pep_param, 3);
+    Math::PosteriorErrorProbabilityModel PEP_model;
+    PEP_model.setParameters(pep_param);
+
+    //-------------------------------------------------------------
+    // Posterior Error Probability calculation
+    //-------------------------------------------------------------
+       map<String, vector<vector<double> > > all_scores = Math::PosteriorErrorProbabilityModel::extractAndTransformScores(
+            protein_identifications,
+            peptide_identifications,
+            false,
+            true,
+            true,
+            0.05);
+
+          for (auto & score : all_scores)  // for all search engine scores (should only be 1)
+          {
+            vector<String> engine_info;
+            score.first.split(',', engine_info);
+            String engine = engine_info[0];
+            Int charge = (engine_info.size() == 2) ? engine_info[1].toInt() : -1;
+
+            // fit to score vector
+            bool return_value = PEP_model.fit(score.second[0]);
+            if (!return_value)
+            {
+              writeLog_("Unable to fit data. Algorithm did not run through for the following search engine: " + engine);
+            }
+
+            bool unable_to_fit_data(true), data_might_not_be_well_fit(true);
+            Math::PosteriorErrorProbabilityModel::updateScores(
+              PEP_model,
+              engine,
+              charge,
+              true, // prob_correct
+              false, //split_charge
+              protein_identifications,
+              peptide_identifications,
+              unable_to_fit_data,
+              data_might_not_be_well_fit);
+
+            if (unable_to_fit_data)
+            {
+              writeLog_(String("Unable to fit data for search engine: ") + engine);
+            }
+            else if (data_might_not_be_well_fit)
+            {
+              writeLog_(String("Data might not be well fitted for search engine: ") + engine);
+            }
+          }
+        };
+
+  void prepareIDFiles(const StringList & inp)
+  {
+
+     for (unsigned int i = 0; i < inp.size(); i++)
      {
       // read the identification file (contains both protein as well as peptide identifications)
       vector<ProteinIdentification> protein_identifications;
@@ -143,10 +203,66 @@ public:
 
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
-        // TODO:
+        // TODO: write error message and return
       }
+
+      // calls calculatePEP
+      calculatePEP(protein_identifications, peptide_identifications);
     }
-}
+
+  }
+
+  //merges two vectors with peptide identifications
+public:
+  vector<PeptideIdentification> merge(const vector<PeptideIdentification>& light,
+    const vector<PeptideIdentification>& heavy)
+  {
+    std::map<String, PeptideIdentification> spectrum_to_id;
+
+    // inserts all the spectrum references with the value l for the light ids in a map
+    for (PeptideIdentification const & l : light)
+    {
+      spectrum_to_id[l.getMetaValue("spectrum_reference")] = l;
+    }
+
+    for (PeptideIdentification const & h : heavy)
+    {
+      const String& h_ref = h.getMetaValue("spectrum_reference"); // get spectrum references
+
+      // if the same id is not found, store heavy id result it in map
+      if (spectrum_to_id.find(h_ref) == spectrum_to_id.end())
+      {
+        spectrum_to_id[h_ref] = h;
+      }
+      else // already a light id in map? replace if score of heavy is better
+      {
+        const vector<PeptideHit> & l_hits = spectrum_to_id[h_ref].getHits();
+        const vector<PeptideHit> & h_hits = h.getHits();
+
+        bool higher_better = h.isHigherScoreBetter();
+
+        // replace if first hit of h has a better score
+        if ((l_hits[0].getScore() < h_hits[0].getScore() && higher_better)
+         || (l_hits[0].getScore() > h_hits[0].getScore() && !higher_better))
+        {
+          spectrum_to_id[h_ref] = h;
+        }
+      }
+
+    }
+    // copy values from map into vector
+    std::vector<PeptideIdentification> ret;
+    for (auto spectrum_id_pair : spectrum_to_id) //range-based for loop for all items in map
+    {
+      ret.push_back(spectrum_id_pair.second);
+    }
+
+    return ret;
+  };
+
+
+
+
 
   // the main_ function is called after all parameters are read
   ExitCodes main_(int, const char **)
@@ -160,17 +276,18 @@ public:
     StringList in_ids_light = getStringList_("in_ids_light"); //read idXML light file
 
     //-------------------------------------------------------------
-    // reading input
+    // reading input (read protein database)
     //-------------------------------------------------------------
-    // read the protein database
     vector<FASTAFile::FASTAEntry> fasta_db;
 
    //Loads the identifications of a fasta file
     FASTAFile fasta_reader;
     fasta_reader.load(database, fasta_db);
 
-    indexFiles(in_ids_heavy);
-    indexFiles(in_ids_light);
+    prepareIDFiles(in_ids_heavy);
+    prepareIDFiles(in_ids_light);
+
+
 
     //-------------------------------------------------------------
     // calculations
