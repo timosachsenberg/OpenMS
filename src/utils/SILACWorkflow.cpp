@@ -44,7 +44,7 @@
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
 #include <OpenMS/ANALYSIS/ID/PeptideIndexing.h>
-
+#include <OpenMS/ANALYSIS/ID/FalseDiscoveryRate.h>
 
 using namespace OpenMS;
 using namespace std;
@@ -108,7 +108,11 @@ protected:
     //setValidFormats_("out", ListUtils::create<String>("fasta"));
   }
 
-//gives indexes to all protein and peptide ids
+//***************************************************************
+// P e p t i d e  I d e n t i f i c a t i o n
+//***************************************************************
+
+ //gives indexes to all protein and peptide ids
 public:
   PeptideIndexing::ExitCodes indexPepAndProtIds(vector<ProteinIdentification>& protein_ids, vector<PeptideIdentification>& peptide_ids)
   {
@@ -186,6 +190,7 @@ public:
           }
         };
 
+//prepares ID Files
   void prepareIDFiles(const StringList & inp)
   {
 
@@ -200,6 +205,12 @@ public:
       idXML_file.load(inp[i], protein_identifications,  peptide_identifications);
 
       PeptideIndexing::ExitCodes indexer_exit = indexPepAndProtIds(protein_identifications, peptide_identifications);
+
+      //set as default enzyme TrypsinP
+      PeptideIndexing enz;
+      Param p = enz.getParameters();
+      p.setValue("enzyme:name", "TrypsinP");
+      enz.setParameters(p);
 
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
@@ -260,11 +271,27 @@ public:
     return ret;
   };
 
+   //estimates false discovery rate of peptide
+ private:
+   void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
+   {
+    FalseDiscoveryRate fdr;
+    Param p = fdr.getDefaults();
+    p.setValue("FDR:PSM", 0.01);
+    fdr.setParameters(p);
+    fdr.apply(peptide_ids);
+   }
+
+
+//*************************************************************
+// Q u a n t i f i c a t i o n
+//*************************************************************
 
 
 
 
-  // the main_ function is called after all parameters are read
+
+// the main_ function is called after all parameters are read
   ExitCodes main_(int, const char **)
   {
     //-------------------------------------------------------------
@@ -292,14 +319,6 @@ public:
     //-------------------------------------------------------------
     // calculations
 /**    //-------------------------------------------------------------
-      PeptideIndexing indexer;
-      Param param_pi = indexer.getParameters();
-      param_pi.setValue("decoy_string_position", "prefix");
-      param_pi.setValue("enzyme:specificity", "none");
-      param_pi.setValue("missing_decoy_action", "warn");
-      param_pi.setValue("log", getStringOption_("log"));
-      indexer.setParameters(param_pi);
-
 
 
      // iteration in idXML- heavy file
