@@ -133,7 +133,7 @@ public:
           if (!tz_matches_ez || !ti_matches_ei)
           {
             Size e_candidate(e);
-            while (true)
+            while (e_candidate < n_e-1)
             {
               ++e_candidate;
               double new_ez = has_charge ? exp_charges[e_candidate] : 0;
