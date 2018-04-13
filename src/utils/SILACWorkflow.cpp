@@ -36,6 +36,8 @@
 #include <map>
 #include <string>
 #include <algorithm>
+#include <utility>
+#include <stdexcept>
 #include <OpenMS/MATH/STATISTICS/PosteriorErrorProbabilityModel.h>
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
@@ -114,7 +116,12 @@ protected:
 
  //gives indexes to all protein and peptide ids
 public:
-  PeptideIndexing::ExitCodes indexPepAndProtIds(vector<ProteinIdentification>& protein_ids, vector<PeptideIdentification>& peptide_ids)
+  // TODO: fasta datenbank als const & übergeben
+  PeptideIndexing::ExitCodes indexPepAndProtIds(
+    vector<FASTAFile::FASTAEntry>& fasta_db,
+    vector<ProteinIdentification>& protein_ids,
+    vector<PeptideIdentification>& peptide_ids
+    )
   {
     PeptideIndexing indexer;
     Param param_pi = indexer.getParameters();
@@ -122,19 +129,21 @@ public:
     param_pi.setValue("enzyme:specificity", "none");
     param_pi.setValue("missing_decoy_action", "warn");
     param_pi.setValue("log", getStringOption_("log"));
+    //set as default enzyme TrypsinP
+    param_pi.setValue("enzyme:name", "Trypsin/P");
     indexer.setParameters(param_pi);
 
-    vector<FASTAFile::FASTAEntry> fasta_db;
-
-    PeptideIndexing::ExitCodes indexer_exit = indexer.run(fasta_db, protein_ids, peptide_ids);
+    PeptideIndexing::ExitCodes indexer_exit = indexer.run( fasta_db,protein_ids, peptide_ids);
 
     return indexer_exit;
-  }
+  };
 
 
 //iterates over idXML files
 public:
-  void calculatePEP(vector<ProteinIdentification>& protein_identifications,vector<PeptideIdentification>& peptide_identifications)
+  void calculatePEP(
+    vector<ProteinIdentification>& protein_identifications,
+    vector<PeptideIdentification>& peptide_identifications)
   {
     //generate PEP_model
     Param pep_param = getParam_().copy("Posterior Error Probability:", true);
@@ -188,29 +197,50 @@ public:
               writeLog_(String("Data might not be well fitted for search engine: ") + engine);
             }
           }
-        };
+    };
 
 //prepares ID Files
-  void prepareIDFiles(const StringList & inp)
+public:
+  // pair of protein and peptide identifications, as stored in an idXML file
+  using ProtsPepsPair = std::pair<vector<ProteinIdentification>, vector<PeptideIdentification>>;
+
+  using ProtsPepsPairs = vector<ProtsPepsPair>;
+
+  ProtsPepsPairs prepareIDFiles(
+    vector<FASTAFile::FASTAEntry>& fasta_db,
+    const StringList & light,
+    const StringList & heavy
+    )
   {
-
-     for (unsigned int i = 0; i < inp.size(); i++)
+     // TODO: checken ob light und heavy Stringlist gleich viele einträge haben
+     //if stringList sizes not equal, throw an exception
+     if (light.size() != heavy.size())
      {
-      // read the identification file (contains both protein as well as peptide identifications)
-      vector<ProteinIdentification> protein_identifications;
-      vector<PeptideIdentification> peptide_identifications;
+        throw string("Not equal-sized lists"); //(?????)
+     }
+     IdXMLFile idXML_file;
 
-      //Loads the identifications of an idXML file named idXML_file
-      IdXMLFile idXML_file;
-      idXML_file.load(inp[i], protein_identifications,  peptide_identifications);
+     ProtsPepsPairs ret;
+     for (unsigned int i = 0; i < light.size(); i++)
+     {
+      vector<ProteinIdentification> light_protein_identifications;
+      vector<PeptideIdentification> light_peptide_identifications;
+      // read the identification file for light (contains both protein as well as peptide identifications)
+      idXML_file.load(light[i], light_protein_identifications,  light_peptide_identifications);
+      PeptideIndexing::ExitCodes indexer_exit = indexPepAndProtIds(fasta_db, light_protein_identifications, light_peptide_identifications);
+      if (indexer_exit != PeptideIndexing::EXECUTION_OK)
+      {
+        // TODO: write error message and return
+      }
+      // calls calculatePEP
+      calculatePEP(light_protein_identifications, light_peptide_identifications);
 
-      PeptideIndexing::ExitCodes indexer_exit = indexPepAndProtIds(protein_identifications, peptide_identifications);
-
-      //set as default enzyme TrypsinP
-      PeptideIndexing enz;
-      Param p = enz.getParameters();
-      p.setValue("enzyme:name", "TrypsinP");
-      enz.setParameters(p);
+      //the same for heavy
+      vector<ProteinIdentification> heavy_protein_identifications;
+      vector<PeptideIdentification> heavy_peptide_identifications;
+      // read the identification file for heavy (contains both protein as well as peptide identifications)
+      idXML_file.load(heavy[i], heavy_protein_identifications,  heavy_peptide_identifications);
+      indexer_exit = indexPepAndProtIds( fasta_db,heavy_protein_identifications, heavy_peptide_identifications);
 
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
@@ -218,15 +248,30 @@ public:
       }
 
       // calls calculatePEP
-      calculatePEP(protein_identifications, peptide_identifications);
-    }
+      calculatePEP(heavy_protein_identifications, heavy_peptide_identifications);
 
-  }
+      vector<ProteinIdentification>  mergedProtIDs;
+      mergedProtIDs = mergeProteinIDs(light_protein_identifications,heavy_protein_identifications);
+      //mergedProtIDs.push_back(mergeProteinIDs(light_protein_identifications,heavy_protein_identifications));
+      //oder mergedProteinIDs.push_back(mergeProtIDs);
+      vector<PeptideIdentification>  mergedPeptIDs;
+      mergedPeptIDs = mergePeptideIDs(light_peptide_identifications,heavy_peptide_identifications);
+      //mergedPeptIDs.push_back(mergePeptideIDs(light_peptide_identifications,heavy_peptide_identifications));
+      ////oder mergedPeptideIDs.push_back(mergePeptIDs);
+      std::pair <vector<ProteinIdentification>, vector<PeptideIdentification>> mergedProtPepIDs;
+      mergedProtPepIDs.first = mergedProtIDs;
+      mergedProtPepIDs.second = mergedPeptIDs;
+      ret.push_back(mergedProtPepIDs);
+     }
+    return ret;
+  };
 
   //merges two vectors with peptide identifications
 public:
-  vector<PeptideIdentification> merge(const vector<PeptideIdentification>& light,
-    const vector<PeptideIdentification>& heavy)
+  vector<PeptideIdentification> mergePeptideIDs(
+    const vector<PeptideIdentification>& light,
+    const vector<PeptideIdentification>& heavy
+  )
   {
     std::map<String, PeptideIdentification> spectrum_to_id;
 
@@ -240,7 +285,7 @@ public:
     {
       const String& h_ref = h.getMetaValue("spectrum_reference"); // get spectrum references
 
-      // if the same id is not found, store heavy id result it in map
+      // if the same id is not found, store heavy id result in map
       if (spectrum_to_id.find(h_ref) == spectrum_to_id.end())
       {
         spectrum_to_id[h_ref] = h;
@@ -271,7 +316,23 @@ public:
     return ret;
   };
 
-   //estimates false discovery rate of peptide
+
+//merges two vectors with protein identifications
+public:
+  vector<ProteinIdentification> mergeProteinIDs(
+    const vector<ProteinIdentification>& light,
+    const vector<ProteinIdentification>& heavy)
+  {
+    vector<ProteinIdentification> ret;
+    //Concatenates two vectors (light and heavy)
+    ret.insert(ret.end(), light.begin(), light.end());
+    ret.insert(ret.end(), heavy.begin(), heavy.end());
+
+    return ret;
+  };
+
+
+//estimates false discovery rate of peptide
  private:
    void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
    {
@@ -311,14 +372,13 @@ public:
     FASTAFile fasta_reader;
     fasta_reader.load(database, fasta_db);
 
-    prepareIDFiles(in_ids_heavy);
-    prepareIDFiles(in_ids_light);
+    ProtsPepsPairs id_files = prepareIDFiles(fasta_db, in_ids_light, in_ids_heavy);
 
-
-
+    // For FIDO Adapter: merge all
+/*
     //-------------------------------------------------------------
     // calculations
-/**    //-------------------------------------------------------------
+   //-------------------------------------------------------------
 
 
      // iteration in idXML- heavy file
@@ -377,7 +437,7 @@ public:
 // the actual main function needed to create an executable
 int main(int argc, const char ** argv)
 {
-  TOPPNewTool tool;
+  TOPPNewTool tool; // TODO: change name to SILACWorklfow
   return tool.main(argc, argv);
 }
 /// @endcond
