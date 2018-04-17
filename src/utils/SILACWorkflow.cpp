@@ -34,6 +34,7 @@
 
 #include <vector>
 #include <map>
+#include <list>
 #include <string>
 #include <algorithm>
 #include <utility>
@@ -201,9 +202,10 @@ public:
 
 //prepares ID Files
 public:
-  // pair of protein and peptide identifications, as stored in an idXML file
+  // pair of protein and peptide identifications (vectors), as stored in an idXML file
   using ProtsPepsPair = std::pair<vector<ProteinIdentification>, vector<PeptideIdentification>>;
 
+  //vector, of pair of IDs vectors
   using ProtsPepsPairs = vector<ProtsPepsPair>;
 
   ProtsPepsPairs prepareIDFiles(
@@ -212,7 +214,7 @@ public:
     const StringList & heavy
     )
   {
-     // TODO: checken ob light und heavy Stringlist gleich viele einträge haben
+
      //if stringList sizes not equal, throw an exception
      if (light.size() != heavy.size())
      {
@@ -220,7 +222,7 @@ public:
      }
      IdXMLFile idXML_file;
 
-     ProtsPepsPairs ret;
+     ProtsPepsPairs ret; //return statement
      for (unsigned int i = 0; i < light.size(); i++)
      {
       vector<ProteinIdentification> light_protein_identifications;
@@ -250,17 +252,17 @@ public:
       // calls calculatePEP
       calculatePEP(heavy_protein_identifications, heavy_peptide_identifications);
 
+      //merge light and heavy for protein IDs
       vector<ProteinIdentification>  mergedProtIDs;
       mergedProtIDs = mergeProteinIDs(light_protein_identifications,heavy_protein_identifications);
-      //mergedProtIDs.push_back(mergeProteinIDs(light_protein_identifications,heavy_protein_identifications));
-      //oder mergedProteinIDs.push_back(mergeProtIDs);
+      //merge light and heavy for peptide IDs
       vector<PeptideIdentification>  mergedPeptIDs;
       mergedPeptIDs = mergePeptideIDs(light_peptide_identifications,heavy_peptide_identifications);
-      //mergedPeptIDs.push_back(mergePeptideIDs(light_peptide_identifications,heavy_peptide_identifications));
-      ////oder mergedPeptideIDs.push_back(mergePeptIDs);
+      //create a pair of the merged files
       std::pair <vector<ProteinIdentification>, vector<PeptideIdentification>> mergedProtPepIDs;
       mergedProtPepIDs.first = mergedProtIDs;
       mergedProtPepIDs.second = mergedPeptIDs;
+      //store the pairs in the vector, of pair of vectors, ret
       ret.push_back(mergedProtPepIDs);
      }
     return ret;
@@ -275,12 +277,14 @@ public:
   {
     std::map<String, PeptideIdentification> spectrum_to_id;
 
+    //for light
     // inserts all the spectrum references with the value l for the light ids in a map
     for (PeptideIdentification const & l : light)
     {
       spectrum_to_id[l.getMetaValue("spectrum_reference")] = l;
     }
 
+    //for heavy
     for (PeptideIdentification const & h : heavy)
     {
       const String& h_ref = h.getMetaValue("spectrum_reference"); // get spectrum references
@@ -343,12 +347,66 @@ public:
     fdr.apply(peptide_ids);
    }
 
+/*
+public: //with lists
+  void peptFDR(ProtsPepsPairs files) //(void (???))
+    {
+      list <ProtsPepsPair> list_of_pairs;
+      for (unsigned int i = 0; i < files.size(); i++) //for each vector cell
+      {
+          list_of_pairs.insert(i,files[i]);
+      }
+      vector<PeptideIdentification> peptide_ids;
+      for(int j = 0; j < list_of_pairs.size(); j++)
+      {
+        for(int k = 0; k <j; k++)
+        {
+        peptide_ids = j[k].second;
+        calculateFDR_(peptide_ids);
+        }
+      }
+    }  //TODO: Aufruf in main_
+*/
 
-//*************************************************************
-// Q u a n t i f i c a t i o n
-//*************************************************************
+//from vector of pairs of vectors take peptide vector and compute FDR
+public:
+      void peptFDR(ProtsPepsPairs files) //(void (???))
+        {
+
+          vector<PeptideIdentification> pept_ids;
+          for (unsigned int i = 0; i < files.size(); i++) //for each vector cell
+          {
+            for (auto j = files.begin(); j != files.end(); j++) //for each pair
+            {
+                auto prot_f = j->first; //first element of pair
+                auto pept_s = j->second; //second element of pair
+                pept_ids = pept_s; //pair. second of id_files
+                calculateFDR_(pept_ids);
+            }
+          }
+
+        }  //TODO: Aufruf in main_
+
+/*
+      //ProtsPepsPairs id_files = prepareIDFiles(fasta_db, light, heavy);
+      if (light.size() != heavy.size())
+          {
+          throw string("Not equal-sized lists"); //(?????)
+          }
+
+      std::map<std::vector< PeptideHit > , PeptideIdentification> pair_map;
+      for (unsigned int i = 0; i < id_files.size(); i++) //for each vector cell
+      {
+            pair_map[i.getHits()] = i;
 
 
+        //for light
+        // inserts all the spectrum references with the value l for the light ids in a map
+        for (PeptideIdentification const & l : light)
+        {
+          spectrum_to_id[l.getMetaValue("spectrum_reference")] = l;
+        }
+*/
 
 
 
@@ -373,8 +431,13 @@ public:
     fasta_reader.load(database, fasta_db);
 
     ProtsPepsPairs id_files = prepareIDFiles(fasta_db, in_ids_light, in_ids_heavy);
+    //TODO: 1-2 schleifen bis ich zum inneren Vektoren (in ProtsPepsPairs) und davon(von jedem Paar) als referenz
+    // vektor von PeptideIdentification nehmen und fdr berechnen.
+    peptFDR(id_files);
 
     // For FIDO Adapter: merge all
+
+
 /*
     //-------------------------------------------------------------
     // calculations
