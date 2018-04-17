@@ -347,7 +347,7 @@ public:
     fdr.apply(peptide_ids);
    }
 
-/*
+/**
 public: //with lists
   void peptFDR(ProtsPepsPairs files) //(void (???))
     {
@@ -370,44 +370,14 @@ public: //with lists
 
 //from vector of pairs of vectors take peptide vector and compute FDR
 public:
-      void peptFDR(ProtsPepsPairs files) //(void (???))
+      void peptFDR(ProtsPepsPairs& files)
         {
-
-          vector<PeptideIdentification> pept_ids;
-          for (unsigned int i = 0; i < files.size(); i++) //for each vector cell
+          for (auto j = files.begin(); j != files.end(); j++) //for each pair
           {
-            for (auto j = files.begin(); j != files.end(); j++) //for each pair
-            {
-                auto prot_f = j->first; //first element of pair
-                auto pept_s = j->second; //second element of pair
-                pept_ids = pept_s; //pair. second of id_files
-                calculateFDR_(pept_ids);
-            }
+              // pass vector of PeptideIdentification to FDR calculation
+              calculateFDR_(j->second); // j->second takes the second element of each pair
           }
-
-        }  //TODO: Aufruf in main_
-
-/*
-      //ProtsPepsPairs id_files = prepareIDFiles(fasta_db, light, heavy);
-      if (light.size() != heavy.size())
-          {
-          throw string("Not equal-sized lists"); //(?????)
-          }
-
-      std::map<std::vector< PeptideHit > , PeptideIdentification> pair_map;
-      for (unsigned int i = 0; i < id_files.size(); i++) //for each vector cell
-      {
-            pair_map[i.getHits()] = i;
-
-
-        //for light
-        // inserts all the spectrum references with the value l for the light ids in a map
-        for (PeptideIdentification const & l : light)
-        {
-          spectrum_to_id[l.getMetaValue("spectrum_reference")] = l;
         }
-*/
-
 
 
 // the main_ function is called after all parameters are read
@@ -416,7 +386,7 @@ public:
     //-------------------------------------------------------------
     // parsing parameters
     //-------------------------------------------------------------
-    StringList in = getStringList_("in");;  // read the mzML filenames
+    StringList in = getStringList_("in");  // read the mzML filenames
     String database(getStringOption_("database"));  // read the database filename
     StringList in_ids_heavy = getStringList_("in_ids_heavy"); //read idXML heavy file
     StringList in_ids_light = getStringList_("in_ids_light"); //read idXML light file
@@ -431,14 +401,17 @@ public:
     fasta_reader.load(database, fasta_db);
 
     ProtsPepsPairs id_files = prepareIDFiles(fasta_db, in_ids_light, in_ids_heavy);
-    //TODO: 1-2 schleifen bis ich zum inneren Vektoren (in ProtsPepsPairs) und davon(von jedem Paar) als referenz
-    // vektor von PeptideIdentification nehmen und fdr berechnen.
+
     peptFDR(id_files);
+
+    // TODO: write out ID data , mit idxml.store ich will die berechnete fdr-dateien in files speichern und zwar so viele wir die Paare
+    // von "in" : StringList in = getStringList_("in"); nehme ich die Dateiennamen und mit + füge ich noch idXML hinzu ("..." + "idXML")
+
 
     // For FIDO Adapter: merge all
 
 
-/*
+/**
     //-------------------------------------------------------------
     // calculations
    //-------------------------------------------------------------
