@@ -41,6 +41,7 @@
 #include <stdexcept>
 #include <OpenMS/MATH/STATISTICS/PosteriorErrorProbabilityModel.h>
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
+#include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
 #include <OpenMS/FORMAT/MzMLFile.h>
@@ -79,27 +80,32 @@ class TOPPNewTool :
 
 {
 public:
+
   TOPPNewTool() :
     TOPPBase("SILACWorklfow", "Template for Tool creation", false)
-    {}
+    {
+    }
 
 protected:
-  // register the tool parameters
-  // it gets automatically called on tool execution
+  // register the tool parameters, it gets automatically called on tool execution
   void registerOptionsAndFlags_()
   {
     //Input mzML file list
     registerInputFileList_("in", "<files>", StringList(), "Input MzMLFile");
     setValidFormats_("in", ListUtils::create<String>("mzML"));
 
+    //Input idxML file list (light)
     registerInputFileList_("in_ids_light", "<files>", StringList(), "Input idXML light");
     setValidFormats_("in_ids_light", ListUtils::create<String>("idXML"));
 
+    //Input idXML file list (heavy)
     registerInputFileList_("in_ids_heavy", "<files>", StringList(), "Input idXML heavy");
     setValidFormats_("in_ids_heavy", ListUtils::create<String>("idXML"));
 
+    //Input database fasta
     registerInputFile_("database", "<file>", "", "input file ");
     setValidFormats_("database", ListUtils::create<String>("fasta"));
+
     //registerInputFile_("accession", "<file>", "","Input IdXML file, containing the identified peptides.", true);
     //setValidFormats_("accession", ListUtils::create<String>("idXML"));
 
@@ -111,13 +117,14 @@ protected:
     //setValidFormats_("out", ListUtils::create<String>("fasta"));
   }
 
-//***************************************************************
-// P e p t i d e  I d e n t i f i c a t i o n
-//***************************************************************
+/*
+***************************************************************
+P e p t i d e  I d e n t i f i c a t i o n
+***************************************************************
+*/
 
- //gives indexes to all protein and peptide ids
 public:
-  // TODO: fasta datenbank als const & übergeben
+  //gives indexes to all protein and peptide ids
   PeptideIndexing::ExitCodes indexPepAndProtIds(
     vector<FASTAFile::FASTAEntry>& fasta_db,
     vector<ProteinIdentification>& protein_ids,
@@ -140,8 +147,8 @@ public:
   };
 
 
-//iterates over idXML files
 public:
+  //PEP calculation
   void calculatePEP(
     vector<ProteinIdentification>& protein_identifications,
     vector<PeptideIdentification>& peptide_identifications)
@@ -200,7 +207,7 @@ public:
           }
     };
 
-//prepares ID Files
+
 public:
   // pair of protein and peptide identifications (vectors), as stored in an idXML file
   using ProtsPepsPair = std::pair<vector<ProteinIdentification>, vector<PeptideIdentification>>;
@@ -208,6 +215,7 @@ public:
   //vector, of pair of IDs vectors
   using ProtsPepsPairs = vector<ProtsPepsPair>;
 
+  //prepares ID Files
   ProtsPepsPairs prepareIDFiles(
     vector<FASTAFile::FASTAEntry>& fasta_db,
     const StringList & light,
@@ -218,13 +226,18 @@ public:
      //if stringList sizes not equal, throw an exception
      if (light.size() != heavy.size())
      {
-        throw string("Not equal-sized lists"); //(?????)
+        throw string("Not equal-sized lists");
      }
-     IdXMLFile idXML_file;
 
+     IdXMLFile idXML_file;
      ProtsPepsPairs ret; //return statement
+
+     //loads light/heavy files and calculates PEP
      for (unsigned int i = 0; i < light.size(); i++)
      {
+      /////////////////////////////////////////////////
+      /////             light                    /////
+      ///////////////////////////////////////////////
       vector<ProteinIdentification> light_protein_identifications;
       vector<PeptideIdentification> light_peptide_identifications;
       // read the identification file for light (contains both protein as well as peptide identifications)
@@ -233,11 +246,14 @@ public:
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
         // TODO: write error message and return
+
       }
       // calls calculatePEP
       calculatePEP(light_protein_identifications, light_peptide_identifications);
 
-      //the same for heavy
+      /////////////////////////////////////////////////
+      /////             heavy                    /////
+      ///////////////////////////////////////////////
       vector<ProteinIdentification> heavy_protein_identifications;
       vector<PeptideIdentification> heavy_peptide_identifications;
       // read the identification file for heavy (contains both protein as well as peptide identifications)
@@ -247,44 +263,53 @@ public:
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
         // TODO: write error message and return
-      }
 
+      }
       // calls calculatePEP
       calculatePEP(heavy_protein_identifications, heavy_peptide_identifications);
 
-      //merge light and heavy for protein IDs
+      //merges light and heavy (for PROTEIN IDs) and stores the merged files in a vector
       vector<ProteinIdentification>  mergedProtIDs;
       mergedProtIDs = mergeProteinIDs(light_protein_identifications,heavy_protein_identifications);
-      //merge light and heavy for peptide IDs
+
+      //merges light and heavy (for PEPTIDE IDs) and stores the merged files in a vector
       vector<PeptideIdentification>  mergedPeptIDs;
       mergedPeptIDs = mergePeptideIDs(light_peptide_identifications,heavy_peptide_identifications);
+
       //create a pair of the merged files
       std::pair <vector<ProteinIdentification>, vector<PeptideIdentification>> mergedProtPepIDs;
       mergedProtPepIDs.first = mergedProtIDs;
       mergedProtPepIDs.second = mergedPeptIDs;
+
       //store the pairs in the vector, of pair of vectors, ret
       ret.push_back(mergedProtPepIDs);
      }
     return ret;
   };
 
-  //merges two vectors with peptide identifications
+
 public:
+  //merges two vectors with peptide identifications
   vector<PeptideIdentification> mergePeptideIDs(
     const vector<PeptideIdentification>& light,
     const vector<PeptideIdentification>& heavy
-  )
+    )
   {
     std::map<String, PeptideIdentification> spectrum_to_id;
 
-    //for light
+    /////////////////////////////////////////////////
+    /////             light                    /////
+    ///////////////////////////////////////////////
+
     // inserts all the spectrum references with the value l for the light ids in a map
     for (PeptideIdentification const & l : light)
     {
       spectrum_to_id[l.getMetaValue("spectrum_reference")] = l;
     }
 
-    //for heavy
+    /////////////////////////////////////////////////
+    /////             heavy                    /////
+    ///////////////////////////////////////////////
     for (PeptideIdentification const & h : heavy)
     {
       const String& h_ref = h.getMetaValue("spectrum_reference"); // get spectrum references
@@ -321,8 +346,9 @@ public:
   };
 
 
-//merges two vectors with protein identifications
+
 public:
+  //merges two vectors (light and heavy) of protein identifications
   vector<ProteinIdentification> mergeProteinIDs(
     const vector<ProteinIdentification>& light,
     const vector<ProteinIdentification>& heavy)
@@ -336,48 +362,51 @@ public:
   };
 
 
-//estimates false discovery rate of peptide
  private:
-   void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
+   //estimates false discovery rate of peptide
+   vector<PeptideIdentification> calculateFDR_(vector<PeptideIdentification>& peptide_ids)
    {
     FalseDiscoveryRate fdr;
     Param p = fdr.getDefaults();
     p.setValue("FDR:PSM", 0.01);
     fdr.setParameters(p);
     fdr.apply(peptide_ids);
+    return peptide_ids;
    }
 
-/**
-public: //with lists
-  void peptFDR(ProtsPepsPairs files) //(void (???))
+
+public:
+  //from vector of pairs of vectors take peptide vector and compute FDR
+  vector<PeptideIdentification> peptFDR(ProtsPepsPairs& files)
     {
-      list <ProtsPepsPair> list_of_pairs;
-      for (unsigned int i = 0; i < files.size(); i++) //for each vector cell
+      vector<PeptideIdentification> res;
+      for (auto j = files.begin(); j != files.end(); j++) //for each pair
       {
-          list_of_pairs.insert(i,files[i]);
+         // pass vector of PeptideIdentification to FDR calculation
+        res = calculateFDR_(j->second); // j->second takes the second element of each pair
       }
-      vector<PeptideIdentification> peptide_ids;
-      for(int j = 0; j < list_of_pairs.size(); j++)
-      {
-        for(int k = 0; k <j; k++)
-        {
-        peptide_ids = j[k].second;
-        calculateFDR_(peptide_ids);
-        }
-      }
-    }  //TODO: Aufruf in main_
+      return res;
+    }
+
+public:
+  //takes the first element of ProtsPepsPairs
+  vector< ProteinIdentification > firstElem(ProtsPepsPairs idFiles)
+  {
+    vector<ProteinIdentification> res;
+    for (auto j = idFiles.begin(); j != idFiles.end(); j++) //for each pair
+    {
+      // take vector of ProteinIdentification
+      auto res = j->first; // j->first takes the first element of each pair
+    }
+    return res;
+  }
+
+/*
+***************************************************************
+Q u a n t i f i c a t i o n
+***************************************************************
 */
 
-//from vector of pairs of vectors take peptide vector and compute FDR
-public:
-      void peptFDR(ProtsPepsPairs& files)
-        {
-          for (auto j = files.begin(); j != files.end(); j++) //for each pair
-          {
-              // pass vector of PeptideIdentification to FDR calculation
-              calculateFDR_(j->second); // j->second takes the second element of each pair
-          }
-        }
 
 
 // the main_ function is called after all parameters are read
@@ -390,6 +419,7 @@ public:
     String database(getStringOption_("database"));  // read the database filename
     StringList in_ids_heavy = getStringList_("in_ids_heavy"); //read idXML heavy file
     StringList in_ids_light = getStringList_("in_ids_light"); //read idXML light file
+    String out(getStringOption_("out"));
 
     //-------------------------------------------------------------
     // reading input (read protein database)
@@ -402,21 +432,30 @@ public:
 
     ProtsPepsPairs id_files = prepareIDFiles(fasta_db, in_ids_light, in_ids_heavy);
 
-    peptFDR(id_files);
+    //-------------------------------------------------------------
+    // calculations
+    //-------------------------------------------------------------
+    const vector< PeptideIdentification > &pept_ids = peptFDR(id_files);
+    //peptFDR(id_files);
 
     // TODO: write out ID data , mit idxml.store ich will die berechnete fdr-dateien in files speichern und zwar so viele wir die Paare
     // von "in" : StringList in = getStringList_("in"); nehme ich die Dateiennamen und mit + füge ich noch idXML hinzu ("..." + "idXML")
+
+    //-------------------------------------------------------------
+    // writing output (after FDR calculation)
+    //-------------------------------------------------------------
+    IdXMLFile idXML_file;
+    const vector< ProteinIdentification > &prot_ids = firstElem(id_files);
+    idXML_file.store (out, prot_ids, pept_ids);
 
 
     // For FIDO Adapter: merge all
 
 
-/**
-    //-------------------------------------------------------------
-    // calculations
-   //-------------------------------------------------------------
 
 
+
+/*
      // iteration in idXML- heavy file
      for(i = 0; i < in_ids_heavy.size(); i++)
      {
