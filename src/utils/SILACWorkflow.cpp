@@ -421,7 +421,7 @@ Q u a n t i f i c a t i o n
     String database(getStringOption_("database"));  // read the database filename
     StringList in_ids_heavy = getStringList_("in_ids_heavy"); //read idXML heavy file
     StringList in_ids_light = getStringList_("in_ids_light"); //read idXML light file
-    String out(getStringOption_("out"));
+
 
     //-------------------------------------------------------------
     // reading input (read protein database)
@@ -449,20 +449,16 @@ Q u a n t i f i c a t i o n
 
     //create an idXML file with proteinIDs and the calculated FDR files
     IdXMLFile idXML_file;
-    const vector<ProteinIdentification> &prot_ids = firstElem(id_files);
+    const vector<ProteinIdentification> &prot_ids = firstElem(id_files); //for each pair from ProtsPepsPairs take the first element and store it
 
 
-    //bind the extension .idXML
-    //std::vector<string> names;
-    for (auto i=0; i < in.size(); i++) //for all file names
+    // pept_ids : enthält alle Paare von prot und pept IDS , nach der Berechnung von FDR
+    // prot_ids : Vektor von alle Prot IDS aus ProtsPepsPairs
+    for (unsigned i=0; i < in.size(); i++) //for all file names
     {
-      for (auto j=0; j < idXML_file.size(); j++) //for all ProtsPepsPairs
-      {
-        idXML_file.store(out, prot_ids, pept_ids, i[j] + ".idXML");
-
-      }
+      idXML_file.store(in[i] + ".idXML", prot_ids, pept_ids);
     }
-    //return names;
+
 
     // For FIDO Adapter: merge all
 
