@@ -39,6 +39,7 @@
 #include <utility>
 #include <algorithm>
 #include <stdexcept>
+#include <OpenMS/SYSTEM/File.h>
 #include <OpenMS/FORMAT/MzMLFile.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
@@ -366,41 +367,25 @@ public:
 
  private:
    //estimates false discovery rate of peptide
-   vector<PeptideIdentification> calculateFDR_(vector<PeptideIdentification>& peptide_ids)
+   void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
    {
      FalseDiscoveryRate fdr;
      Param p = fdr.getDefaults();
      p.setValue("FDR:PSM", 0.01);
      fdr.setParameters(p);
      fdr.apply(peptide_ids);
-     return peptide_ids;
    }
 
 
 public:
   //from vector of pairs of vectors take peptide vector and compute FDR
-  vector<PeptideIdentification> peptFDR(ProtsPepsPairs& files)
+  void peptFDR(ProtsPepsPairs& files)
   {
-    vector<PeptideIdentification> res;
-    for (auto j = files.begin(); j != files.end(); j++) //for each pair
+    for (ProtsPepsPairs::iterator j = files.begin(); j != files.end(); j++) //for each pair
     {
       // pass vector of PeptideIdentification to FDR calculation
-      res = calculateFDR_(j->second); // j->second takes the second element of each pair
+      calculateFDR_(j->second); // j->second takes the second element of each pair
     }
-    return res;
-  }
-
-public:
-  //take first element of ProtsPepsPairs
-  vector<ProteinIdentification> firstElem(ProtsPepsPairs idFiles)
-  {
-    vector<ProteinIdentification> res;
-    for (auto j = idFiles.begin(); j != idFiles.end(); j++) //for each pair
-    {
-      // take vector of ProteinIdentification
-      auto res = j->first; // j->first takes the first element of each pair
-    }
-    return res;
   }
 
 /*
@@ -408,8 +393,6 @@ public:
 Q u a n t i f i c a t i o n
 ***************************************************************
 */
-
-
 
 // the main_ function is called after all parameters are read
   ExitCodes main_(int, const char **)
@@ -437,34 +420,32 @@ Q u a n t i f i c a t i o n
     //-------------------------------------------------------------
     // calculations
     //-------------------------------------------------------------
-    const vector<PeptideIdentification> &pept_ids = peptFDR(id_files);
-    //peptFDR(id_files);
-
-    // TODO: write out ID data , mit idxml.store ich will die berechnete fdr-dateien in files speichern und zwar so viele wir die Paare
-    // von "in" : StringList in = getStringList_("in"); nehme ich die Dateiennamen und mit + füge ich noch idXML hinzu ("..." + "idXML")
+    peptFDR(id_files);
 
     //-------------------------------------------------------------
     // writing output (after FDR calculation)
     //-------------------------------------------------------------
-
-    //create an idXML file with proteinIDs and the calculated FDR files
     IdXMLFile idXML_file;
-    const vector<ProteinIdentification> &prot_ids = firstElem(id_files); //for each pair from ProtsPepsPairs take the first element and store it
 
-
-    // pept_ids : enthält alle Paare von prot und pept IDS , nach der Berechnung von FDR
-    // prot_ids : Vektor von alle Prot IDS aus ProtsPepsPairs
-    for (unsigned i=0; i < in.size(); i++) //for all file names
+    for (unsigned i = 0; i < in.size(); i++) //for all file names
     {
-      idXML_file.store(in[i] + ".idXML", prot_ids, pept_ids);
+      const vector<ProteinIdentification> &prot_ids = id_files[i].first; //take the first element from each pair
+      const vector<PeptideIdentification> &pept_ids = id_files[i].second; //take the second element from each pair
+      // remove extension .mzML
+      File::removeExtension(in[i]);
+      // add the extension .idXML
+      String out_filename =  in[i] + "_fdr.idXML";
+      cout << "Writing to file: " << out_filename << endl;
+      // test if a file exists, if yes throw exception.
+      if (File::exists(in[i]) == TRUE)
+      {
+        throw string("Same file was found");
+      }
+      idXML_file.store(out_filename, prot_ids, pept_ids);
     }
 
 
     // For FIDO Adapter: merge all
-
-
-
-
 
 /*
      // iteration in idXML- heavy file
