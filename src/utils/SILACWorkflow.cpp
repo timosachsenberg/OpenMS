@@ -432,12 +432,12 @@ Q u a n t i f i c a t i o n
       const vector<ProteinIdentification> &prot_ids = id_files[i].first; //take the first element from each pair
       const vector<PeptideIdentification> &pept_ids = id_files[i].second; //take the second element from each pair
       // remove extension .mzML
-      File::removeExtension(in[i]);
+      String out_filename = File::removeExtension(in[i]);
       // add the extension .idXML
-      String out_filename =  in[i] + "_fdr.idXML";
+      out_filename = in[i] + "_fdr.idXML";
       cout << "Writing to file: " << out_filename << endl;
       // test if a file exists, if yes throw exception.
-      if (File::exists(in[i]) == TRUE)
+      if (File::exists(out_filename[i]) == TRUE)
       {
         throw string("Same file was found");
       }
