@@ -434,10 +434,10 @@ Q u a n t i f i c a t i o n
       // remove extension .mzML
       String out_filename = File::removeExtension(in[i]);
       // add the extension .idXML
-      out_filename = in[i] + "_fdr.idXML";
+      out_filename = out_filename + "_fdr.idXML";
       cout << "Writing to file: " << out_filename << endl;
       // test if a file exists, if yes throw exception.
-      if (File::exists(out_filename[i]) == TRUE)
+      if (File::exists(out_filename) == TRUE)
       {
         throw string("Same file was found");
       }
