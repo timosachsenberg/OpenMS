@@ -44,6 +44,8 @@
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
 #include <OpenMS/FORMAT/FileHandler.h>
+#include <OpenMS/CHEMISTRY/ProteaseDB.h>
+#include <OpenMS/FILTERING/ID/IDFilter.h>
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
 #include <OpenMS/ANALYSIS/ID/PeptideIndexing.h>
 #include <OpenMS/METADATA/ProteinIdentification.h>
@@ -83,7 +85,7 @@ class TOPPNewTool :
 public:
 
   TOPPNewTool() :
-  TOPPBase("SILACWorklfow", "Tool creation", false)
+  TOPPBase("TOPPNewTool", "TOPPNewTool Tool", false)
   {
   }
 
@@ -104,19 +106,24 @@ protected:
     setValidFormats_("in_ids_heavy", ListUtils::create<String>("idXML"));
 
     //Input database fasta
-    registerInputFile_("database", "<file>", "", "input file ");
+    registerInputFile_("database", "<file>", "", "input database");
     setValidFormats_("database", ListUtils::create<String>("fasta"));
+
+    registerStringOption_("decoy_string", "<text>", "DECOY_", "String to indicate decoy protein", false);
+
+    registerStringOption_("decoy_string_position", "<choice>", "prefix", "Should the string be prepended or appended?", false);
+    setValidStrings_("decoy_string_position", ListUtils::create<String>("prefix,suffix"));
+
+    registerStringOption_("enzyme:name", "<choice>", "Trypsin/P", "Enzyme which determines valid cleavage sites", false);
+    StringList enzymes;
+    ProteaseDB::getInstance()->getAllNames(enzymes);
+    setValidStrings_("enzyme:name", enzymes);
 
     //registerInputFile_("accession", "<file>", "","Input IdXML file, containing the identified peptides.", true);
     //setValidFormats_("accession", ListUtils::create<String>("idXML"));
-
-    //registerStringOption_("method", "<choice>", "whitelist", "Switch between white/blacklisting", false);
-
-    //setValidStrings_("method", ListUtils::create<String>("whitelist, blacklist"));
-
     //registerOutputFile_("out", "<file>", "", "Output FASTA file where the reduced database will be written to.");
     //setValidFormats_("out", ListUtils::create<String>("fasta"));
-  }
+    }
 
 /*
 ***************************************************************
@@ -127,22 +134,22 @@ P e p t i d e  I d e n t i f i c a t i o n
 public:
   //give indexes to all protein and peptide ids
   PeptideIndexing::ExitCodes indexPepAndProtIds(
-    vector<FASTAFile::FASTAEntry>& fasta_db,
+    const vector<FASTAFile::FASTAEntry>& fasta_db,
     vector<ProteinIdentification>& protein_ids,
     vector<PeptideIdentification>& peptide_ids
   )
   {
     PeptideIndexing indexer;
     Param param_pi = indexer.getParameters();
-    param_pi.setValue("decoy_string_position", "prefix");
+    param_pi.setValue("decoy_string", getStringOption_("decoy_string"));
+    param_pi.setValue("decoy_string_position", getStringOption_("decoy_string_position"));
     param_pi.setValue("enzyme:specificity", "none");
     param_pi.setValue("missing_decoy_action", "warn");
-    param_pi.setValue("log", getStringOption_("log"));
-    //set as default enzyme TrypsinP
-    param_pi.setValue("enzyme:name", "Trypsin/P");
+    param_pi.setValue("enzyme:name", getStringOption_("enzyme:name"));
     indexer.setParameters(param_pi);
 
-    PeptideIndexing::ExitCodes indexer_exit = indexer.run(fasta_db,protein_ids, peptide_ids);
+    vector<FASTAFile::FASTAEntry> fasta_db_tmp(fasta_db);
+    PeptideIndexing::ExitCodes indexer_exit = indexer.run(fasta_db_tmp, protein_ids, peptide_ids);
 
     return indexer_exit;
   };
@@ -219,7 +226,7 @@ public:
 
   //prepare ID Files
   ProtsPepsPairs prepareIDFiles(
-    vector<FASTAFile::FASTAEntry>& fasta_db,
+    const vector<FASTAFile::FASTAEntry>& fasta_db,
     const StringList & light,
     const StringList & heavy
   )
@@ -243,6 +250,7 @@ public:
       vector<ProteinIdentification> light_protein_identifications;
       vector<PeptideIdentification> light_peptide_identifications;
       // read the identification file for light (contains both protein as well as peptide identifications)
+      LOG_INFO << "Loading ID file (light): " << light[i] << endl;
       idXML_file.load(light[i], light_protein_identifications,  light_peptide_identifications);
       PeptideIndexing::ExitCodes indexer_exit = indexPepAndProtIds(fasta_db, light_protein_identifications, light_peptide_identifications);
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
@@ -259,8 +267,9 @@ public:
       vector<ProteinIdentification> heavy_protein_identifications;
       vector<PeptideIdentification> heavy_peptide_identifications;
       // read the identification file for heavy (contains both protein as well as peptide identifications)
+      LOG_INFO << "Loading ID file (heavy): " << heavy[i] << endl;
       idXML_file.load(heavy[i], heavy_protein_identifications,  heavy_peptide_identifications);
-      indexer_exit = indexPepAndProtIds( fasta_db,heavy_protein_identifications, heavy_peptide_identifications);
+      indexer_exit = indexPepAndProtIds(fasta_db, heavy_protein_identifications, heavy_peptide_identifications);
 
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
@@ -370,10 +379,8 @@ public:
    void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
    {
      FalseDiscoveryRate fdr;
-     Param p = fdr.getDefaults();
-     p.setValue("FDR:PSM", 0.01);
-     fdr.setParameters(p);
      fdr.apply(peptide_ids);
+     IDFilter::filterHitsByScore(peptide_ids, 0.01);
    }
 
 
@@ -402,8 +409,9 @@ Q u a n t i f i c a t i o n
     //-------------------------------------------------------------
     StringList in = getStringList_("in");  // read the mzML filenames
     String database(getStringOption_("database"));  // read the database filename
-    StringList in_ids_heavy = getStringList_("in_ids_heavy"); //read idXML heavy file
+
     StringList in_ids_light = getStringList_("in_ids_light"); //read idXML light file
+    StringList in_ids_heavy = getStringList_("in_ids_heavy"); //read idXML heavy file
 
 
     //-------------------------------------------------------------
