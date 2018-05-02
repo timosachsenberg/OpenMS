@@ -414,13 +414,13 @@ public:
    ffm.
    };
 
-   void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
+/*   void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
    {
      FalseDiscoveryRate fdr;
      fdr.run(peptide_ids);
      IDFilter::filterHitsByScore(peptide_ids, 0.01);
    }
-
+*/
 // the main_ function is called after all parameters are read
   ExitCodes main_(int, const char **)
   {
