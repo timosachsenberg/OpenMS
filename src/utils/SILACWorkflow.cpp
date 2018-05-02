@@ -45,12 +45,14 @@
 #include <OpenMS/FORMAT/FASTAFile.h>
 #include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/CHEMISTRY/ProteaseDB.h>
+#include <OpenMS/FORMAT/FeatureXMLFile.h>
 #include <OpenMS/FILTERING/ID/IDFilter.h>
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
 #include <OpenMS/ANALYSIS/ID/PeptideIndexing.h>
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
 #include <OpenMS/ANALYSIS/ID/FalseDiscoveryRate.h>
+#include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinder.h>
 #include <OpenMS/MATH/STATISTICS/PosteriorErrorProbabilityModel.h>
 
 using namespace OpenMS;
@@ -78,14 +80,14 @@ using namespace std;
 // We do not want this class to show up in the docu:
 /// @cond TOPPCLASSES
 
-class TOPPNewTool :
+class SILACWorkflow :
   public TOPPBase
 
 {
 public:
 
-  TOPPNewTool() :
-  TOPPBase("TOPPNewTool", "TOPPNewTool Tool", false)
+  SILACWorkflow() :
+  TOPPBase("SILACWorkflow", "SILACWorkflow Tool", false)
   {
   }
 
@@ -114,10 +116,10 @@ protected:
     registerStringOption_("decoy_string_position", "<choice>", "prefix", "Should the string be prepended or appended?", false);
     setValidStrings_("decoy_string_position", ListUtils::create<String>("prefix,suffix"));
 
-    registerStringOption_("enzyme:name", "<choice>", "Trypsin/P", "Enzyme which determines valid cleavage sites", false);
+    registerStringOption_("enzyme_name", "<choice>", "Trypsin/P", "Enzyme which determines valid cleavage sites", false);
     StringList enzymes;
     ProteaseDB::getInstance()->getAllNames(enzymes);
-    setValidStrings_("enzyme:name", enzymes);
+    setValidStrings_("enzyme_name", enzymes);
 
     //registerInputFile_("accession", "<file>", "","Input IdXML file, containing the identified peptides.", true);
     //setValidFormats_("accession", ListUtils::create<String>("idXML"));
@@ -401,6 +403,24 @@ Q u a n t i f i c a t i o n
 ***************************************************************
 */
 
+public:
+  FeatureFinderMultiplex::ExitCodes quantificationFFM(
+    const vector<FASTAFile::FASTAEntry>& fasta_db,
+    vector<ProteinIdentification>& protein_ids,
+    vector<PeptideIdentification>& peptide_ids
+  )
+  {
+   FeatureFinderMultiplex ffm;
+   ffm.
+   };
+
+   void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
+   {
+     FalseDiscoveryRate fdr;
+     fdr.run(peptide_ids);
+     IDFilter::filterHitsByScore(peptide_ids, 0.01);
+   }
+
 // the main_ function is called after all parameters are read
   ExitCodes main_(int, const char **)
   {
@@ -512,7 +532,7 @@ Q u a n t i f i c a t i o n
 // the actual main function needed to create an executable
 int main(int argc, const char ** argv)
 {
-  TOPPNewTool tool; // TODO: change name to SILACWorklfow
+  SILACWorkflow tool;
   return tool.main(argc, argv);
 }
 /// @endcond
