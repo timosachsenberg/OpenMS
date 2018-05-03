@@ -133,6 +133,14 @@ P e p t i d e  I d e n t i f i c a t i o n
 ***************************************************************
 */
 
+
+/**
+ * [indexPepAndProtIds give indexes to all protein and peptide ids]
+ * @param  fasta_db    [database]
+ * @param  protein_ids [vector of protein IDS]
+ * @param  peptide_ids [vector of peptide IDS]
+ * @return             [description]
+ */
 public:
   //give indexes to all protein and peptide ids
   PeptideIndexing::ExitCodes indexPepAndProtIds(
@@ -157,6 +165,11 @@ public:
   };
 
 
+/**
+ * [calculatePEP PEP calculation]
+ * @param protein_identifications [vector of protein IDS]
+ * @param peptide_identifications [vector of peptide IDS]
+ */
 public:
   //PEP calculation
   void calculatePEP(
@@ -218,7 +231,13 @@ public:
         }
       };
 
-
+/**
+ * [prepareIDFiles prepare ID files]
+ * @param  fasta_db [database]
+ * @param  light
+ * @param  heavy
+ * @return          [vector, of pair, of IDSs vectors]
+ */
 public:
   //pair of protein and peptide identifications (vectors), as stored in an idXML file
   using ProtsPepsPair = std::pair< vector<ProteinIdentification>, vector<PeptideIdentification> >;
@@ -300,7 +319,12 @@ public:
     return ret;
   };
 
-
+/**
+ * [mergePeptideIDs merge two vectors with peptide identifications]
+ * @param  light
+ * @param  heavy
+ * @return       [vector of PeptideIdentification]
+ */
 public:
   //merge two vectors with peptide identifications
   vector<PeptideIdentification> mergePeptideIDs(
@@ -359,7 +383,12 @@ public:
   };
 
 
-
+/**
+ * [mergeProteinIDs merge two vectors (light and heavy) of protein identifications]
+ * @param  light
+ * @param  heavy
+ * @return       [vector of ProteinIdentification]
+ */
 public:
   //merge two vectors (light and heavy) of protein identifications
   vector<ProteinIdentification> mergeProteinIDs(
@@ -375,7 +404,10 @@ public:
     return ret;
   };
 
-
+/**
+ * [calculateFDR_ estimates false discovery rate of peptide]
+ * @param peptide_ids
+ */
  private:
    //estimates false discovery rate of peptide
    void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
@@ -385,7 +417,10 @@ public:
      IDFilter::filterHitsByScore(peptide_ids, 0.01);
    }
 
-
+/**
+ * [peptFDR from vector of pairs of vectors take peptide vector and compute FDR]
+ * @param files
+ */
 public:
   //from vector of pairs of vectors take peptide vector and compute FDR
   void peptFDR(ProtsPepsPairs& files)
