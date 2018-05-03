@@ -65,16 +65,14 @@ using namespace std;
 
 /**
     @page UTILS_SILACWorkflow
-
     @brief Template for a new Tool
-   This tool can be used for scientific stuff.
+   This tool can be used for scientific stuff and more scientific applications.
 
-    And more scientific applications.
 
-    <B>The command line parameters of this tool are:</B>
-    @verbinclude UTILS_SILACWOrkflow.cli
+    <B>The command line parameters of this tool are: </B>
+    @verbinclude /home/nantia/OpenMS/openms-build/doc/doxygen/parameters/output/UTILS_SILACWorkflow.cli
     <B>INI file documentation of this tool:</B>
-    @htmlinclude UTILS_SILACWOrkflow.html
+    @htmlinclude /home/nantia/OpenMS/openms-build/doc/doxygen/parameters/output/UTILS_SILACWOrkflow.html
 */
 
 // We do not want this class to show up in the docu:
@@ -142,7 +140,6 @@ P e p t i d e  I d e n t i f i c a t i o n
  * @return             [description]
  */
 public:
-  //give indexes to all protein and peptide ids
   PeptideIndexing::ExitCodes indexPepAndProtIds(
     const vector<FASTAFile::FASTAEntry>& fasta_db,
     vector<ProteinIdentification>& protein_ids,
@@ -171,7 +168,6 @@ public:
  * @param peptide_identifications [vector of peptide IDS]
  */
 public:
-  //PEP calculation
   void calculatePEP(
     vector<ProteinIdentification>& protein_identifications,
     vector<PeptideIdentification>& peptide_identifications
@@ -245,7 +241,6 @@ public:
   //vector, of pair of IDs vectors
   using ProtsPepsPairs = vector<ProtsPepsPair>;
 
-  //prepare ID Files
   ProtsPepsPairs prepareIDFiles(
     const vector<FASTAFile::FASTAEntry>& fasta_db,
     const StringList & light,
@@ -326,7 +321,6 @@ public:
  * @return       [vector of PeptideIdentification]
  */
 public:
-  //merge two vectors with peptide identifications
   vector<PeptideIdentification> mergePeptideIDs(
     const vector<PeptideIdentification>& light,
     const vector<PeptideIdentification>& heavy
@@ -390,7 +384,6 @@ public:
  * @return       [vector of ProteinIdentification]
  */
 public:
-  //merge two vectors (light and heavy) of protein identifications
   vector<ProteinIdentification> mergeProteinIDs(
     const vector<ProteinIdentification>& light,
     const vector<ProteinIdentification>& heavy
@@ -409,7 +402,6 @@ public:
  * @param peptide_ids
  */
  private:
-   //estimates false discovery rate of peptide
    void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
    {
      FalseDiscoveryRate fdr;
@@ -422,7 +414,6 @@ public:
  * @param files
  */
 public:
-  //from vector of pairs of vectors take peptide vector and compute FDR
   void peptFDR(ProtsPepsPairs& files)
   {
     for (ProtsPepsPairs::iterator j = files.begin(); j != files.end(); j++) //for each pair
@@ -465,7 +456,7 @@ public:
    };
 
 
-// the main_ function is called after all parameters are read
+/// the main_ function is called after all parameters are read
   ExitCodes main_(int, const char **)
   {
     //-------------------------------------------------------------
