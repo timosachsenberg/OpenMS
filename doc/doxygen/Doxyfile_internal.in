@@ -12,3 +12,6 @@ WARN_NO_PARAMDOC       = YES
 # Internal info sections
 ENABLED_SECTIONS       = INTERNAL_INFO
 INTERNAL_DOCS          = YES
+
+# specify the root directory that contains the project's source files.
+INPUT                  = /home/nantia/OpenMS/src/utils/SILACWorkflow.cpp
