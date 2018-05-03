@@ -397,6 +397,7 @@ public:
     }
   }
 
+
 /*
 ***************************************************************
 Q u a n t i f i c a t i o n
@@ -404,23 +405,31 @@ Q u a n t i f i c a t i o n
 */
 
 public:
-  FeatureFinderMultiplex::ExitCodes quantificationFFM(
-    const vector<FASTAFile::FASTAEntry>& fasta_db,
-    vector<ProteinIdentification>& protein_ids,
-    vector<PeptideIdentification>& peptide_ids
+  void quantificationFFM(
+    const StringList & files
   )
   {
-   FeatureFinderMultiplex ffm;
-   ffm.
+   FeatureFinder ffm;
+   Param param_pi = ffm.getParameters("FeatureFinderMultiplex");
+   param_pi.setValue("mz_unit", "ppm");
+   param_pi.setValue("mz_tolerance", 10);
+   param_pi.setValue("intensity_cutoff", 10);
+/*   ffm.run("FeatureFinderMultiplex", PeakMap
+   PeakMap & 	input_map,
+   FeatureMap & 	features,
+   const Param & 	param,
+   const FeatureMap & 	seeds
+   )
+
+   OR
+
+   FalseDiscoveryRate fdr;
+   fdr.apply(peptide_ids);
+   IDFilter::filterHitsByScore(peptide_ids, 0.01);
+*/
    };
 
-/*   void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
-   {
-     FalseDiscoveryRate fdr;
-     fdr.run(peptide_ids);
-     IDFilter::filterHitsByScore(peptide_ids, 0.01);
-   }
-*/
+
 // the main_ function is called after all parameters are read
   ExitCodes main_(int, const char **)
   {
