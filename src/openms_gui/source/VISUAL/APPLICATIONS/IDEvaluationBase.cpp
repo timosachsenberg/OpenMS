@@ -63,37 +63,36 @@
 
 
 //Qt
-#include <QtGui/QToolBar>
-#include <QtGui/QDesktopWidget>
-#include <QtGui/QDockWidget>
-#include <QtGui/QListWidget>
-#include <QtGui/QListWidgetItem>
-#include <QtGui/QTreeWidget>
-#include <QtGui/QTreeWidgetItem>
-#include <QtGui/QMenu>
-#include <QtGui/QMenuBar>
-#include <QtGui/QStatusBar>
-#include <QtGui/QToolButton>
-#include <QtGui/QMessageBox>
-#include <QtGui/QToolTip>
-#include <QtGui/QFileDialog>
-#include <QtGui/QWhatsThis>
-#include <QtGui/QInputDialog>
-#include <QtGui/QTextEdit>
-#include <QtGui/QCheckBox>
-#include <QtGui/QCloseEvent>
-#include <QtGui/QDesktopServices>
+#include <QtWidgets/QToolBar>
+#include <QtWidgets/QDesktopWidget>
+#include <QtWidgets/QDockWidget>
+#include <QtWidgets/QListWidget>
+#include <QtWidgets/QListWidgetItem>
+#include <QtWidgets/QTreeWidget>
+#include <QtWidgets/QTreeWidgetItem>
+#include <QtWidgets/QMenu>
+#include <QtWidgets/QMenuBar>
+#include <QtWidgets/QStatusBar>
+#include <QtWidgets/QToolButton>
+#include <QtWidgets/QMessageBox>
+#include <QtWidgets/QToolTip>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QWhatsThis>
+#include <QtWidgets/QInputDialog>
+#include <QtWidgets/QTextEdit>
+#include <QtWidgets/QCheckBox>
+#include <QCloseEvent>
+#include <QDesktopServices>
 #include <QtCore/QUrl>
-#include <QtGui/QSplashScreen>
-#include <QtGui/QVBoxLayout>
-#include <QtGui/QApplication>
-#include <QtGui/QLabel>
+#include <QtWidgets/QSplashScreen>
+#include <QtWidgets/QVBoxLayout>
+#include <QApplication>
+#include <QtWidgets/QLabel>
 #include <QtCore/QFile>
 #include <QtCore/QDir>
 #include <QtCore/QSet>
 #include <QtCore/QMap>
 
-#include <QWebView>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QTextStream>
@@ -136,7 +135,7 @@ namespace OpenMS
     setCentralWidget(dummy);
     QVBoxLayout* box_layout = new QVBoxLayout(dummy);
 
-    ws_ = new QWorkspace(dummy);
+    ws_ = new QMdiArea(dummy);
     //connect(ws_,SIGNAL(windowActivated(QWidget*)),this,SLOT(updateMenu()));
 
     box_layout->addWidget(ws_);
@@ -386,7 +385,7 @@ namespace OpenMS
 
     PeakMap* exp = new PeakMap();
     exp->addSpectrum(points);
-    spec_1d_->canvas()->addLayer(SpectrumCanvas::ExperimentSharedPtrType(exp));
+    spec_1d_->canvas()->addLayer(SpectrumCanvas::ExperimentSharedPtrType(exp), SpectrumCanvas::ODExperimentSharedPtrType(new OnDiscMSExperiment()));
     spec_1d_->canvas()->setLayerName(spec_1d_->canvas()->getLayerCount() - 1, points.getMetaValue("search_engine"));
     // set intensity mode (after spectrum has been added!)
     setIntensityMode((int) SpectrumCanvas::IM_SNAP);

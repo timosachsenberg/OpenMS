@@ -139,6 +139,14 @@ add_custom_target(SIMULATION_TEST)
 add_dependencies(SIMULATION_TEST ${simulation_executables_list})
 
 #------------------------------------------------------------------------------
+# QT dependencies
+find_package(Qt5 COMPONENTS Core Network REQUIRED)
+if (NOT Qt5Network_FOUND)
+  message(STATUS "QtNetwork module not found!")
+  message(FATAL_ERROR "To find a custom Qt installation use: cmake <..more options..> -D QT_QMAKE_EXECUTABLE='<path_to_qmake(.exe)' <src-dir>")
+endif()
+
+#------------------------------------------------------------------------------
 # Add the actual tests
 foreach(_class_test ${TEST_executables})
   add_executable(${_class_test} source/${_class_test}.cpp)
@@ -168,12 +176,6 @@ endforeach()
 if (CMAKE_COMPILER_IS_INTELCXX OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANG)
   set(${CMAKE_CXX_FLAGS_RELEASE} ${_TMP_CMAKE_CXX_FLAGS_RELEASE})
 endif()
-
-#------------------------------------------------------------------------------
-# all target that we require to show up in the targets list
-# and in the nightly build log (to test if they can be build properly)
-add_custom_target(extra_targets ALL)
-add_dependencies(extra_targets Tutorials_build)
 
 #------------------------------------------------------------------------------
 # add filenames to Visual Studio solution tree

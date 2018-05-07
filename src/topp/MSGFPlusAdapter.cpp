@@ -110,7 +110,7 @@ public:
     // parameter choices (the order of the values must be the same as in the MS-GF+ parameters!):
     fragment_methods_(ListUtils::create<String>("from_spectrum,CID,ETD,HCD")),
     instruments_(ListUtils::create<String>("low_res,high_res,TOF,Q_Exactive")),
-    protocols_(ListUtils::create<String>("none,phospho,iTRAQ,iTRAQ_phospho,TMT")),
+    protocols_(ListUtils::create<String>("automatic,phospho,iTRAQ,iTRAQ_phospho,TMT,none")),
     tryptic_(ListUtils::create<String>("non,semi,fully"))
   {
     ProteaseDB::getInstance()->getAllMSGFNames(enzymes_);
@@ -181,8 +181,9 @@ protected:
     registerIntOption_("matches_per_spec", "<num>", 1, "Number of matches per spectrum to be reported (MS-GF+ parameter '-n')", false);
     setMinInt_("matches_per_spec", 1);
 
-    registerFlag_("add_features", "Output additional features - needed e.g. by Percolator (default: basic scores only; MS-GF+ parameter '-addFeatures')", false);
-
+    registerStringOption_("add_features", "<true/false>", "true", "Output additional features (MS-GF+ parameter '-addFeatures'). This is required by Percolator and hence by default enabled.", false, false);
+    setValidStrings_("add_features", ListUtils::create<String>("true,false"));
+    
     registerIntOption_("max_mods", "<num>", 2, "Maximum number of modifications per peptide. If this value is large, the search may take very long.", false);
     setMinInt_("max_mods", 0);
 
@@ -473,6 +474,11 @@ protected:
     Int instrument_code = ListUtils::getIndex<String>(instruments_, getStringOption_("instrument"));
     Int enzyme_code = ProteaseDB::getInstance()->getEnzyme(enzyme)->getMSGFID();
     Int protocol_code = ListUtils::getIndex<String>(protocols_, getStringOption_("protocol"));
+    // protocol code = 0 corresponds to "automatic" (MS-GF+ docu 2017) and "none" (MS-GF+ docu 2013). We keep 0 = "none" for backward compatibility.
+    if (protocol_code == 5)
+    {
+        protocol_code = 0;
+    }
     Int tryptic_code = ListUtils::getIndex<String>(tryptic_, getStringOption_("tryptic"));
 
     // Hack for KNIME. Looks for MSGFPLUS_PATH in the environment which is set in binaries.ini
@@ -504,7 +510,7 @@ protected:
                    << "-minCharge" << QString::number(min_precursor_charge)
                    << "-maxCharge" << QString::number(max_precursor_charge)
                    << "-n" << QString::number(getIntOption_("matches_per_spec"))
-                   << "-addFeatures" << QString::number(int(getFlag_("add_features")))
+                   << "-addFeatures" << QString::number(int((getParam_().getValue("add_features") == "true")))
                    << "-thread" << QString::number(getIntOption_("threads"));
 
     if (!mod_file.empty())
