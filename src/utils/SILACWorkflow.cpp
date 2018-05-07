@@ -66,13 +66,13 @@ using namespace std;
 /**
     @page UTILS_SILACWorkflow
     @brief Template for a new Tool
-   This tool can be used for scientific stuff and more scientific applications.
+    This tool can be used for scientific stuff and more scientific applications.
 
 
     <B>The command line parameters of this tool are: </B>
-    @verbinclude /home/nantia/OpenMS/openms-build/doc/doxygen/parameters/output/UTILS_SILACWorkflow.cli
+    @verbinclude UTILS_SILACWorkflow.cli
     <B>INI file documentation of this tool:</B>
-    @htmlinclude /home/nantia/OpenMS/openms-build/doc/doxygen/parameters/output/UTILS_SILACWorkflow.html
+    @htmlinclude UTILS_SILACWorkflow.html
 */
 
 // We do not want this class to show up in the docu:
