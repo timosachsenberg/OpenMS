@@ -43,6 +43,7 @@
 #include <OpenMS/FORMAT/MzMLFile.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
+#include <OpenMS/KERNEL/FeatureMap.h>
 #include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/KERNEL/MSExperiment.h>
 #include <OpenMS/CHEMISTRY/ProteaseDB.h>
@@ -494,19 +495,22 @@ protected:
     ffm.setLogType(this->log_type_);
     // run feature detection algorithm
     ffm.run(exp, true);
+    FeatureXMLFile fxml_file;
+    FeatureMap map;
     for (unsigned i = 0; i < in.size(); i++) //for all file names
     {
       String output = File::removeExtension(in[i]);
       // add the extension .idXML
       output = output + ".featureXML";
       cout << "Writing to file: " << output << endl;
+      /*
       // test if a file exists, if yes throw exception.
-    /*  if (File::exists(out_filename) == true)
+      if (File::exists(out_filename) == true)
       {
         throw string("Same file was found");
       }
-    */
-      file.store(output,exp);
+      */
+      fxml_file.store(output,map);
     }
 
 
