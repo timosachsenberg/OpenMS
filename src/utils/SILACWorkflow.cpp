@@ -44,6 +44,7 @@
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
 #include <OpenMS/FORMAT/FileHandler.h>
+#include <OpenMS/KERNEL/MSExperiment.h>
 #include <OpenMS/CHEMISTRY/ProteaseDB.h>
 #include <OpenMS/FORMAT/FeatureXMLFile.h>
 #include <OpenMS/FILTERING/ID/IDFilter.h>
@@ -54,6 +55,7 @@
 #include <OpenMS/ANALYSIS/ID/FalseDiscoveryRate.h>
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinder.h>
 #include <OpenMS/MATH/STATISTICS/PosteriorErrorProbabilityModel.h>
+#include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinderMultiplexAlgorithm.h>
 
 using namespace OpenMS;
 using namespace std;
@@ -69,7 +71,7 @@ using namespace std;
     This tool can be used for scientific stuff and more scientific applications.
 
 
-    <B>The command line parameters of this tool are: </B>
+    <B>The command line parameters of this tool are NANTIA SDF: </B>
     @verbinclude UTILS_SILACWorkflow.cli
     <B>INI file documentation of this tool:</B>
     @htmlinclude UTILS_SILACWorkflow.html
@@ -130,22 +132,20 @@ protected:
 P e p t i d e  I d e n t i f i c a t i o n
 ***************************************************************
 */
-
-
-/**
- * [indexPepAndProtIds give indexes to all protein and peptide ids]
- * @param  fasta_db    [database]
- * @param  protein_ids [vector of protein IDS]
- * @param  peptide_ids [vector of peptide IDS]
- * @return             [description]
- */
-public:
-  PeptideIndexing::ExitCodes indexPepAndProtIds(
+protected:
+  PeptideIndexing::ExitCodes indexPepAndProtIds_(
     const vector<FASTAFile::FASTAEntry>& fasta_db,
     vector<ProteinIdentification>& protein_ids,
     vector<PeptideIdentification>& peptide_ids
   )
-  {
+  /**
+   * [indexPepAndProtIds_ give indexes to all protein and peptide ids]
+   * @param  fasta_db    [database]
+   * @param  protein_ids [vector of protein IDS]
+   * @param  peptide_ids [vector of peptide IDS]
+   * @return             [description]
+   */
+   {
     PeptideIndexing indexer;
     Param param_pi = indexer.getParameters();
     param_pi.setValue("decoy_string", getStringOption_("decoy_string"));
@@ -161,17 +161,16 @@ public:
     return indexer_exit;
   };
 
-
-/**
- * [calculatePEP PEP calculation]
- * @param protein_identifications [vector of protein IDS]
- * @param peptide_identifications [vector of peptide IDS]
- */
-public:
-  void calculatePEP(
+protected:
+  void calculatePEP_(
     vector<ProteinIdentification>& protein_identifications,
     vector<PeptideIdentification>& peptide_identifications
   )
+  /**
+   * [calculatePEP_ PEP calculation]
+   * @param protein_identifications [vector of protein IDS]
+   * @param peptide_identifications [vector of peptide IDS]
+   */
   {
     //generate PEP_model
     Param pep_param = getParam_().copy("Posterior Error Probability:", true);
@@ -227,25 +226,26 @@ public:
         }
       };
 
-/**
- * [prepareIDFiles prepare ID files]
- * @param  fasta_db [database]
- * @param  light
- * @param  heavy
- * @return          [vector, of pair, of IDSs vectors]
- */
-public:
+
+protected:
   //pair of protein and peptide identifications (vectors), as stored in an idXML file
   using ProtsPepsPair = std::pair< vector<ProteinIdentification>, vector<PeptideIdentification> >;
 
   //vector, of pair of IDs vectors
   using ProtsPepsPairs = vector<ProtsPepsPair>;
 
-  ProtsPepsPairs prepareIDFiles(
+  ProtsPepsPairs prepareIDFiles_(
     const vector<FASTAFile::FASTAEntry>& fasta_db,
     const StringList & light,
     const StringList & heavy
   )
+  /**
+   * [prepareIDFiles_ prepare ID files]
+   * @param  fasta_db [database]
+   * @param  light
+   * @param  heavy
+   * @return          [vector, of pair, of IDSs vectors]
+   */
   {
 
     //if stringList sizes not equal, throw an exception
@@ -268,14 +268,14 @@ public:
       // read the identification file for light (contains both protein as well as peptide identifications)
       LOG_INFO << "Loading ID file (light): " << light[i] << endl;
       idXML_file.load(light[i], light_protein_identifications,  light_peptide_identifications);
-      PeptideIndexing::ExitCodes indexer_exit = indexPepAndProtIds(fasta_db, light_protein_identifications, light_peptide_identifications);
+      PeptideIndexing::ExitCodes indexer_exit = indexPepAndProtIds_(fasta_db, light_protein_identifications, light_peptide_identifications);
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
         // TODO: write error message and return
 
       }
-      // call calculatePEP
-      calculatePEP(light_protein_identifications, light_peptide_identifications);
+      // call calculatePEP_
+      calculatePEP_(light_protein_identifications, light_peptide_identifications);
 
       /////////////////////////////////////////////////
       /////             heavy                    /////
@@ -285,23 +285,23 @@ public:
       // read the identification file for heavy (contains both protein as well as peptide identifications)
       LOG_INFO << "Loading ID file (heavy): " << heavy[i] << endl;
       idXML_file.load(heavy[i], heavy_protein_identifications,  heavy_peptide_identifications);
-      indexer_exit = indexPepAndProtIds(fasta_db, heavy_protein_identifications, heavy_peptide_identifications);
+      indexer_exit = indexPepAndProtIds_(fasta_db, heavy_protein_identifications, heavy_peptide_identifications);
 
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
         // TODO: write error message and return
 
       }
-      // call calculatePEP
-      calculatePEP(heavy_protein_identifications, heavy_peptide_identifications);
+      // call calculatePEP_
+      calculatePEP_(heavy_protein_identifications, heavy_peptide_identifications);
 
       //merge light and heavy (for PROTEIN IDs) and stores the merged files in a vector
       vector<ProteinIdentification>  mergedProtIDs;
-      mergedProtIDs = mergeProteinIDs(light_protein_identifications,heavy_protein_identifications);
+      mergedProtIDs = mergeProteinIDs_(light_protein_identifications,heavy_protein_identifications);
 
       //merge light and heavy (for PEPTIDE IDs) and stores the merged files in a vector
       vector<PeptideIdentification>  mergedPeptIDs;
-      mergedPeptIDs = mergePeptideIDs(light_peptide_identifications,heavy_peptide_identifications);
+      mergedPeptIDs = mergePeptideIDs_(light_peptide_identifications,heavy_peptide_identifications);
 
       //create a pair of the merged files
       std::pair <vector<ProteinIdentification>, vector<PeptideIdentification>> mergedProtPepIDs;
@@ -314,17 +314,18 @@ public:
     return ret;
   };
 
-/**
- * [mergePeptideIDs merge two vectors with peptide identifications]
- * @param  light
- * @param  heavy
- * @return       [vector of PeptideIdentification]
- */
-public:
-  vector<PeptideIdentification> mergePeptideIDs(
+
+protected:
+  vector<PeptideIdentification> mergePeptideIDs_(
     const vector<PeptideIdentification>& light,
     const vector<PeptideIdentification>& heavy
   )
+  /**
+   * [mergePeptideIDs_ merge two vectors with peptide identifications]
+   * @param  light
+   * @param  heavy
+   * @return       [vector of PeptideIdentification]
+   */
   {
     std::map<String, PeptideIdentification> spectrum_to_id;
 
@@ -377,17 +378,17 @@ public:
   };
 
 
-/**
- * [mergeProteinIDs merge two vectors (light and heavy) of protein identifications]
- * @param  light
- * @param  heavy
- * @return       [vector of ProteinIdentification]
- */
-public:
-  vector<ProteinIdentification> mergeProteinIDs(
+protected:
+  vector<ProteinIdentification> mergeProteinIDs_(
     const vector<ProteinIdentification>& light,
     const vector<ProteinIdentification>& heavy
   )
+  /**
+   * [mergeProteinIDs merge two vectors (light and heavy) of protein identifications]
+   * @param  light
+   * @param  heavy
+   * @return       [vector of ProteinIdentification]
+   */
   {
     vector<ProteinIdentification> ret;
     //Concatenate two vectors (light and heavy)
@@ -397,64 +398,33 @@ public:
     return ret;
   };
 
-/**
- * [calculateFDR_ estimates false discovery rate of peptide]
- * @param peptide_ids
- */
- private:
-   void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
+
+protected:
+   void calculateFDR__(vector<PeptideIdentification>& peptide_ids)
+   /**
+    * [calculateFDR__ estimates false discovery rate of peptide]
+    * @param peptide_ids
+    */
    {
      FalseDiscoveryRate fdr;
      fdr.apply(peptide_ids);
      IDFilter::filterHitsByScore(peptide_ids, 0.01);
    }
 
-/**
- * [peptFDR from vector of pairs of vectors take peptide vector and compute FDR]
- * @param files
- */
-public:
-  void peptFDR(ProtsPepsPairs& files)
+
+protected:
+  void peptFDR_(ProtsPepsPairs& files)
+  /**
+   * [peptFDR_ from vector of pairs of vectors take peptide vector and compute FDR]
+   * @param files
+   */
   {
     for (ProtsPepsPairs::iterator j = files.begin(); j != files.end(); j++) //for each pair
     {
       // pass vector of PeptideIdentification to FDR calculation
-      calculateFDR_(j->second); // j->second takes the second element of each pair
+      calculateFDR__(j->second); // j->second takes the second element of each pair
     }
   }
-
-
-/*
-***************************************************************
-Q u a n t i f i c a t i o n
-***************************************************************
-*/
-
-public:
-  void quantificationFFM(
-    const StringList & files
-  )
-  {
-   FeatureFinder ffm;
-   Param param_pi = ffm.getParameters("FeatureFinderMultiplex");
-   param_pi.setValue("mz_unit", "ppm");
-   param_pi.setValue("mz_tolerance", 10);
-   param_pi.setValue("intensity_cutoff", 10);
-/*   ffm.run("FeatureFinderMultiplex", PeakMap
-   PeakMap & 	input_map,
-   FeatureMap & 	features,
-   const Param & 	param,
-   const FeatureMap & 	seeds
-   )
-
-   OR
-
-   FalseDiscoveryRate fdr;
-   fdr.apply(peptide_ids);
-   IDFilter::filterHitsByScore(peptide_ids, 0.01);
-*/
-   };
-
 
 /// the main_ function is called after all parameters are read
   ExitCodes main_(int, const char **)
@@ -478,12 +448,12 @@ public:
     FASTAFile fasta_reader;
     fasta_reader.load(database, fasta_db);
 
-    ProtsPepsPairs id_files = prepareIDFiles(fasta_db, in_ids_light, in_ids_heavy);
+    ProtsPepsPairs id_files = prepareIDFiles_(fasta_db, in_ids_light, in_ids_heavy);
 
     //-------------------------------------------------------------
     // calculations
     //-------------------------------------------------------------
-    peptFDR(id_files);
+    peptFDR_(id_files);
 
     //-------------------------------------------------------------
     // writing output (after FDR calculation)
@@ -500,12 +470,45 @@ public:
       out_filename = out_filename + "_fdr.idXML";
       cout << "Writing to file: " << out_filename << endl;
       // test if a file exists, if yes throw exception.
-      if (File::exists(out_filename) == TRUE)
+      if (File::exists(out_filename) == true)
       {
         throw string("Same file was found");
       }
       idXML_file.store(out_filename, prot_ids, pept_ids);
     }
+
+    /*
+    ***************************************************************
+    Q u a n t i f i c a t i o n
+    ***************************************************************
+    */
+    FeatureFinderMultiplexAlgorithm ffm;
+    MSExperiment exp;
+    MzMLFile file;
+    for (unsigned i = 0; i < in.size(); i++)
+    {
+      file.load(in[i], exp);
+    }
+    Param params = getParam_();
+    ffm.setParameters(params);
+    ffm.setLogType(this->log_type_);
+    // run feature detection algorithm
+    ffm.run(exp, true);
+    for (unsigned i = 0; i < in.size(); i++) //for all file names
+    {
+      String output = File::removeExtension(in[i]);
+      // add the extension .idXML
+      output = output + ".featureXML";
+      cout << "Writing to file: " << output << endl;
+      // test if a file exists, if yes throw exception.
+    /*  if (File::exists(out_filename) == true)
+      {
+        throw string("Same file was found");
+      }
+    */
+      file.store(output,exp);
+    }
+
 
 
     // For FIDO Adapter: merge all
