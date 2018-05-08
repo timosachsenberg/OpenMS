@@ -54,10 +54,9 @@
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
 #include <OpenMS/ANALYSIS/ID/FalseDiscoveryRate.h>
-#include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinder.h>
 #include <OpenMS/MATH/STATISTICS/PosteriorErrorProbabilityModel.h>
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinderMultiplexAlgorithm.h>
-#include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinderIdentificationAlgorithm.h>
+
 
 using namespace OpenMS;
 using namespace std;
@@ -124,10 +123,10 @@ protected:
     setValidStrings_("enzyme_name", enzymes);
 
     //get all parameters of an algorithm at the same time
-    Param ff_defaults = FeatureFinderIdentificationAlgorithm().getDefaults();
+    Param ffm_defaults = FeatureFinderMultiplexAlgorithm().getDefaults();
     Param pep_defaults = Math::PosteriorErrorProbabilityModel().getParameters();
     Param combined;
-    combined.insert("Peptide Quantification:", ff_defaults);
+    combined.insert("Quantification:", ffm_defaults);
     combined.insert("Posterior Error Probability:", pep_defaults);
     registerFullParam_(combined);
 
