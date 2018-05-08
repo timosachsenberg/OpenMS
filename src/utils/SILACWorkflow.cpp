@@ -57,6 +57,7 @@
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinder.h>
 #include <OpenMS/MATH/STATISTICS/PosteriorErrorProbabilityModel.h>
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinderMultiplexAlgorithm.h>
+#include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinderIdentificationAlgorithm.h>
 
 using namespace OpenMS;
 using namespace std;
@@ -122,10 +123,14 @@ protected:
     ProteaseDB::getInstance()->getAllNames(enzymes);
     setValidStrings_("enzyme_name", enzymes);
 
-    //registerInputFile_("accession", "<file>", "","Input IdXML file, containing the identified peptides.", true);
-    //setValidFormats_("accession", ListUtils::create<String>("idXML"));
-    //registerOutputFile_("out", "<file>", "", "Output FASTA file where the reduced database will be written to.");
-    //setValidFormats_("out", ListUtils::create<String>("fasta"));
+    //get all parameters of an algorithm at the same time
+    Param ff_defaults = FeatureFinderIdentificationAlgorithm().getDefaults();
+    Param pep_defaults = Math::PosteriorErrorProbabilityModel().getParameters();
+    Param combined;
+    combined.insert("Peptide Quantification:", ff_defaults);
+    combined.insert("Posterior Error Probability:", pep_defaults);
+    registerFullParam_(combined);
+
     }
 
 /*
@@ -483,18 +488,20 @@ protected:
     Q u a n t i f i c a t i o n
     ***************************************************************
     */
-    FeatureFinderMultiplexAlgorithm ffm;
     MSExperiment exp;
     MzMLFile file;
     for (unsigned i = 0; i < in.size(); i++)
     {
       file.load(in[i], exp);
     }
+
+    FeatureFinderMultiplexAlgorithm ffm;
     Param params = getParam_();
     ffm.setParameters(params);
     ffm.setLogType(this->log_type_);
     // run feature detection algorithm
     ffm.run(exp, true);
+
     FeatureXMLFile fxml_file;
     FeatureMap map;
     for (unsigned i = 0; i < in.size(); i++) //for all file names
@@ -503,13 +510,7 @@ protected:
       // add the extension .idXML
       output = output + ".featureXML";
       cout << "Writing to file: " << output << endl;
-      /*
-      // test if a file exists, if yes throw exception.
-      if (File::exists(out_filename) == true)
-      {
-        throw string("Same file was found");
-      }
-      */
+
       fxml_file.store(output,map);
     }
 
