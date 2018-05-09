@@ -122,7 +122,7 @@ protected:
     ProteaseDB::getInstance()->getAllNames(enzymes);
     setValidStrings_("enzyme_name", enzymes);
 
-    //get all parameters of an algorithm at the same time
+    //get all parameters of different algorithms at once
     Param ffm_defaults = FeatureFinderMultiplexAlgorithm().getDefaults();
     Param pep_defaults = Math::PosteriorErrorProbabilityModel().getParameters();
     Param combined;
@@ -487,13 +487,13 @@ protected:
     Q u a n t i f i c a t i o n
     ***************************************************************
     */
-    MSExperiment exp;
+  /*
     MzMLFile file;
     for (unsigned i = 0; i < in.size(); i++)
     {
-      file.load(in[i], exp);
+      file.load(in[i], exp); //load files
     }
-
+*/
     FeatureFinderMultiplexAlgorithm ffm;
     Param params = getParam_();
     ffm.setParameters(params);
@@ -517,38 +517,6 @@ protected:
 
     // For FIDO Adapter: merge all
 
-/*
-     // iteration in idXML- heavy file
-     for(i = 0; i < in_ids_heavy.size(); i++)
-     {
-          // read the identification file (contains both protein as well as peptide identifications)
-          vector<protein_identification> protein_identifications;
-          vector<PeptideIdentification> peptide_identifications;
-
-          //Loads the identifications of an idXML file
-          IdXMLFile idXML_file;
-          idXML_file.load(in_ids_heavy[i], protein_identifications, peptide_identifications);
-
-          //PeptideIndexing.run
-          PeptideIndexing::ExitCodes indexer_exit = indexer.run(fasta_db, protein_ids, peptide_ids);
-
-          if ((indexer_exit != PeptideIndexing::EXECUTION_OK) &&
-              (indexer_exit != PeptideIndexing::PEPTIDE_IDS_EMPTY))
-          {
-            if (indexer_exit == PeptideIndexing::DATABASE_EMPTY)
-            {
-              return INPUT_FILE_EMPTY;
-            }
-            else if (indexer_exit == PeptideIndexing::UNEXPECTED_RESULT)
-            {
-              return UNEXPECTED_RESULT;
-            }
-            else
-            {
-              return UNKNOWN_ERROR;
-            }
-          }
-}*/
 
     //-------------------------------------------------------------
     // writing output
