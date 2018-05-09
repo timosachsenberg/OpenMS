@@ -112,7 +112,7 @@ protected:
     registerInputFile_("database", "<file>", "", "input database");
     setValidFormats_("database", ListUtils::create<String>("fasta"));
 
-    registerStringOption_("decoy_string", "<text>", "DECOY_", "String to indicate decoy protein", false);
+  /*  registerStringOption_("decoy_string", "<text>", "DECOY_", "String to indicate decoy protein", false);
 
     registerStringOption_("decoy_string_position", "<choice>", "prefix", "Should the string be prepended or appended?", false);
     setValidStrings_("decoy_string_position", ListUtils::create<String>("prefix,suffix"));
@@ -121,13 +121,17 @@ protected:
     StringList enzymes;
     ProteaseDB::getInstance()->getAllNames(enzymes);
     setValidStrings_("enzyme_name", enzymes);
-
+*/
     //get all parameters of different algorithms at once
     Param ffm_defaults = FeatureFinderMultiplexAlgorithm().getDefaults();
     Param pep_defaults = Math::PosteriorErrorProbabilityModel().getParameters();
+    Param index_defaults = PeptideIndexing().getParameters();
+    Param fdr_defaults = FalseDiscoveryRate().getParameters();
     Param combined;
     combined.insert("Quantification:", ffm_defaults);
     combined.insert("Posterior Error Probability:", pep_defaults);
+    combined.insert("Peptide Indexing:", index_defaults);
+    combined.insert("False Discovery Rate:", fdr_defaults);
     registerFullParam_(combined);
 
     }
@@ -148,10 +152,21 @@ protected:
    * @param  fasta_db    [database]
    * @param  protein_ids [vector of protein IDS]
    * @param  peptide_ids [vector of peptide IDS]
-   * @return             [description]
+   * @return
    */
    {
-    PeptideIndexing indexer;
+     Param pp_param = getParam_().copy("Peptide Indexing:", true);
+     writeDebug_("Parameters passed to PeptideIndexing algorithm", pp_param, 3);
+     PeptideIndexing indexer;
+     indexer.setLogType(log_type_);
+     indexer.setParameters(pp_param);
+
+     vector<FASTAFile::FASTAEntry> fasta_db_tmp(fasta_db);
+     PeptideIndexing::ExitCodes indexer_exit = indexer.run(fasta_db_tmp, protein_ids, peptide_ids);
+
+     return indexer_exit;
+     
+/*  PeptideIndexing indexer;
     Param param_pi = indexer.getParameters();
     param_pi.setValue("decoy_string", getStringOption_("decoy_string"));
     param_pi.setValue("decoy_string_position", getStringOption_("decoy_string_position"));
@@ -159,11 +174,8 @@ protected:
     param_pi.setValue("missing_decoy_action", "warn");
     param_pi.setValue("enzyme:name", getStringOption_("enzyme:name"));
     indexer.setParameters(param_pi);
+*/
 
-    vector<FASTAFile::FASTAEntry> fasta_db_tmp(fasta_db);
-    PeptideIndexing::ExitCodes indexer_exit = indexer.run(fasta_db_tmp, protein_ids, peptide_ids);
-
-    return indexer_exit;
   };
 
 protected:
@@ -495,6 +507,7 @@ protected:
     }
 */
     FeatureFinderMultiplexAlgorithm ffm;
+    MSExperiment exp;
     Param params = getParam_();
     ffm.setParameters(params);
     ffm.setLogType(this->log_type_);
@@ -505,6 +518,8 @@ protected:
     FeatureMap map;
     for (unsigned i = 0; i < in.size(); i++) //for all file names
     {
+      //hier load mzMl files
+      //hier run ffm algo
       String output = File::removeExtension(in[i]);
       // add the extension .idXML
       output = output + ".featureXML";
