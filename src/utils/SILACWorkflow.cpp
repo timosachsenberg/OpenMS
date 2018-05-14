@@ -42,6 +42,7 @@
 #include <OpenMS/SYSTEM/File.h>
 #include <OpenMS/FORMAT/MzMLFile.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
+#include <OpenMS/FORMAT/ConsensusXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
 #include <OpenMS/KERNEL/FeatureMap.h>
 #include <OpenMS/FORMAT/FileHandler.h>
@@ -50,6 +51,7 @@
 #include <OpenMS/FORMAT/FeatureXMLFile.h>
 #include <OpenMS/FILTERING/ID/IDFilter.h>
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
+#include <OpenMS/KERNEL/ConsensusMap.h>
 #include <OpenMS/ANALYSIS/ID/PeptideIndexing.h>
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
@@ -485,7 +487,7 @@ protected:
       String out_filename = File::removeExtension(in[i]);
       // add the extension .idXML
       out_filename = out_filename + "_fdr.idXML";
-      cout << "Writing to file: " << out_filename << endl;
+      LOG_INFO << "Writing to file: " << out_filename << endl;
       // test if a file exists, if yes throw exception.
       if (File::exists(out_filename) == true)
       {
@@ -498,28 +500,33 @@ protected:
 ***************************************************************
 Q u a n t i f i c a t i o n
 ***************************************************************
-
 */
 
-  FeatureFinderMultiplexAlgorithm ffm;
-  MSExperiment exp;
-  FeatureXMLFile fxml_file;
-  FeatureMap map;
-  MzMLFile mzML_input;
-  for (unsigned i = 0; i < in.size(); i++) //for all file names
-  {
-    mzML_input.load(in[i],exp); //load mzML file from stringList
+    FeatureFinderMultiplexAlgorithm ffm;
+    ConsensusXMLFile cons_file;
+    MzMLFile mzML_input;
+
     Param params = getParam_(); //set the parameters of the algorithm
     ffm.setParameters(params);
     ffm.setLogType(this->log_type_);
-    ffm.run(exp, true);  // run feature detection algorithm
+    for (unsigned i = 0; i < in.size(); i++) //for all file names
+    {
+      MSExperiment exp;
+      mzML_input.load(in[i],exp); //load mzML file from stringList
 
-    String output = File::removeExtension(in[i]);
-    output = output + ".featureXML"; // add extension .idXML
-    cout << "Writing to file: " << output << endl;
+      ffm.run(exp, true);  // run feature detection algorithm
+      ConsensusMap cons_map = ffm.getConsensusMap();
 
-    fxml_file.store(output,map); //store results
-  }
+      String output = File::removeExtension(in[i]);
+      output = output + ".consensusXML"; // add extension .idXML
+      LOG_INFO << "Writing to file: " << output << endl;
+
+      // TODO: IDMapper
+      // TODO: IDConflicResolver
+      // TODO: MultiplexResolver
+      // TODO: FileFilter
+      cons_file.store(output, cons_map); //store results
+    }
 
 
 
