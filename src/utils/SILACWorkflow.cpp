@@ -165,7 +165,7 @@ protected:
      PeptideIndexing::ExitCodes indexer_exit = indexer.run(fasta_db_tmp, protein_ids, peptide_ids);
 
      return indexer_exit;
-     
+
 /*  PeptideIndexing indexer;
     Param param_pi = indexer.getParameters();
     param_pi.setValue("decoy_string", getStringOption_("decoy_string"));
@@ -494,39 +494,32 @@ protected:
       idXML_file.store(out_filename, prot_ids, pept_ids);
     }
 
-    /*
-    ***************************************************************
-    Q u a n t i f i c a t i o n
-    ***************************************************************
-    */
-  /*
-    MzMLFile file;
-    for (unsigned i = 0; i < in.size(); i++)
-    {
-      file.load(in[i], exp); //load files
-    }
+/*
+***************************************************************
+Q u a n t i f i c a t i o n
+***************************************************************
+
 */
-    FeatureFinderMultiplexAlgorithm ffm;
-    MSExperiment exp;
-    Param params = getParam_();
+
+  FeatureFinderMultiplexAlgorithm ffm;
+  MSExperiment exp;
+  FeatureXMLFile fxml_file;
+  FeatureMap map;
+  MzMLFile mzML_input;
+  for (unsigned i = 0; i < in.size(); i++) //for all file names
+  {
+    mzML_input.load(in[i],exp); //load mzML file from stringList
+    Param params = getParam_(); //set the parameters of the algorithm
     ffm.setParameters(params);
     ffm.setLogType(this->log_type_);
-    // run feature detection algorithm
-    ffm.run(exp, true);
+    ffm.run(exp, true);  // run feature detection algorithm
 
-    FeatureXMLFile fxml_file;
-    FeatureMap map;
-    for (unsigned i = 0; i < in.size(); i++) //for all file names
-    {
-      //hier load mzMl files
-      //hier run ffm algo
-      String output = File::removeExtension(in[i]);
-      // add the extension .idXML
-      output = output + ".featureXML";
-      cout << "Writing to file: " << output << endl;
+    String output = File::removeExtension(in[i]);
+    output = output + ".featureXML"; // add extension .idXML
+    cout << "Writing to file: " << output << endl;
 
-      fxml_file.store(output,map);
-    }
+    fxml_file.store(output,map); //store results
+  }
 
 
 
