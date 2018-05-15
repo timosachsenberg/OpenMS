@@ -120,21 +120,7 @@ namespace OpenMS
     /**
      * @brief returns the list of mass shift patterns
      */
-    std::vector<MultiplexDeltaMasses> getDeltaMassesList();
-    
-    /**
-     * @brief returns the list of mass shift patterns
-     */
     const std::vector<MultiplexDeltaMasses>& getDeltaMassesList() const;
-    
-    /**
-     * @brief returns the list of samples with their corresponding labels
-     * 
-     * For example in a standard SILAC experiment:
-     * sample 1:    no_label    
-     * sample 2:    Lys8    Arg10
-     */
-    std::vector<std::vector<String> > getSamplesLabelsList();
     
     /**
      * @brief returns the list of samples with their corresponding labels
@@ -150,14 +136,14 @@ namespace OpenMS
      * 
      * @param label    long label, UniMod name as it appears in peptide sequences, e.g. "Label:13C(6)15N(4)"
      */
-    String getLabelShort(String label);
+    String getLabelShort(String label) const;
     
     /**
      * @brief returns the long label string
      * 
      * @param label    short label, as it appears in the "labels" parameter, e.g. "Arg10"
      */
-    String getLabelLong(String label);
+    String getLabelLong(String label) const;
     
     /**
      * @brief extract the label set from the sequence
@@ -167,7 +153,7 @@ namespace OpenMS
      * For example, the sequence VLSEEEIDDNFK(Label:13C(6)15N(2))AQR(Label:13C(6)15N(4))
      * contains a set of two labels, Lys8 and Arg10.
      */
-    MultiplexDeltaMasses::LabelSet extractLabelSet(AASequence sequence);
+    MultiplexDeltaMasses::LabelSet extractLabelSet(AASequence sequence) const;
     
     private:
    

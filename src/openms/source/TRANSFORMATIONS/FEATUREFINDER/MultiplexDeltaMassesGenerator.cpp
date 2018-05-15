@@ -83,7 +83,7 @@ namespace OpenMS
     fillLabelMasterList_();
     
     // generate short/long label mappings
-    for (std::vector<MultiplexDeltaMassesGenerator::Label>::const_iterator it = label_master_list_.begin(); it != label_master_list_.end(); ++it)
+    for (auto it = label_master_list_.begin(); it != label_master_list_.end(); ++it)
     {
       label_short_long_.insert(make_pair(it->short_name, it->long_name));
       label_long_short_.insert(make_pair(it->long_name, it->short_name));
@@ -479,37 +479,27 @@ namespace OpenMS
     LOG_DEBUG << "\n";
   }
   
-  std::vector<MultiplexDeltaMasses> MultiplexDeltaMassesGenerator::getDeltaMassesList()
-  {
-    return delta_masses_list_;
-  }
-
   const std::vector<MultiplexDeltaMasses>& MultiplexDeltaMassesGenerator::getDeltaMassesList() const
   {
     return delta_masses_list_;
   }
   
-  std::vector<std::vector<String> > MultiplexDeltaMassesGenerator::getSamplesLabelsList()
-  {
-    return samples_labels_;
-  }
-
   const std::vector<std::vector<String> >& MultiplexDeltaMassesGenerator::getSamplesLabelsList() const
   {
     return samples_labels_;
   }
 
-  String MultiplexDeltaMassesGenerator::getLabelShort(String label)
+  String MultiplexDeltaMassesGenerator::getLabelShort(String label) const
   {
-    return label_long_short_[label];
+    return label_long_short_.at(label);
   }
 
-  String MultiplexDeltaMassesGenerator::getLabelLong(String label)
+  String MultiplexDeltaMassesGenerator::getLabelLong(String label) const
   {
-    return label_short_long_[label];
+    return label_short_long_.at(label);
   }
   
-  MultiplexDeltaMasses::LabelSet MultiplexDeltaMassesGenerator::extractLabelSet(AASequence sequence)
+  MultiplexDeltaMasses::LabelSet MultiplexDeltaMassesGenerator::extractLabelSet(AASequence sequence) const
   {
     String s(sequence.toString());
 
@@ -564,3 +554,4 @@ namespace OpenMS
     label_master_list_.push_back(MultiplexDeltaMassesGenerator::Label("ICPL10", "ICPL:13C(6)2H(4)", "ICPL:13C(6)2H(4)  |  H(-1) 2H(4) 13C(6) N O  |  unimod #866", 115.066700));
   }
 }
+
