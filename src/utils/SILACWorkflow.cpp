@@ -42,20 +42,22 @@
 #include <OpenMS/SYSTEM/File.h>
 #include <OpenMS/FORMAT/MzMLFile.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
-#include <OpenMS/FORMAT/ConsensusXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
 #include <OpenMS/KERNEL/FeatureMap.h>
 #include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/KERNEL/MSExperiment.h>
 #include <OpenMS/CHEMISTRY/ProteaseDB.h>
+#include <OpenMS/KERNEL/ConsensusMap.h>
+#include <OpenMS/ANALYSIS/ID/IDMapper.h>
 #include <OpenMS/FORMAT/FeatureXMLFile.h>
 #include <OpenMS/FILTERING/ID/IDFilter.h>
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
-#include <OpenMS/KERNEL/ConsensusMap.h>
+#include <OpenMS/FORMAT/ConsensusXMLFile.h>
 #include <OpenMS/ANALYSIS/ID/PeptideIndexing.h>
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
 #include <OpenMS/ANALYSIS/ID/FalseDiscoveryRate.h>
+#include <OpenMS/ANALYSIS/ID/IDConflictResolverAlgorithm.h>
 #include <OpenMS/MATH/STATISTICS/PosteriorErrorProbabilityModel.h>
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinderMultiplexAlgorithm.h>
 
@@ -129,11 +131,15 @@ protected:
     Param pep_defaults = Math::PosteriorErrorProbabilityModel().getParameters();
     Param index_defaults = PeptideIndexing().getParameters();
     Param fdr_defaults = FalseDiscoveryRate().getParameters();
+    Param idMapper_defaults = IDMapper().getParameters();
+    //Param idConflict_defaults = IDConflictResolverAlgorithm().getParameters();
     Param combined;
     combined.insert("Quantification:", ffm_defaults);
     combined.insert("Posterior Error Probability:", pep_defaults);
     combined.insert("Peptide Indexing:", index_defaults);
     combined.insert("False Discovery Rate:", fdr_defaults);
+    combined.insert("IDMapper:", idMapper_defaults);
+    //combined.insert("IDConflictResolver:", idConflict_defaults);
     registerFullParam_(combined);
 
     }
@@ -506,7 +512,8 @@ Q u a n t i f i c a t i o n
     ConsensusXMLFile cons_file;
     MzMLFile mzML_input;
 
-    Param params = getParam_(); //set the parameters of the algorithm
+    Param params = getParam_().copy("Quantification:", true); //set the parameters of the algorithm
+    writeDebug_("Parameters passed to FeatureFinderMultiplex algorithm", params, 3);
     ffm.setParameters(params);
     ffm.setLogType(this->log_type_);
     for (unsigned i = 0; i < in.size(); i++) //for all file names
