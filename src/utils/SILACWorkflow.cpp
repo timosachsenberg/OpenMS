@@ -544,7 +544,7 @@ Q u a n t i f i c a t i o n
       // annotate output with data processing info (??)
       addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::IDENTIFICATION_MAPPING));
       //sort list of peptide identifications in each consensus feature by map index
-      //cons_map.sortPeptideIdentificationsByMapIndex();
+      cons_map.sortPeptideIdentificationsByMapIndex();
       //file.store(out, map); (nein??)
 
 
