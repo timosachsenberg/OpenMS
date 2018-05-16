@@ -53,6 +53,7 @@
 #include <OpenMS/FILTERING/ID/IDFilter.h>
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
 #include <OpenMS/FORMAT/ConsensusXMLFile.h>
+#include <OpenMS/FORMAT/ConsensusXMLFile.h>
 #include <OpenMS/ANALYSIS/ID/PeptideIndexing.h>
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
@@ -116,6 +117,11 @@ protected:
     registerInputFile_("database", "<file>", "", "input database");
     setValidFormats_("database", ListUtils::create<String>("fasta"));
 
+    registerDoubleOption_("rt_tolerance", "<value>", 20, "RT tolerance (in seconds) for the matching of peptide IDS and (consensus) features.", false);
+    setMinFloat_("rt_tolerance", 0.0);
+    registerDoubleOption_("mz_tolerance", "<value>", 10, "m/z tolerance (in ppm or Da) for the matching of peptide IDs and (consensus) features.", false);
+    setMinFloat_("mz_tolerance", 0.0);
+
   /*  registerStringOption_("decoy_string", "<text>", "DECOY_", "String to indicate decoy protein", false);
 
     registerStringOption_("decoy_string_position", "<choice>", "prefix", "Should the string be prepended or appended?", false);
@@ -126,20 +132,18 @@ protected:
     ProteaseDB::getInstance()->getAllNames(enzymes);
     setValidStrings_("enzyme_name", enzymes);
 */
-    //get all parameters of different algorithms at once
+    //get all parameters from different algorithms at once
     Param ffm_defaults = FeatureFinderMultiplexAlgorithm().getDefaults();
     Param pep_defaults = Math::PosteriorErrorProbabilityModel().getParameters();
     Param index_defaults = PeptideIndexing().getParameters();
     Param fdr_defaults = FalseDiscoveryRate().getParameters();
     Param idMapper_defaults = IDMapper().getParameters();
-    //Param idConflict_defaults = IDConflictResolverAlgorithm().getParameters();
     Param combined;
     combined.insert("Quantification:", ffm_defaults);
     combined.insert("Posterior Error Probability:", pep_defaults);
     combined.insert("Peptide Indexing:", index_defaults);
     combined.insert("False Discovery Rate:", fdr_defaults);
     combined.insert("IDMapper:", idMapper_defaults);
-    //combined.insert("IDConflictResolver:", idConflict_defaults);
     registerFullParam_(combined);
 
     }
@@ -507,20 +511,27 @@ protected:
 Q u a n t i f i c a t i o n
 ***************************************************************
 */
-
-    FeatureFinderMultiplexAlgorithm ffm;
-    ConsensusXMLFile cons_file;
-    MzMLFile mzML_input;
-
+    //get parameters for all algorithms
     Param params = getParam_().copy("Quantification:", true); //set the parameters of the algorithm
     writeDebug_("Parameters passed to FeatureFinderMultiplex algorithm", params, 3);
+    FeatureFinderMultiplexAlgorithm ffm;
     ffm.setParameters(params);
     ffm.setLogType(this->log_type_);
+
+    params = getParam_().copy("IDMapper:", true); //set the parameters of the algorithm
+    writeDebug_("Parameters passed to IDMapper algorithm", params, 3);
+    IDMapper id_mapper;
+    id_mapper.setParameters(params);
+
+    MzMLFile mzML_input;
+    ConsensusXMLFile cons_file;
+
     for (unsigned i = 0; i < in.size(); i++) //for all file names
     {
       MSExperiment exp;
       mzML_input.load(in[i],exp); //load mzML file from stringList
 
+      //FeatureFinderMultiplex
       ffm.run(exp, true);  // run feature detection algorithm
       ConsensusMap cons_map = ffm.getConsensusMap();
 
@@ -528,8 +539,21 @@ Q u a n t i f i c a t i o n
       output = output + ".consensusXML"; // add extension .idXML
       LOG_INFO << "Writing to file: " << output << endl;
 
-      // TODO: IDMapper
-      // TODO: IDConflicResolver
+      //IDMapper
+      id_mapper.annotate(cons_map, id_files[i].second, id_files[i].first, true, true);
+      // annotate output with data processing info (??)
+      addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::IDENTIFICATION_MAPPING));
+      //sort list of peptide identifications in each consensus feature by map index
+      //cons_map.sortPeptideIdentificationsByMapIndex();
+      //file.store(out, map); (nein??)
+
+
+      //IDConflictResolver
+      IDConflictResolverAlgorithm::resolve(cons_map);
+      addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::FILTERING));
+      //ConsensusXMLFile().store(out, cons_map); (nein??)
+
+
       // TODO: MultiplexResolver
       // TODO: FileFilter
       cons_file.store(output, cons_map); //store results
