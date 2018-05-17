@@ -117,11 +117,12 @@ protected:
     registerInputFile_("database", "<file>", "", "input database");
     setValidFormats_("database", ListUtils::create<String>("fasta"));
 
+/*
     registerDoubleOption_("rt_tolerance", "<value>", 20, "RT tolerance (in seconds) for the matching of peptide IDS and (consensus) features.", false);
     setMinFloat_("rt_tolerance", 0.0);
     registerDoubleOption_("mz_tolerance", "<value>", 10, "m/z tolerance (in ppm or Da) for the matching of peptide IDs and (consensus) features.", false);
     setMinFloat_("mz_tolerance", 0.0);
-
+*/
   /*  registerStringOption_("decoy_string", "<text>", "DECOY_", "String to indicate decoy protein", false);
 
     registerStringOption_("decoy_string_position", "<choice>", "prefix", "Should the string be prepended or appended?", false);
@@ -541,7 +542,7 @@ Q u a n t i f i c a t i o n
 
       //IDMapper
       id_mapper.annotate(cons_map, id_files[i].second, id_files[i].first, true, true);
-      // annotate output with data processing info (??)
+      // annotate output with data processing info
       addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::IDENTIFICATION_MAPPING));
       //sort list of peptide identifications in each consensus feature by map index
       cons_map.sortPeptideIdentificationsByMapIndex();
