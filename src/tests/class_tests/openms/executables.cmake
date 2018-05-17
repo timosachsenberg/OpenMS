@@ -474,6 +474,7 @@ set(analysis_executables_list
   MetaboliteSpectralMatching_test
   ModifiedPeptideGenerator_test
   OfflinePrecursorIonSelection_test
+  PeptideIndexing_test
   PeptideAndProteinQuant_test
   PeakIntensityPredictor_test
   PScore_test
@@ -493,6 +494,7 @@ set(analysis_executables_list
   QTClusterFinder_test
   QuantitativeExperimentalDesign_test
   ReactionMonitoringTransition_test
+  RNPxlDeisotoper_test
   RNPxlModificationsGenerator_test
   SVMWrapper_test
   SimplePairFinder_test
