@@ -65,8 +65,8 @@ namespace OpenMS
     double rt_max = exp_profile.getMaxRT();
     
     // extend the grid by a small absolute margin
-    double mz_margin = 1e-15;
-    double rt_margin = 1e-15;
+    double mz_margin = 1e-2;
+    double rt_margin = 1e-2;
     mz_min -= mz_margin; 
     mz_max += mz_margin; 
     rt_min -= rt_margin; 
@@ -187,7 +187,6 @@ namespace OpenMS
       GridBasedClustering<MultiplexDistance> clustering(MultiplexDistance(rt_scaling_), filter_results[i].getMZ(), filter_results[i].getRT(), grid_spacing_mz_, grid_spacing_rt_);
       clustering.cluster();
       //clustering.extendClustersY();
-      //clustering.removeSmallClustersY(rt_minimum_);    // No need here. We check for rt_min when constructing the feature maps in generateMaps_().
       cluster_results.push_back(clustering.getResults());
     }
 

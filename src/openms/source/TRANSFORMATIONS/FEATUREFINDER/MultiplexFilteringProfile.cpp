@@ -40,6 +40,8 @@
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/MultiplexFilteringProfile.h>
 #include <OpenMS/MATH/STATISTICS/StatisticFunctions.h>
 
+// #define DEBUG
+
 using namespace std;
 using namespace boost::math;
 
@@ -91,9 +93,11 @@ namespace OpenMS
     // list of filter results for each peak pattern
     std::vector<MultiplexFilteredMSExperiment> filter_results;
     
-    // clock for monitoring run performance
-    //unsigned int start = clock();
-    
+#ifdef DEBUG
+    // clock for monitoring run time performance
+    unsigned int start = clock();
+#endif
+
     // construct navigators for all spline spectra
     std::vector<SplineSpectrum::Navigator> navigators;
     for (std::vector<SplineSpectrum>::iterator it = exp_spline_profile_.begin(); it < exp_spline_profile_.end(); ++it)
@@ -219,18 +223,22 @@ namespace OpenMS
         }
         
       }
-      
+ 
+#ifdef DEBUG
       // write filtered peaks to debug output
-      /*std::stringstream debug_out;
+      std::stringstream debug_out;
       debug_out << "filter_result_" << pattern_idx << ".consensusXML";
-      result.writeDebugOutput(exp_picked_, debug_out.str());*/
+      result.writeDebugOutput(exp_picked_, debug_out.str());
+#endif
       
       // add results of this pattern to list
       filter_results.push_back(result);
     }
     
-    // clock for monitoring run performance
-    //std::cout << "\nThat took me " << (float)(clock()-start)/CLOCKS_PER_SEC << " seconds.\n";
+#ifdef DEBUG
+    // clock for monitoring run time performance
+    LOG_INFO << "\nThe filtering step of the algorithm took " << (float)(clock()-start)/CLOCKS_PER_SEC << " seconds.\n\n";
+#endif
 
     endProgress();
 
@@ -261,18 +269,6 @@ namespace OpenMS
       throw Exception::InvalidParameter(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Invalid averagine type.");
     }   
     
-    // debug output variables
-    /*int debug_charge = 2;
-    size_t debug_rt_idx = 39;
-    size_t debug_mz_idx = 130;
-    bool debug_now = ((pattern.getCharge() == debug_charge) && (peak.getRTidx() == debug_rt_idx) && (peak.getMZidx() == debug_mz_idx));*/
-    
-    // debug output
-    /*if (debug_now)
-    {
-      std::cout << "Inside the Averagine Filter.\n";
-    }*/
-  
     // loop over peptides
     for (size_t peptide = 0; peptide < pattern.getMassShiftCount(); ++peptide)
     {
@@ -302,12 +298,6 @@ namespace OpenMS
           intensities_model.push_back(distribution[isotope].getIntensity());
           intensities_data.push_back(sum_intensities/count);
         }
-
-        // debug output
-        /*if (debug_now)
-        {
-          std::cout << "    peptide = " << peptide << "    isotope = " << isotope << "    count = " << count << "    average intensity = " << sum_intensities/count << "    averagine intensity = " << distribution.getContainer()[isotope].second << "\n";
-        }*/
         
       }
       
@@ -319,12 +309,6 @@ namespace OpenMS
       double correlation_Pearson = OpenMS::Math::pearsonCorrelationCoefficient(intensities_model.begin(), intensities_model.end(), intensities_data.begin(), intensities_data.end());
       double correlation_Spearman = OpenMS::Math::rankCorrelationCoefficient(intensities_model.begin(), intensities_model.end(), intensities_data.begin(), intensities_data.end());
 
-      // debug output
-      /*if (debug_now)
-      {
-        std::cout << "        Pearson correlation = " << correlation_Pearson << "    rank correlation = " << correlation_Spearman << "\n";
-      }*/
-      
       if ((correlation_Pearson < averagine_similarity_) || (correlation_Spearman < averagine_similarity_))
       {
         return false;

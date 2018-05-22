@@ -131,7 +131,7 @@ endforeach()
 # one arbitrary TOPP tool)
 #------------------------------------------------------------------------------
 add_test("TOPPWRITEINI_OVERWRITE" ${TOPP_BIN_PATH}/PeakPickerWavelet -test -write_ini "WRITE_INI.ini.tmp" -ini "${DATA_DIR_TOPP}/WRITE_INI_IN.ini")
-add_test("TOPPWRITEINI_OVERWRITE_out" ${DIFF} -in1 WRITE_INI.ini.tmp -in2 "${DATA_DIR_TOPP}/WRITE_INI_OUT.ini")
+add_test("TOPPWRITEINI_OVERWRITE_out" ${DIFF} -in1 WRITE_INI.ini.tmp -in2 "${DATA_DIR_TOPP}/WRITE_INI_OUT.ini" -whitelist "version")
 set_tests_properties("TOPPWRITEINI_OVERWRITE_out" PROPERTIES DEPENDS "TOPPWRITEINI_OVERWRITE")
 ##
 ## Test if invalid arguments or values (from INI or CLI) lead to immediate exit
@@ -244,6 +244,10 @@ set_tests_properties("TOPP_FeatureFinderMetabo_2_out" PROPERTIES DEPENDS "TOPP_F
 add_test("TOPP_FeatureFinderMetabo_3" ${TOPP_BIN_PATH}/FeatureFinderMetabo -test -ini ${DATA_DIR_TOPP}/FeatureFinderMetabo_3.ini -in ${DATA_DIR_TOPP}/FeatureFinderMetabo_3_input.mzML -out FeatureFinderMetabo_3.tmp -out_chrom FeatureFinderMetabo_3_chrom.tmp)
 add_test("TOPP_FeatureFinderMetabo_3_chrom_out" ${DIFF} -whitelist "<chromatogram id=" "<offset" "<userParam name=" -in1 FeatureFinderMetabo_3_chrom.tmp -in2 ${DATA_DIR_TOPP}/FeatureFinderMetabo_3_chrom_output.mzML)
 set_tests_properties("TOPP_FeatureFinderMetabo_3_chrom_out" PROPERTIES DEPENDS "TOPP_FeatureFinderMetabo_3")
+add_test("TOPP_FeatureFinderMetabo_4" ${TOPP_BIN_PATH}/FeatureFinderMetabo -test -ini ${DATA_DIR_TOPP}/FeatureFinderMetabo_4.ini -in ${DATA_DIR_TOPP}/FeatureFinderMetabo_3_input.mzML -out FeatureFinderMetabo_4.tmp -out_chrom FeatureFinderMetabo_4_chrom.tmp)
+add_test("TOPP_FeatureFinderMetabo_4_out" ${DIFF} -whitelist "id=" -in1 FeatureFinderMetabo_4.tmp -in2 ${DATA_DIR_TOPP}/FeatureFinderMetabo_4_output.featureXML)
+add_test("TOPP_FeatureFinderMetabo_4_chrom_out" ${DIFF} -whitelist "<chromatogram id=" "<offset" "<userParam name=" -in1 FeatureFinderMetabo_4_chrom.tmp -in2 ${DATA_DIR_TOPP}/FeatureFinderMetabo_4_chrom_output.mzML)
+set_tests_properties("TOPP_FeatureFinderMetabo_4_chrom_out" PROPERTIES DEPENDS "TOPP_FeatureFinderMetabo_4")
 
 #------------------------------------------------------------------------------
 # FeatureFinderCentroided test
@@ -2105,6 +2109,31 @@ add_test("UTILS_AccurateMassSearch_1" ${TOPP_BIN_PATH}/AccurateMassSearch -test 
 add_test("UTILS_AccurateMassSearch_1_out1" ${DIFF} -in1 AccurateMassSearch_1_output.tmp -in2 ${DATA_DIR_TOPP}/AccurateMassSearch_1_output.csv -whitelist "")
 set_tests_properties("UTILS_AccurateMassSearch_1_out1" PROPERTIES DEPENDS "UTILS_AccurateMassSearch_1")
 
+# AssayGeneratorMetabo
+# use FeatureFinderMetabo data
+add_test("UTILS_AssayGeneratorMetabo_1" ${TOPP_BIN_PATH}/AssayGeneratorMetabo -test -in ${DATA_DIR_TOPP}/AssayGeneratorMetabo_input.mzML -in_id ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ffm_input.featureXML -out AssayGeneratorMetabo_ffm_output.tmp)
+add_test("UTILS_AssayGeneratorMetabo_1_out1" ${DIFF} -in1 AssayGeneratorMetabo_ffm_output.tmp -in2 ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ffm_output.tsv)
+set_tests_properties("UTILS_AssayGeneratorMetabo_1_out1" PROPERTIES DEPENDS "UTILS_AssayGeneratorMetabo_1")
+# use AccurateMassSearch data
+add_test("UTILS_AssayGeneratorMetabo_2" ${TOPP_BIN_PATH}/AssayGeneratorMetabo -test -in ${DATA_DIR_TOPP}/AssayGeneratorMetabo_input.mzML -in_id ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ams_input.featureXML -out AssayGeneratorMetabo_ams_output.tmp)
+add_test("UTILS_AssayGeneratorMetabo_2_out1" ${DIFF} -in1 AssayGeneratorMetabo_ams_output.tmp -in2 ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ams_output.tsv)
+set_tests_properties("UTILS_AssayGeneratorMetabo_2_out1" PROPERTIES DEPENDS "UTILS_AssayGeneratorMetabo_2")
+# use FeatureFinderMetabo data with method consenesus_spectrum
+add_test("UTILS_AssayGeneratorMetabo_3" ${TOPP_BIN_PATH}/AssayGeneratorMetabo -test -in ${DATA_DIR_TOPP}/AssayGeneratorMetabo_input.mzML -in_id ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ffm_input.featureXML -out AssayGeneratorMetabo_ffm_output_consensus.tmp -method consensus_spectrum)
+add_test("UTILS_AssayGeneratorMetabo_3_out1" ${DIFF} -in1 AssayGeneratorMetabo_ffm_output_consensus.tmp -in2 ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ffm_output_consensus.tsv)
+set_tests_properties("UTILS_AssayGeneratorMetabo_3_out1" PROPERTIES DEPENDS "UTILS_AssayGeneratorMetabo_3")
+# use AccurateMassSearch data with method consensus_spectrum
+add_test("UTILS_AssayGeneratorMetabo_4" ${TOPP_BIN_PATH}/AssayGeneratorMetabo -test -in ${DATA_DIR_TOPP}/AssayGeneratorMetabo_input.mzML -in_id ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ams_input.featureXML -out AssayGeneratorMetabo_ams_output_consensus.tmp -method consensus_spectrum)
+add_test("UTILS_AssayGeneratorMetabo_4_out1" ${DIFF} -in1 AssayGeneratorMetabo_ams_output_consensus.tmp -in2 ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ams_output_consensus.tsv)
+set_tests_properties("UTILS_AssayGeneratorMetabo_4_out1" PROPERTIES DEPENDS "UTILS_AssayGeneratorMetabo_4")
+# use AccurateMassSearch data with method consensus_spectrum and use_known_unkowns
+add_test("UTILS_AssayGeneratorMetabo_5" ${TOPP_BIN_PATH}/AssayGeneratorMetabo -test -in ${DATA_DIR_TOPP}/AssayGeneratorMetabo_input.mzML -in_id ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ams_input.featureXML -out AssayGeneratorMetabo_ams_uku_output_consensus.tmp -method consensus_spectrum -use_known_unknowns)
+add_test("UTILS_AssayGeneratorMetabo_5_out1" ${DIFF} -in1 AssayGeneratorMetabo_ams_uku_output_consensus.tmp -in2 ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ams_uku_output_consensus.tsv)
+set_tests_properties("UTILS_AssayGeneratorMetabo_5_out1" PROPERTIES DEPENDS "UTILS_AssayGeneratorMetabo_5")
+add_test("UTILS_AssayGeneratorMetabo_6" ${TOPP_BIN_PATH}/TargetedFileConverter -test -in ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ams_uku_output_consensus.tsv  -out AssayGeneratorMetabo_ams_uku_output_consensus_traml.tmp -out_type TraML)
+add_test("UTILS_AssayGeneratorMetabo_6_out1" ${DIFF} -in1 AssayGeneratorMetabo_ams_uku_output_consensus_traml.tmp -in2 ${DATA_DIR_TOPP}/AssayGeneratorMetabo_ams_uku_output_consensus_traml.TraML)
+set_tests_properties("UTILS_AssayGeneratorMetabo_6_out1" PROPERTIES DEPENDS "UTILS_AssayGeneratorMetabo_6")
+
 # ImageCreator:
 if(WITH_GUI)
   add_test("UTILS_ImageCreator_1" ${TOPP_BIN_PATH}/ImageCreator -test -in ${DATA_DIR_TOPP}/ImageCreator_1_input.mzML -out ImageCreator1.bmp -width 20 -height 15)
@@ -2161,14 +2190,14 @@ set_tests_properties("UTILS_MultiplexResolver_3_out3" PROPERTIES DEPENDS "UTILS_
 # INIUpdater:
 if(WITH_GUI)
   add_test("UTILS_INIUpdater_1" ${TOPP_BIN_PATH}/INIUpdater -test -in ${DATA_DIR_TOPP}/INIUpdater_1_noupdate.toppas -out INIUpdater_1_noupdate.toppas.tmp)
-  add_test("UTILS_INIUpdater_1_out" ${DIFF} -in1 INIUpdater_1_noupdate.toppas.tmp -in2 ${DATA_DIR_TOPP}/INIUpdater_1_noupdate.toppas )
+  add_test("UTILS_INIUpdater_1_out" ${DIFF} -in1 INIUpdater_1_noupdate.toppas.tmp -in2 ${DATA_DIR_TOPP}/INIUpdater_1_noupdate.toppas -whitelist "version")
   set_tests_properties("UTILS_INIUpdater_1_out" PROPERTIES DEPENDS "UTILS_INIUpdater_1")
 
   add_test("UTILS_INIUpdater_2" ${TOPP_BIN_PATH}/INIUpdater -test -in ${DATA_DIR_TOPP}/INIUpdater_2_broken.toppas -out INIUpdater_2_broken.toppas.tmp)
   set_tests_properties("UTILS_INIUpdater_2" PROPERTIES WILL_FAIL 1)
 
   add_test("UTILS_INIUpdater_3" ${TOPP_BIN_PATH}/INIUpdater -test -in ${DATA_DIR_TOPP}/INIUpdater_3_old.toppas -out INIUpdater_3_old.toppas.tmp)
-  add_test("UTILS_INIUpdater_3_out" ${DIFF} -in1 INIUpdater_3_old.toppas.tmp -in2 ${DATA_DIR_TOPP}/INIUpdater_3_old_out.toppas )
+  add_test("UTILS_INIUpdater_3_out" ${DIFF} -in1 INIUpdater_3_old.toppas.tmp -in2 ${DATA_DIR_TOPP}/INIUpdater_3_old_out.toppas -whitelist "version")
   set_tests_properties("UTILS_INIUpdater_3_out" PROPERTIES DEPENDS "UTILS_INIUpdater_3")
 endif()
 

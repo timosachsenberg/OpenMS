@@ -51,12 +51,12 @@ namespace OpenMS
     /**
      * @brief constructor
      */
-    MultiplexSatelliteProfile(double rt, double mz, double intensity);
+    MultiplexSatelliteProfile(float rt, double mz, float intensity);
     
     /**
      * @brief returns the RT of the satellite data point
      */
-    double getRT() const;
+    float getRT() const;
     
     /**
      * @brief returns the m/z of the satellite data point
@@ -66,16 +66,16 @@ namespace OpenMS
     /**
      * @brief returns the intensity of the satellite data point
      */
-    double getIntensity() const;
+    float getIntensity() const;
     
     private:
      
     /**
      * @brief position and intensity of the data point within the spline-interpolated experiment
      */
-    double rt_;
+    float rt_;
     double mz_;
-    double intensity_;
+    float intensity_;
     
   };
   

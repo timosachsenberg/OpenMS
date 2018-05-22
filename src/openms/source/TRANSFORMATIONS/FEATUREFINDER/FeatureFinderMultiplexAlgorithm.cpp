@@ -55,6 +55,8 @@
 #include <fstream>
 #include <algorithm>
 
+// #define DEBUG
+
 using namespace std;
 
 namespace OpenMS
@@ -218,11 +220,13 @@ namespace OpenMS
     
     sort(list.begin(), list.end(), lessPattern);
     
+#ifdef DEBUG
     // debug output
-    /*for (int i = 0; i < list.size(); ++i)
-     {
-     std::cout << "charge = " << list[i].getCharge() << "+    shift = " << list[i].getMassShiftAt(1) << " Da\n";
-     }*/
+    for (int i = 0; i < list.size(); ++i)
+    {
+      std::cout << "charge = " << list[i].getCharge() << "+    shift = " << list[i].getMassShiftAt(1) << " Da\n";
+    }
+#endif
     
     return list;
   }
@@ -587,7 +591,7 @@ namespace OpenMS
     return intensity_peptide_corrected;
   }
 
-  void FeatureFinderMultiplexAlgorithm::generateMapsCentroided_(const std::vector<MultiplexIsotopicPeakPattern>& patterns, const std::vector<MultiplexFilteredMSExperiment> filter_results, std::vector<std::map<int, GridBasedCluster> >& cluster_results)
+  void FeatureFinderMultiplexAlgorithm::generateMapsCentroided_(const std::vector<MultiplexIsotopicPeakPattern>& patterns, const std::vector<MultiplexFilteredMSExperiment>& filter_results, std::vector<std::map<int, GridBasedCluster> >& cluster_results)
   {
     // loop over peak patterns
     for (unsigned pattern = 0; pattern < patterns.size(); ++pattern)
@@ -615,12 +619,12 @@ namespace OpenMS
               if ((satellite_it_2->second.getRTidx() == satellite_it->second.getRTidx()) && (satellite_it_2->second.getMZidx() == satellite_it->second.getMZidx()))
               {
                 satellite_in_set = true;
-                continue;
+                break;
               }
             }
             if (satellite_in_set)
             {
-              continue;
+              break;
             }
             
             satellites.insert(std::make_pair(satellite_it->first, MultiplexSatelliteCentroided(satellite_it->second.getRTidx(), satellite_it->second.getMZidx())));
@@ -720,7 +724,7 @@ namespace OpenMS
           if (box.maxX() - box.minX() < static_cast<double>(param_.getValue("algorithm:rt_min")))
           {
             abort = true;
-            continue;
+            break;
           }
           
           features.push_back(feature);
@@ -880,7 +884,7 @@ namespace OpenMS
           if (box.maxX() - box.minX() < static_cast<double>(param_.getValue("algorithm:rt_min")))
           {
             abort = true;
-            continue;
+            break;
           }
           
           features.push_back(feature);

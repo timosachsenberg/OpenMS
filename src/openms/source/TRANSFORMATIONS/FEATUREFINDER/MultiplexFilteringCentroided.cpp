@@ -39,6 +39,8 @@
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/MultiplexFilteringCentroided.h>
 #include <OpenMS/MATH/STATISTICS/StatisticFunctions.h>
 
+// #define DEBUG
+
 using namespace std;
 using namespace boost::math;
 
@@ -58,9 +60,12 @@ namespace OpenMS
     
     // list of filter results for each peak pattern
     vector<MultiplexFilteredMSExperiment> filter_results;
-    
-    //unsigned int start = clock();
-    
+
+#ifdef DEBUG
+    // clock for monitoring run time performance
+    unsigned int start = clock();
+#endif
+
     // loop over all patterns
     for (unsigned pattern_idx = 0; pattern_idx < patterns_.size(); ++pattern_idx)
     {
@@ -120,17 +125,21 @@ namespace OpenMS
         }
       }
       
+#ifdef DEBUG
       // write filtered peaks to debug output
       std::stringstream debug_out;
       debug_out << "filter_result_" << pattern_idx << ".consensusXML";
       result.writeDebugOutput(exp_picked_, debug_out.str());
+#endif
       
       // add results of this pattern to list
       filter_results.push_back(result);
     }
     
-    // clock for monitoring run performance
-    //std::cout << "\nFiltering took me " << (float)(clock()-start)/CLOCKS_PER_SEC << " seconds.\n\n";
+#ifdef DEBUG
+    // clock for monitoring run time performance
+    LOG_INFO << "\nThe filtering step of the algorithm took " << (float)(clock()-start)/CLOCKS_PER_SEC << " seconds.\n\n";
+#endif
 
     endProgress();
     

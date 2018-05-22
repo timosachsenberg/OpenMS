@@ -56,7 +56,14 @@ namespace OpenMS
    * Each MultiplexFilteredPeak consists of a primary peak and a set of satellite peaks.
    * The primary peak is a peak in the mono-isotopic masstrace of the lightest peptide
    * in the multiplet. The satellite peaks are peaks that form the m/z shift pattern
-   * relative to the primary peak within a retention time range rt_band_.
+   * relative to the primary peak within a retention time range rt_band_. They are the
+   * evidence on which grounds a peak may pass the filteres.
+   *
+   * Note that in both centroid and profile mode, centroided data are filtered. (One of
+   * the first steps in the profile mode algorithm is the peak picking of the profile
+   * data.) Consequently in both modes, centroided peaks make up a final filtered peak.
+   * @see size(). In profile mode, we additional store the profile data points that make
+   * up these peak. @see sizeProfile().
    * 
    * @see MultiplexPeakPattern
    */
@@ -67,7 +74,7 @@ namespace OpenMS
     /**
      * @brief constructor
      */
-    MultiplexFilteredPeak(double mz, double rt, size_t mz_idx, size_t rt_idx);
+    MultiplexFilteredPeak(double mz, float rt, size_t mz_idx, size_t rt_idx);
 
     /**
      * @brief returns m/z of the peak
@@ -77,7 +84,7 @@ namespace OpenMS
     /**
      * @brief returns RT of the peak
      */
-    double getRT() const;
+    float getRT() const;
     
     /**
      * @brief returns the index of the peak in the spectrum
@@ -99,17 +106,21 @@ namespace OpenMS
     /**
      * @brief add a satellite data point
      */
-    void addSatelliteProfile(double rt, double mz, double intensity, size_t pattern_idx);
+    void addSatelliteProfile(float rt, double mz, float intensity, size_t pattern_idx);
     
     void addSatelliteProfile(const MultiplexSatelliteProfile& satellite, size_t pattern_idx);
     
     /**
      * @brief return all satellite peaks
+     *
+     * @see also <satellites_>
      */
     const std::multimap<size_t, MultiplexSatelliteCentroided >& getSatellites() const;
     
     /**
      * @brief return all satellite data points
+     *
+     * @see also <satellites_profile_>
      */
     const std::multimap<size_t, MultiplexSatelliteProfile >& getSatellitesProfile() const;
     
@@ -131,7 +142,7 @@ namespace OpenMS
      * It is the input for the subsequent clustering step. 
      */
     double mz_;
-    double rt_;
+    float rt_;
     
     /**
      * @brief indices of the primary peak position in the centroided experiment
@@ -149,6 +160,10 @@ namespace OpenMS
      * the pattern. The primary peak is part of the satellite peak set.
      * 
      * pattern_idx -> (rt_idx, mz_idx)
+     *
+     * Typically peaks of the same mass trace show up in neighbouring spectra. The algorithm
+     * considers spectra in the RT range <rt_band>. Consequently, the same <pattern_idx> key
+     * will have multiple associated satellites, and a multimap is required.
      * 
      * Note that we store only indices, not iterators or pointers. We filter
      * 'white' experiments, but all indices refer to the original experiment.
@@ -166,6 +181,10 @@ namespace OpenMS
      * and decide if it passes the filters or not.
      *
      * pattern_idx -> (rt, mz, intensity)
+     *
+     * Typically peaks of the same mass trace show up in neighbouring spectra. The algorithm
+     * considers spectra in the RT range <rt_band>. Consequently, the same <pattern_idx> key
+     * will have multiple associated satellites, and a multimap is required.
      */
     std::multimap<size_t, MultiplexSatelliteProfile > satellites_profile_;
  
