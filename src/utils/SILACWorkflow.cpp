@@ -43,6 +43,7 @@
 #include <OpenMS/FORMAT/MzMLFile.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
+#include <OpenMS/CONCEPT/Exception.h>
 #include <OpenMS/KERNEL/FeatureMap.h>
 #include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/KERNEL/MSExperiment.h>
@@ -122,8 +123,9 @@ protected:
     setMinFloat_("rt_tolerance", 0.0);
     registerDoubleOption_("mz_tolerance", "<value>", 10, "m/z tolerance (in ppm or Da) for the matching of peptide IDs and (consensus) features.", false);
     setMinFloat_("mz_tolerance", 0.0);
-*/
-  /*  registerStringOption_("decoy_string", "<text>", "DECOY_", "String to indicate decoy protein", false);
+
+    registerStringOption_("decoy_string", "<text>", "DECOY_", "String to indicate decoy protein", false);
+    setValidStrings_("decoy_string", ListUtils::create<String>("DECOY_,dec_"));
 
     registerStringOption_("decoy_string_position", "<choice>", "prefix", "Should the string be prepended or appended?", false);
     setValidStrings_("decoy_string_position", ListUtils::create<String>("prefix,suffix"));
@@ -141,9 +143,9 @@ protected:
     Param idMapper_defaults = IDMapper().getParameters();
     Param combined;
     combined.insert("Quantification:", ffm_defaults);
-    combined.insert("Posterior Error Probability:", pep_defaults);
-    combined.insert("Peptide Indexing:", index_defaults);
-    combined.insert("False Discovery Rate:", fdr_defaults);
+    combined.insert("PosteriorErrorProbability:", pep_defaults);
+    combined.insert("PeptideIndexing:", index_defaults);
+    combined.insert("FalseDiscoveryRate:", fdr_defaults);
     combined.insert("IDMapper:", idMapper_defaults);
     registerFullParam_(combined);
 
@@ -168,7 +170,7 @@ protected:
    * @return
    */
    {
-     Param pp_param = getParam_().copy("Peptide Indexing:", true);
+     Param pp_param = getParam_().copy("PeptideIndexing:", true);
      writeDebug_("Parameters passed to PeptideIndexing algorithm", pp_param, 3);
      PeptideIndexing indexer;
      indexer.setLogType(log_type_);
@@ -179,7 +181,7 @@ protected:
 
      return indexer_exit;
 
-/*  PeptideIndexing indexer;
+/* PeptideIndexing indexer;
     Param param_pi = indexer.getParameters();
     param_pi.setValue("decoy_string", getStringOption_("decoy_string"));
     param_pi.setValue("decoy_string_position", getStringOption_("decoy_string_position"));
@@ -203,7 +205,7 @@ protected:
    */
   {
     //generate PEP_model
-    Param pep_param = getParam_().copy("Posterior Error Probability:", true);
+    Param pep_param = getParam_().copy("PosteriorErrorProbability:", true);
     writeDebug_("Parameters passed to PEP algorithm", pep_param, 3);
     Math::PosteriorErrorProbabilityModel PEP_model;
     PEP_model.setParameters(pep_param);
@@ -301,8 +303,7 @@ protected:
       PeptideIndexing::ExitCodes indexer_exit = indexPepAndProtIds_(fasta_db, light_protein_identifications, light_peptide_identifications);
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
-        // TODO: write error message and return
-
+        //throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, idXML_file);
       }
       // call calculatePEP_
       calculatePEP_(light_protein_identifications, light_peptide_identifications);
@@ -489,6 +490,7 @@ protected:
     // writing output (after FDR calculation)
     //-------------------------------------------------------------
     IdXMLFile idXML_file;
+    ConsensusMap map;
 
     for (unsigned i = 0; i < in.size(); i++) //for all file names
     {
@@ -500,10 +502,18 @@ protected:
       out_filename = out_filename + "_fdr.idXML";
       LOG_INFO << "Writing to file: " << out_filename << endl;
       // test if a file exists, if yes throw exception.
-      if (File::exists(out_filename) == true)
-      {
-        throw string("Same file was found");
-      }
+      //if (File::exists(out_filename) == true)
+      //{
+        try
+          {
+            (File::exists(out_filename) == true);
+          }
+        catch (Exception::UnableToCreateFile)
+          {
+            writeLog_("Error: Unable to create output file.");
+            return CANNOT_WRITE_OUTPUT_FILE;
+          }
+      //}
       idXML_file.store(out_filename, prot_ids, pept_ids);
     }
 
@@ -545,42 +555,33 @@ Q u a n t i f i c a t i o n
       // annotate output with data processing info
       addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::IDENTIFICATION_MAPPING));
       //sort list of peptide identifications in each consensus feature by map index
-      cons_map.sortPeptideIdentificationsByMapIndex();
-      //file.store(out, map); (nein??)
-
+      //cons_map.sortPeptideIdentificationsByMapIndex();
 
       //IDConflictResolver
       IDConflictResolverAlgorithm::resolve(cons_map);
       addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::FILTERING));
-      //ConsensusXMLFile().store(out, cons_map); (nein??)
-
 
       // TODO: MultiplexResolver
       // TODO: FileFilter
       cons_file.store(output, cons_map); //store results
+
+      //FileMerger
+      bool annotate_file_origin =  getFlag_("annotate_file_origin");
+      // load the metadata from the first file
+      cons_file.load(in[0], cons_map);
+      // but annotate the origins
+      if (annotate_file_origin)
+      {
+        for (ConsensusMap::iterator it = cons_map.begin(); it != cons_map.end(); ++it)
+        {
+          it->setMetaValue("file_origin", DataValue(in[0]));
+        }
+      }
+
     }
-
-
 
     // For FIDO Adapter: merge all
 
-
-    //-------------------------------------------------------------
-    // writing output
-    //-------------------------------------------------------------
-    //this function compares set of proteins to fasta_accession
-    /** vector<FASTAFile::FASTAEntry> db_new;
-
-    for (Size i = 0; i != db.size() ; ++i)
-    {
-       const String& fasta_accession = db[i].identifier;
-       const bool found = id_accessions.find(fasta_accession) != id_accessions.end();
-       if ( (found && whitelist) || (!found && !whitelist) )
-       {
-          db_new.push_back(db[i]);
-       }
-    }
-*/
   return  EXECUTION_OK;
   }
 
