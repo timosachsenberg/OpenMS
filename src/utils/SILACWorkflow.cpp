@@ -32,13 +32,13 @@
 // $Authors: Nantia Leonidou $
 // --------------------------------------------------------------------------
 
-#include <vector>
 #include <map>
 #include <list>
 #include <string>
+#include <vector>
 #include <utility>
-#include <algorithm>
 #include <stdexcept>
+#include <algorithm>
 #include <OpenMS/SYSTEM/File.h>
 #include <OpenMS/FORMAT/MzMLFile.h>
 #include <OpenMS/SYSTEM/StopWatch.h>
@@ -284,7 +284,7 @@ protected:
     //if stringList sizes not equal, throw an exception
     if (light.size() != heavy.size())
     {
-      throw string("Not equal-sized lists");
+        throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Not equal-sized lists");
     }
 
     IdXMLFile idXML_file;
@@ -304,7 +304,7 @@ protected:
       PeptideIndexing::ExitCodes indexer_exit = indexPepAndProtIds_(fasta_db, light_protein_identifications, light_peptide_identifications);
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
-        //throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, idXML_file);
+          throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Unable to execute");
       }
       // call calculatePEP_
       calculatePEP_(light_protein_identifications, light_peptide_identifications);
@@ -321,8 +321,7 @@ protected:
 
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
-        // TODO: write error message and return
-
+        throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Unable to execute");
       }
       // call calculatePEP_
       calculatePEP_(heavy_protein_identifications, heavy_peptide_identifications);
@@ -475,9 +474,9 @@ protected:
     //-------------------------------------------------------------
     // reading input (read protein database)
     //-------------------------------------------------------------
-    vector<FASTAFile::FASTAEntry> fasta_db;
     StopWatch a;
     a.start();
+    vector<FASTAFile::FASTAEntry> fasta_db;
     //Loads the identifications of a fasta file
     FASTAFile fasta_reader;
     fasta_reader.load(database, fasta_db);
@@ -489,7 +488,7 @@ protected:
     //-------------------------------------------------------------
     peptFDR_(id_files);
     a.stop();
-    std::cerr << "took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds";
+    LOG_INFO << "Peptide Identification tooks: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds\n";
     a.reset();
 
     //-------------------------------------------------------------
@@ -497,7 +496,6 @@ protected:
     //-------------------------------------------------------------
     IdXMLFile idXML_file;
     ConsensusMap map;
-
 
     a.start();
     for (unsigned i = 0; i < in.size(); i++) //for all file names
@@ -525,12 +523,12 @@ protected:
       idXML_file.store(out_filename, prot_ids, pept_ids);
     }
     a.stop();
-    std::cerr << "took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds";
+    LOG_INFO << "Extension remove tooks: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds\n";
     a.reset();
 
 /*
 ***************************************************************
-Q u a n t i f i c a t i o n
+Q u a n t i f i c a t i o n  &  M a p p i n g
 ***************************************************************
 */
     a.start();
@@ -574,44 +572,54 @@ Q u a n t i f i c a t i o n
       addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::FILTERING));
 
       // TODO: MultiplexResolver
+      //** MultiplexResolver **//
 
       // TODO: FileFilter
-  /*
-      bool remove_unannotated_features = getFlag_("id:remove_unannotated_features");
-      bool remove_unassigned_ids = getFlag_("id:remove_unassigned_ids");
-      //delete unassignedPeptideIdentifications
+      // ** FileFilter **//
+      registerFlag_("id:remove_unannotated_features", "Remove features without annotations",true);
+      registerFlag_("id:remove_unassigned_ids", "Remove unassigned peptide identifications",true);
+
+
+  /*  bool remove_unannotated_features;
+      bool remove_unassigned_ids;
       //flag: remove_annotated_features and non-empty peptideIdentifications
-     if (remove_unannotated_features==false && remove_unassigned_ids==false)
-     {
-       remove_unassigned_ids==true;
-       remove_unannotated_features==true;
-     }
+      if (remove_unassigned_ids = false && cons_map.getProteinIdentifications().empty())
+      {
+        return true;
+      }
+      //flag: remove_unannotated_features and no peptideIdentifications
+      if (remove_unannotated_features = false && !cons_map.getProteinIdentifications().empty())
+      {
+        return true;
+      }
   */
       //cons_file.store(output, cons_map); //store results
 
       //** FileMerger **//
+      registerFlag_("annotate_file_origin", "Store the original filename in each feature using meta value \"file_origin\" (for featureXML and consensusXML only).");
       bool annotate_file_origin =  getFlag_("annotate_file_origin");
-      // load the metadata from the first file
-      cons_file.load(in[0], cons_map);
-      // but annotate the origins
+      ConsensusMap map;
+      //cons_file.load(in[i], map);
+
       if (annotate_file_origin)
       {
-        for (ConsensusMap::iterator it = cons_map.begin(); it != cons_map.end(); ++it)
+        for (ConsensusMap::iterator it = map.begin(); it != map.end(); ++it)
         {
-          it->setMetaValue("file_origin", DataValue(in[0]));
+          it->setMetaValue("file_origin", DataValue(in[i]));
         }
+        cons_map += map;
       }
-
+      // annotate output with data processing info
+      addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::FORMAT_CONVERSION));
       cons_file.store(output, cons_map); //store results
-
     }
     a.stop();
-    std::cerr << "took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds";
+    LOG_INFO << "Quantification and Mapping took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds\n";
     a.reset();
 
     //TODO: For FIDO Adapter: merge all
 
-  return  EXECUTION_OK;
+    return  EXECUTION_OK;
   }
 
 };
