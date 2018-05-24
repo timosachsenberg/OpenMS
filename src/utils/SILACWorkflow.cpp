@@ -41,6 +41,7 @@
 #include <stdexcept>
 #include <OpenMS/SYSTEM/File.h>
 #include <OpenMS/FORMAT/MzMLFile.h>
+#include <OpenMS/SYSTEM/StopWatch.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
 #include <OpenMS/CONCEPT/Exception.h>
@@ -457,6 +458,7 @@ protected:
     }
   }
 
+
 /// the main_ function is called after all parameters are read
   ExitCodes main_(int, const char **)
   {
@@ -474,7 +476,8 @@ protected:
     // reading input (read protein database)
     //-------------------------------------------------------------
     vector<FASTAFile::FASTAEntry> fasta_db;
-
+    StopWatch a;
+    a.start();
     //Loads the identifications of a fasta file
     FASTAFile fasta_reader;
     fasta_reader.load(database, fasta_db);
@@ -485,6 +488,9 @@ protected:
     // calculations
     //-------------------------------------------------------------
     peptFDR_(id_files);
+    a.stop();
+    std::cerr << "took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds";
+    a.reset();
 
     //-------------------------------------------------------------
     // writing output (after FDR calculation)
@@ -492,6 +498,8 @@ protected:
     IdXMLFile idXML_file;
     ConsensusMap map;
 
+
+    a.start();
     for (unsigned i = 0; i < in.size(); i++) //for all file names
     {
       const vector<ProteinIdentification> &prot_ids = id_files[i].first; //take the first element from each pair
@@ -516,12 +524,16 @@ protected:
       //}
       idXML_file.store(out_filename, prot_ids, pept_ids);
     }
+    a.stop();
+    std::cerr << "took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds";
+    a.reset();
 
 /*
 ***************************************************************
 Q u a n t i f i c a t i o n
 ***************************************************************
 */
+    a.start();
     //get parameters for all algorithms
     Param params = getParam_().copy("Quantification:", true); //set the parameters of the algorithm
     writeDebug_("Parameters passed to FeatureFinderMultiplex algorithm", params, 3);
@@ -542,7 +554,7 @@ Q u a n t i f i c a t i o n
       MSExperiment exp;
       mzML_input.load(in[i],exp); //load mzML file from stringList
 
-      //FeatureFinderMultiplex
+      //** FeatureFinderMultiplex ** //
       ffm.run(exp, true);  // run feature detection algorithm
       ConsensusMap cons_map = ffm.getConsensusMap();
 
@@ -550,22 +562,34 @@ Q u a n t i f i c a t i o n
       output = output + ".consensusXML"; // add extension .idXML
       LOG_INFO << "Writing to file: " << output << endl;
 
-      //IDMapper
+      //** IDMapper **//
       id_mapper.annotate(cons_map, id_files[i].second, id_files[i].first, true, true);
       // annotate output with data processing info
       addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::IDENTIFICATION_MAPPING));
       //sort list of peptide identifications in each consensus feature by map index
       //cons_map.sortPeptideIdentificationsByMapIndex();
 
-      //IDConflictResolver
+      //** IDConflictResolver **//
       IDConflictResolverAlgorithm::resolve(cons_map);
       addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::FILTERING));
 
       // TODO: MultiplexResolver
-      // TODO: FileFilter
-      cons_file.store(output, cons_map); //store results
 
-      //FileMerger
+      // TODO: FileFilter
+  /*
+      bool remove_unannotated_features = getFlag_("id:remove_unannotated_features");
+      bool remove_unassigned_ids = getFlag_("id:remove_unassigned_ids");
+      //delete unassignedPeptideIdentifications
+      //flag: remove_annotated_features and non-empty peptideIdentifications
+     if (remove_unannotated_features==false && remove_unassigned_ids==false)
+     {
+       remove_unassigned_ids==true;
+       remove_unannotated_features==true;
+     }
+  */
+      //cons_file.store(output, cons_map); //store results
+
+      //** FileMerger **//
       bool annotate_file_origin =  getFlag_("annotate_file_origin");
       // load the metadata from the first file
       cons_file.load(in[0], cons_map);
@@ -578,9 +602,14 @@ Q u a n t i f i c a t i o n
         }
       }
 
-    }
+      cons_file.store(output, cons_map); //store results
 
-    // For FIDO Adapter: merge all
+    }
+    a.stop();
+    std::cerr << "took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds";
+    a.reset();
+
+    //TODO: For FIDO Adapter: merge all
 
   return  EXECUTION_OK;
   }
