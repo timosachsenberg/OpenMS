@@ -101,6 +101,7 @@ public:
     using privvec::operator[];
     using privvec::at; // UniqueIdIndexer
     using privvec::back; // source/ANALYSIS/DECHARGING/FeatureDeconvolution.cpp:977:
+    using privvec::erase;
 
     using privvec::push_back;
 
@@ -340,4 +341,3 @@ protected:
   OPENMS_DLLAPI std::ostream& operator<<(std::ostream& os, const ConsensusMap& cons_map);
 
 } // namespace OpenMS
-

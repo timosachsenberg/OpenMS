@@ -50,6 +50,7 @@
 #include <OpenMS/KERNEL/MSExperiment.h>
 #include <OpenMS/CHEMISTRY/ProteaseDB.h>
 #include <OpenMS/KERNEL/ConsensusMap.h>
+#include <OpenMS/KERNEL/ConsensusFeature.h>
 #include <OpenMS/ANALYSIS/ID/IDMapper.h>
 #include <OpenMS/FORMAT/FeatureXMLFile.h>
 #include <OpenMS/FILTERING/ID/IDFilter.h>
@@ -119,6 +120,10 @@ protected:
     //Input database fasta
     registerInputFile_("database", "<file>", "", "input database");
     setValidFormats_("database", ListUtils::create<String>("fasta"));
+
+    //Output
+    registerOutputFile_("out", "<file>", "", "Output consensusXML file");
+    setValidFormats_("out",ListUtils::create<String>(".consensusXML"));
 
 /*
     registerStringOption_("decoy_string", "<text>", "DECOY_", "String to indicate decoy protein", false);
@@ -358,7 +363,6 @@ protected:
     /////////////////////////////////////////////////
     /////             light                    /////
     ///////////////////////////////////////////////
-
     for (PeptideIdentification const & l : light)
     {
       // insert all the spectrum references with the value l for the light ids in a map
@@ -465,6 +469,7 @@ protected:
     StringList in_ids_light = getStringList_("in_ids_light"); //read idXML light file
     StringList in_ids_heavy = getStringList_("in_ids_heavy"); //read idXML heavy file
 
+    String out = getStringOption_("out"); //output in .consensusXML format
 
     //-------------------------------------------------------------
     // reading input (read protein database)
@@ -568,18 +573,19 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
       // remove unassigned peptide identifications
       cons_map.getUnassignedPeptideIdentifications().clear();
       //remove unannotated features
-      auto removeUnannotatedFeatures = [&](BaseFeature feature) -> bool
+      auto removeUnannotatedFeatures = [&](ConsensusFeature feature) -> bool
       {
         return feature.getPeptideIdentifications().empty();
       };
-      auto iterator = std::remove_if(cons_map.begin(), cons_map.end(), removeUnannotatedFeatures);
+      auto iterator = remove_if(cons_map.begin(), cons_map.end(), removeUnannotatedFeatures);
       cons_map.erase(iterator, cons_map.end());
 
-      //   (we don need this for storing )
-      String output = File::removeExtension(in[i]);
-      output = output + ".consensusXML"; // add extension .idXML
-      LOG_INFO << "Writing to file: " << output << endl;
-      cons_file.store(output, cons_map); //store results
+
+      //  (we don need this for storing )
+      out = File::removeExtension(in[i]);
+      out = out + ".consensusXML"; // add extension .idXML
+      LOG_INFO << "Writing to file: " << out << endl;
+      cons_file.store(out, cons_map); //store results
 
 
       //** FileMerger **//
@@ -589,10 +595,9 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
       }
 
       merged_map += cons_map;
-      cons_file.store(output, merged_map);
     }
 
-    //cons_file.store(output, merged_map);
+    cons_file.store(out, merged_map);
 
     a.stop();
     LOG_INFO << "Quantification and Mapping took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds\n";
