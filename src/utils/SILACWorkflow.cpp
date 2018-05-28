@@ -56,6 +56,7 @@
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
 #include <OpenMS/FORMAT/ConsensusXMLFile.h>
 #include <OpenMS/FORMAT/ConsensusXMLFile.h>
+#include <OpenMS/KERNEL/BaseFeature.h>
 #include <OpenMS/ANALYSIS/ID/PeptideIndexing.h>
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
@@ -120,11 +121,6 @@ protected:
     setValidFormats_("database", ListUtils::create<String>("fasta"));
 
 /*
-    registerDoubleOption_("rt_tolerance", "<value>", 20, "RT tolerance (in seconds) for the matching of peptide IDS and (consensus) features.", false);
-    setMinFloat_("rt_tolerance", 0.0);
-    registerDoubleOption_("mz_tolerance", "<value>", 10, "m/z tolerance (in ppm or Da) for the matching of peptide IDs and (consensus) features.", false);
-    setMinFloat_("mz_tolerance", 0.0);
-
     registerStringOption_("decoy_string", "<text>", "DECOY_", "String to indicate decoy protein", false);
     setValidStrings_("decoy_string", ListUtils::create<String>("DECOY_,dec_"));
 
@@ -259,7 +255,6 @@ protected:
         }
       };
 
-
 protected:
   //pair of protein and peptide identifications (vectors), as stored in an idXML file
   using ProtsPepsPair = std::pair< vector<ProteinIdentification>, vector<PeptideIdentification> >;
@@ -364,9 +359,9 @@ protected:
     /////             light                    /////
     ///////////////////////////////////////////////
 
-    // insert all the spectrum references with the value l for the light ids in a map
     for (PeptideIdentification const & l : light)
     {
+      // insert all the spectrum references with the value l for the light ids in a map
       spectrum_to_id[l.getMetaValue("spectrum_reference")] = l;
     }
 
@@ -547,6 +542,7 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
     MzMLFile mzML_input;
     ConsensusXMLFile cons_file;
 
+    ConsensusMap merged_map;
     for (unsigned i = 0; i < in.size(); i++) //for all file names
     {
       MSExperiment exp;
@@ -556,16 +552,10 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
       ffm.run(exp, true);  // run feature detection algorithm
       ConsensusMap cons_map = ffm.getConsensusMap();
 
-      String output = File::removeExtension(in[i]);
-      output = output + ".consensusXML"; // add extension .idXML
-      LOG_INFO << "Writing to file: " << output << endl;
-
       //** IDMapper **//
       id_mapper.annotate(cons_map, id_files[i].second, id_files[i].first, true, true);
       // annotate output with data processing info
       addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::IDENTIFICATION_MAPPING));
-      //sort list of peptide identifications in each consensus feature by map index
-      //cons_map.sortPeptideIdentificationsByMapIndex();
 
       //** IDConflictResolver **//
       IDConflictResolverAlgorithm::resolve(cons_map);
@@ -574,45 +564,36 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
       // TODO: MultiplexResolver
       //** MultiplexResolver **//
 
-      // TODO: FileFilter
       // ** FileFilter **//
-      registerFlag_("id:remove_unannotated_features", "Remove features without annotations",true);
-      registerFlag_("id:remove_unassigned_ids", "Remove unassigned peptide identifications",true);
-
-
-  /*  bool remove_unannotated_features;
-      bool remove_unassigned_ids;
-      //flag: remove_annotated_features and non-empty peptideIdentifications
-      if (remove_unassigned_ids = false && cons_map.getProteinIdentifications().empty())
+      // remove unassigned peptide identifications
+      cons_map.getUnassignedPeptideIdentifications().clear();
+      //remove unannotated features
+      auto removeUnannotatedFeatures = [&](BaseFeature feature) -> bool
       {
-        return true;
-      }
-      //flag: remove_unannotated_features and no peptideIdentifications
-      if (remove_unannotated_features = false && !cons_map.getProteinIdentifications().empty())
-      {
-        return true;
-      }
-  */
-      //cons_file.store(output, cons_map); //store results
+        return feature.getPeptideIdentifications().empty();
+      };
+      auto iterator = std::remove_if(cons_map.begin(), cons_map.end(), removeUnannotatedFeatures);
+      cons_map.erase(iterator, cons_map.end());
+
+      //   (we don need this for storing )
+      String output = File::removeExtension(in[i]);
+      output = output + ".consensusXML"; // add extension .idXML
+      LOG_INFO << "Writing to file: " << output << endl;
+      cons_file.store(output, cons_map); //store results
+
 
       //** FileMerger **//
-      registerFlag_("annotate_file_origin", "Store the original filename in each feature using meta value \"file_origin\" (for featureXML and consensusXML only).");
-      bool annotate_file_origin =  getFlag_("annotate_file_origin");
-      ConsensusMap map;
-      //cons_file.load(in[i], map);
-
-      if (annotate_file_origin)
+      for (ConsensusMap::iterator it = map.begin(); it != map.end(); ++it)
       {
-        for (ConsensusMap::iterator it = map.begin(); it != map.end(); ++it)
-        {
-          it->setMetaValue("file_origin", DataValue(in[i]));
-        }
-        cons_map += map;
+        it->setMetaValue("file_origin", DataValue(in[i]));
       }
-      // annotate output with data processing info
-      addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::FORMAT_CONVERSION));
-      cons_file.store(output, cons_map); //store results
+
+      merged_map += cons_map;
+      cons_file.store(output, merged_map);
     }
+
+    //cons_file.store(output, merged_map);
+
     a.stop();
     LOG_INFO << "Quantification and Mapping took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds\n";
     a.reset();
