@@ -63,6 +63,7 @@
 #include <OpenMS/METADATA/PeptideIdentification.h>
 #include <OpenMS/ANALYSIS/ID/FalseDiscoveryRate.h>
 #include <OpenMS/ANALYSIS/ID/IDConflictResolverAlgorithm.h>
+#include <OpenMS/TRANSFORMATIONS/RAW2PEAK/PeakPickerHiRes.h>
 #include <OpenMS/MATH/STATISTICS/PosteriorErrorProbabilityModel.h>
 #include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinderMultiplexAlgorithm.h>
 
@@ -138,12 +139,14 @@ protected:
     setValidStrings_("enzyme_name", enzymes);
 */
     //get all parameters from different algorithms at once
+    Param pp_defaults = PeakPickerHiRes().getDefaults();
     Param ffm_defaults = FeatureFinderMultiplexAlgorithm().getDefaults();
     Param pep_defaults = Math::PosteriorErrorProbabilityModel().getParameters();
     Param index_defaults = PeptideIndexing().getParameters();
     Param fdr_defaults = FalseDiscoveryRate().getParameters();
     Param idMapper_defaults = IDMapper().getParameters();
     Param combined;
+    combined.insert("Centroiding:", pp_defaults);
     combined.insert("Quantification:", ffm_defaults);
     combined.insert("PosteriorErrorProbability:", pep_defaults);
     combined.insert("PeptideIndexing:", index_defaults);
@@ -533,28 +536,47 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
 */
     a.start();
     //get parameters for all algorithms
-    Param params = getParam_().copy("Quantification:", true); //set the parameters of the algorithm
-    writeDebug_("Parameters passed to FeatureFinderMultiplex algorithm", params, 3);
+    Param paramq = getParam_().copy("Quantification:", true); //set the parameters of the algorithm
+    writeDebug_("Parameters passed to FeatureFinderMultiplex algorithm", paramq, 3);
     FeatureFinderMultiplexAlgorithm ffm;
-    ffm.setParameters(params);
+    ffm.setParameters(paramq);
     ffm.setLogType(this->log_type_);
 
-    params = getParam_().copy("IDMapper:", true); //set the parameters of the algorithm
-    writeDebug_("Parameters passed to IDMapper algorithm", params, 3);
+    Param parami = getParam_().copy("IDMapper:", true); //set the parameters of the algorithm
+    writeDebug_("Parameters passed to IDMapper algorithm", parami, 3);
     IDMapper id_mapper;
-    id_mapper.setParameters(params);
+    id_mapper.setParameters(parami);
 
     MzMLFile mzML_input;
-    ConsensusXMLFile cons_file;
 
+    // only read MS1 spectra
+    std::vector<int> levels;
+    levels.push_back(1);
+    mzML_input.getOptions().setMSLevels(levels);
+
+    Param pp_param = getParam_().copy("Centroiding:", true);
+    writeDebug_("Parameters passed to PeakPickerHiRes algorithm", pp_param, 3);
+    PeakPickerHiRes pp;
+    pp.setLogType(log_type_);
+    pp.setParameters(pp_param);
+
+    ConsensusXMLFile cons_file;
     ConsensusMap merged_map;
+
     for (unsigned i = 0; i < in.size(); i++) //for all file names
     {
       MSExperiment exp;
-      mzML_input.load(in[i],exp); //load mzML file from stringList
+      mzML_input.load(in[i], exp); //load mzML file from stringList
+
+      //** PeakPickerHiRes ** //
+      // only pick if not already picked
+      PeakMap ms_centroided;
+      pp.pickExperiment(exp, ms_centroided, true);
+      exp.clear(true);// free memory of profile PeakMaps
+
 
       //** FeatureFinderMultiplex ** //
-      ffm.run(exp, true);  // run feature detection algorithm
+      ffm.run(ms_centroided, true);  // run feature detection algorithm
       ConsensusMap cons_map = ffm.getConsensusMap();
 
       //** IDMapper **//
