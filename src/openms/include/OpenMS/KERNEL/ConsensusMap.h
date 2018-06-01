@@ -115,7 +115,7 @@ public:
       /// Copy constructor
       FileDescription(const FileDescription&);
 
-      /// File name of the file
+      /// File name of the mzML file
       String filename;
       /// Label e.g. 'heavy' and 'light' for ICAT, or 'sample1' and 'sample2' for label-free quantitation
       String label;
@@ -324,8 +324,8 @@ protected:
     /// Map from index to file description
     FileDescriptions file_description_;
 
-    /// type of experiment (label-free, itraq, ...); see xsd schema
-    String experiment_type_;
+    /// type of experiment (label-free, labeled_MS1, labeled_MS2)
+    String experiment_type_ = "label-free";
 
     /// protein identifications
     std::vector<ProteinIdentification> protein_identifications_;
