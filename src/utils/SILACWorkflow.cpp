@@ -665,7 +665,7 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
     // TODO: Implement inference
 
     vector<PeptideIdentification> infered_peptides;
-    ProteinIdentification infered_protein_groups;
+    vector<ProteinIdentification> infered_protein_groups(1, ProteinIdentification());
 
     // currenty no proper inference implemented - just extract from consensusMap
     infered_peptides = merged_map.getUnassignedPeptideIdentifications();
@@ -680,11 +680,25 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
     // only keep unique peptides (for now)
     IDFilter::keepUniquePeptidesPerProtein(infered_peptides);
 
-    // merge protein identifications (for now)
+    // merge (and make unique) protein identifications (for now)
+    set<String> accessions;
     for (auto & p : merged_map.getProteinIdentifications())
-    {
-      for (auto & h : p.getHits()) { infered_protein_groups.insertHit(h); }
+    {      
+      for (auto & h : p.getHits()) 
+      { 
+        const String & accession = h.getAccession();
+        if (accessions.find(accession) == accessions.end()) { continue; }
+        infered_protein_groups[0].insertHit(h); 
+        ProteinIdentification::ProteinGroup pg;
+        pg.accessions.push_back(accession);
+        infered_protein_groups[0].insertIndistinguishableProteins(pg);
+      }
     }
+
+    IDFilter::updateProteinReferences(
+      infered_peptides,
+      infered_protein_groups, 
+      true);
 
     //-------------------------------------------------------------
     // Peptide quantification
@@ -698,7 +712,7 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
     // Protein quantification
     //-------------------------------------------------------------
     // TODO: ProteinQuantifier on (merged?) consensusXML (with 1% FDR?) + inference ids (unfiltered?)? 
-    if (infered_protein_groups.getIndistinguishableProteins().empty())
+    if (infered_protein_groups[0].getIndistinguishableProteins().empty())
     {
       throw Exception::MissingInformation(
        __FILE__, 
@@ -707,7 +721,7 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
        "No information on indistinguishable protein groups found.");
     }
 
-    quantifier.quantifyProteins(infered_protein_groups);
+    quantifier.quantifyProteins(infered_protein_groups[0]);
 
     //-------------------------------------------------------------
     // Export of MzTab file as final output
@@ -715,9 +729,9 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
 
     // Annotate quants to protein(groups) for easier export in mzTab
     auto const & protein_quants = quantifier.getProteinResults();
-    PeptideAndProteinQuant::annotateQuantificationsToProteins(protein_quants, infered_protein_groups);
+    PeptideAndProteinQuant::annotateQuantificationsToProteins(protein_quants, infered_protein_groups[0]);
     vector<ProteinIdentification>& proteins = merged_map.getProteinIdentifications();
-    proteins.insert(proteins.begin(), infered_protein_groups); // insert inference information as first protein identification
+    proteins.insert(proteins.begin(), infered_protein_groups[0]); // insert inference information as first protein identification
 
     // Fill MzTab with meta data and quants annotated in identification data structure
     const bool report_unmapped(true);
