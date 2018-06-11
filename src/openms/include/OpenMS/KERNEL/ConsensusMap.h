@@ -101,6 +101,7 @@ public:
     using privvec::operator[];
     using privvec::at; // UniqueIdIndexer
     using privvec::back; // source/ANALYSIS/DECHARGING/FeatureDeconvolution.cpp:977:
+    using privvec::erase;
 
     using privvec::push_back;
 
@@ -114,7 +115,7 @@ public:
       /// Copy constructor
       FileDescription(const FileDescription&);
 
-      /// File name of the file
+      /// File name of the mzML file
       String filename;
       /// Label e.g. 'heavy' and 'light' for ICAT, or 'sample1' and 'sample2' for label-free quantitation
       String label;
@@ -323,8 +324,8 @@ protected:
     /// Map from index to file description
     FileDescriptions file_description_;
 
-    /// type of experiment (label-free, itraq, ...); see xsd schema
-    String experiment_type_;
+    /// type of experiment (label-free, labeled_MS1, labeled_MS2)
+    String experiment_type_ = "label-free";
 
     /// protein identifications
     std::vector<ProteinIdentification> protein_identifications_;
@@ -340,4 +341,3 @@ protected:
   OPENMS_DLLAPI std::ostream& operator<<(std::ostream& os, const ConsensusMap& cons_map);
 
 } // namespace OpenMS
-

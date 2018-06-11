@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import pyopenms
 import copy
+import os
 
 from pyopenms import String as s
 
@@ -301,17 +302,43 @@ def testIsotopeDistribution():
     """
     ins = pyopenms.IsotopeDistribution()
 
-    ins.setMaxIsotope(5)
-    ins.getMaxIsotope()
     ins.getMax()
     ins.getMin()
     ins.size()
     ins.clear()
-    ins.estimateFromPeptideWeight(500)
     ins.renormalize()
     ins.trimLeft(6.0)
     ins.trimRight(8.0)
 
+@report
+def testCoarseIsotopePatternGenerator():
+    """
+    @tests: CoarseIsotopePatternGenerator
+    CoarseIsotopePatternGenerator.__init__
+    CoarseIsotopePatternGenerator.getMaxIsotope()
+    CoarseIsotopePatternGenerator.setMaxIsotope()
+    CoarseIsotopePatternGenerator.estimateFromPeptideWeight()
+    """
+
+    iso = pyopenms.CoarseIsotopePatternGenerator()
+    iso.setMaxIsotope(5)
+    assert iso.getMaxIsotope() == 5
+    res = iso.estimateFromPeptideWeight(500)
+
+    methanol = pyopenms.EmpiricalFormula("CH3OH")
+    water = pyopenms.EmpiricalFormula("H2O")
+    mw = methanol + water
+    iso_dist = mw.getIsotopeDistribution(pyopenms.CoarseIsotopePatternGenerator(3))
+    assert len(iso_dist.getContainer()) == 3, len(iso_dist.getContainer())
+    iso_dist = mw.getIsotopeDistribution(pyopenms.CoarseIsotopePatternGenerator(0))
+    assert len(iso_dist.getContainer()) == 18, len(iso_dist.getContainer()) 
+
+    iso = pyopenms.CoarseIsotopePatternGenerator(10)
+    isod = iso.run(methanol)
+    assert len(isod.getContainer()) == 10, len(isod.getContainer()) 
+    assert isod.getContainer()[0].getMZ() == 32.0, isod.getContainer()[0].getMZ()
+    assert isod.getContainer()[0].getIntensity() - 0.986442089081 < 1e-5
+    
 @report
 def testEmpiricalFormula():
     """
@@ -333,7 +360,7 @@ def testEmpiricalFormula():
 
     ins.getMonoWeight()
     ins.getAverageWeight()
-    ins.getIsotopeDistribution(1)
+    ins.getIsotopeDistribution(pyopenms.CoarseIsotopePatternGenerator(0))
     # ins.getNumberOf(0)
     # ins.getNumberOf(b"test")
     ins.getNumberOfAtoms()
@@ -3363,6 +3390,71 @@ def testPeak():
 
 
 @report
+def testNumpressCoder():
+    """
+    """
+
+    np = pyopenms.MSNumpressCoder()
+
+    nc = pyopenms.NumpressConfig()
+    nc.np_compression = np.NumpressCompression.LINEAR
+    nc.estimate_fixed_point = True
+    tmp = pyopenms.String()
+    out = []
+    inp =  [1.0, 2.0, 3.0]
+    np.encodeNP(inp, tmp, True, nc)
+
+    res = str(tmp)
+    assert len(res) != 0, len(res)
+    assert res != "", res
+    np.decodeNP(res, out, True, nc)
+    assert len(out) == 3, (out, res)
+    assert out == inp, out
+
+    # Now try to use a simple Python string as input -> this will fail as we
+    # cannot pass this by reference in C++
+    res = ""
+    try:
+        np.encodeNP(inp, res, True, nc)
+        has_error = False
+    except AssertionError:
+        has_error = True
+
+    assert has_error
+
+@report
+def testNumpressConfig():
+    """
+    """
+
+    n = pyopenms.MSNumpressCoder()
+    np = pyopenms.NumpressConfig()
+    np.np_compression = n.NumpressCompression.LINEAR
+    assert np.np_compression == n.NumpressCompression.LINEAR
+    np.numpressFixedPoint = 4.2
+    np.numpressErrorTolerance = 4.2
+    np.estimate_fixed_point = True
+    np.linear_fp_mass_acc = 4.2
+    np.setCompression("linear")
+
+@report
+def testBase64():
+    """
+    """
+
+    b = pyopenms.Base64()
+    out = pyopenms.String()
+    inp =  [1.0, 2.0, 3.0]
+    b.encode(inp, b.ByteOrder.BYTEORDER_LITTLEENDIAN, out, False)
+    res = str(out)
+    assert len(res) != 0
+    assert res != ""
+
+    convBack = []
+    b.decode(res, b.ByteOrder.BYTEORDER_LITTLEENDIAN, convBack, False)
+    assert convBack == inp, convBack
+
+@report
 def testPeakFileOptions():
     """
     @tests: PeakFileOptions
@@ -4197,11 +4289,17 @@ def testVersion():
     assert vd.version_minor == 2
     assert vd.version_patch == 1
 
+    vd = pyopenms.VersionDetails.create(b"19.2.1-alpha")
+    assert vd.version_major == 19
+    assert vd.version_minor == 2
+    assert vd.version_patch == 1
+    assert vd.pre_release_identifier == b"alpha"
+
     assert vd == vd
     assert not vd < vd
     assert not vd > vd
 
-    assert  isinstance(pyopenms.version.version, str)
+    assert isinstance(pyopenms.version.version, str)
 
 @report
 def testInspectInfile():
@@ -4710,6 +4808,40 @@ def testModificationsDB():
     m = mdb.getBestModificationByMonoMass( 999999999, 0.20, b"T", pyopenms.ResidueModification.TermSpecificity.ANYWHERE)
     assert m is None
 
+@report
+def testExperimentalDesign():
+    """
+    @tests: ExperimentalDesign
+     ExperimentalDesign.__init__
+     ExperimentalDesign.getNumberOfSamples() == 8
+     ExperimentalDesign.getNumberOfFractions() == 3
+     ExperimentalDesign.getNumberOfLabels() == 4
+     ExperimentalDesign.getNumberOfMSFiles() == 6
+     ExperimentalDesign.getNumberOfFractionGroups() == 2
+     ExperimentalDesign.getSample(1, 1) == 1
+     ExperimentalDesign.getSample(2, 4) == 8
+     ExperimentalDesign.isFractionated()
+     ExperimentalDesign.sameNrOfMSFilesPerFraction()
+
+     ExperimentalDesignFile.__init__
+     ExperimentalDesignFile.load
+     """
+    f = pyopenms.ExperimentalDesignFile()
+    fourplex_fractionated_design = pyopenms.ExperimentalDesign()
+    ed_dirname = os.path.dirname(os.path.abspath(__file__))
+    ed_filename = os.path.join(ed_dirname, "ExperimentalDesign_input_2.tsv").encode()
+    fourplex_fractionated_design = f.load(ed_filename, False)
+    assert fourplex_fractionated_design.getNumberOfSamples() == 8
+    assert fourplex_fractionated_design.getNumberOfFractions() == 3
+    assert fourplex_fractionated_design.getNumberOfLabels() == 4
+    assert fourplex_fractionated_design.getNumberOfMSFiles() == 6
+    assert fourplex_fractionated_design.getNumberOfFractionGroups() == 2
+    assert fourplex_fractionated_design.getSample(1, 1) == 1
+    assert fourplex_fractionated_design.getSample(2, 4) == 8
+    assert fourplex_fractionated_design.isFractionated()
+    assert fourplex_fractionated_design.sameNrOfMSFilesPerFraction()
+ 
+@report
 def testString():
     pystr = pyopenms.String()
     pystr = pyopenms.String("blah")
@@ -4755,5 +4887,3 @@ def testString():
     pystr1 = pyopenms.String(u"bläh")
     pystr2 = pyopenms.String(u"bläh")
     assert(pystr1 == pystr2)
-
-

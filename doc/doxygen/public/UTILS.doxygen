@@ -88,13 +88,15 @@
   <b>Quantitation</b>
   - @subpage UTILS_ERPairFinder - Evaluate pair ratios on enhanced resolution (zoom) scans.
   - @subpage UTILS_FeatureFinderSuperHirn - Find Features using the SuperHirn Algorithm (it can handle centroided or profile data, see .ini file).
-  - @subpage UTILS_MetaboliteAdductDecharger - Decharges and merges different feature charge variants of the same small molecule.  
+  - @subpage UTILS_MetaboliteAdductDecharger - Decharges and merges different feature charge variants of the same small molecule.
   - @subpage UTILS_MRMPairFinder - Evaluate labeled pair ratios on MRM features.
   - @subpage UTILS_OpenSwathWorkflow - Complete workflow to run OpenSWATH.
+  - @subpage UTILS_SILACWorkflow - Complete workflow to run SILAC analysis.
+
 
   <b>Metabolite Identification</b>
   - @subpage UTILS_AccurateMassSearch - Find potential HMDB IDs within the given mass error window.
-  - @subpage UTILS_MetaboliteSpectralMatcher - Identify small molecules from tandem MS spectra.  
+  - @subpage UTILS_MetaboliteSpectralMatcher - Identify small molecules from tandem MS spectra.
   - @subpage UTILS_SiriusAdapter - De novo metabolite identification.
 
   <b>Quality Control</b>
@@ -117,12 +119,12 @@
   - @subpage UTILS_SvmTheoreticalSpectrumGeneratorTrainer - A trainer for SVM models as input for SvmTheoreticalSpectrumGenerator.
   - @subpage UTILS_PeakPickerIterative A tool for peak detection in profile data.
   - @subpage UTILS_DatabaseFilter - Filters a protein database in FASTA format according to one or multiple filtering criteria.
-  - @subpage UTILS_TICCalculator - Calculates the TIC of a raw mass spectrometric file. 
+  - @subpage UTILS_TICCalculator - Calculates the TIC of a raw mass spectrometric file.
   - @subpage UTILS_MultiplexResolver - Resolves conflicts between identifications and quantifications in multiplex data.
-  - @subpage UTILS_LowMemPeakPickerHiRes - A tool for peak detection on streamed profile data 
-  - @subpage UTILS_LowMemPeakPickerHiResRandomAccess - A tool for peak detection on streamed profile data 
+  - @subpage UTILS_LowMemPeakPickerHiRes - A tool for peak detection on streamed profile data
+  - @subpage UTILS_LowMemPeakPickerHiResRandomAccess - A tool for peak detection on streamed profile data
   - @subpage UTILS_MRMTransitionGroupPicker - Picks peaks in MRM chromatograms.
-  - @subpage TOPP_ClusterMassTraces - Cluster mass traces occuring in the same map together.
+  - @subpage TOPP_ClusterMassTraces - Cluster mass traces occurring in the same map together.
   - @subpage TOPP_CorrelateMassTraces - Identifies precursor mass traces and tries to correlate them with fragment ion mass traces in SWATH maps.
   - @subpage UTILS_IDDecoyProbability - Estimate probability of peptide hits.
   - @subpage UTILS_RNADigestor - Digests an RNA sequence database in-silico.
@@ -130,7 +132,7 @@
 <!--
   - TODO we need descriptions for all of these
   - @subpage UTILS_OpenMSInfo - Print build system information.
-  - @subpage UTILS_RNPxlSearch - Annotate RNA to peptide crosslinks in MS/MS spectra.
+  - @subpage UTILS_RNPxlSearch - Annotate RNA to peptide cross-links in MS/MS spectra.
   - @subpage UTILS_MetaProSIP - Performs proteinSIP on peptide features for elemental flux analysis.
   - @subpage UTILS_SimpleSearchEngine - Annotates MS/MS spectra using SimpleSearchEngine.
 -->

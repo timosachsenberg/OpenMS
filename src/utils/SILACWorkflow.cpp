@@ -32,26 +32,41 @@
 // $Authors: Nantia Leonidou $
 // --------------------------------------------------------------------------
 
-#include <vector>
 #include <map>
 #include <list>
 #include <string>
+#include <vector>
 #include <utility>
-#include <algorithm>
 #include <stdexcept>
+#include <algorithm>
 #include <OpenMS/SYSTEM/File.h>
 #include <OpenMS/FORMAT/MzMLFile.h>
+#include <OpenMS/SYSTEM/StopWatch.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
+#include <OpenMS/CONCEPT/Exception.h>
+#include <OpenMS/KERNEL/FeatureMap.h>
 #include <OpenMS/FORMAT/FileHandler.h>
+#include <OpenMS/KERNEL/MSExperiment.h>
 #include <OpenMS/CHEMISTRY/ProteaseDB.h>
+#include <OpenMS/KERNEL/ConsensusMap.h>
+#include <OpenMS/KERNEL/ConsensusFeature.h>
+#include <OpenMS/ANALYSIS/ID/IDMapper.h>
+#include <OpenMS/FORMAT/FeatureXMLFile.h>
 #include <OpenMS/FILTERING/ID/IDFilter.h>
 #include <OpenMS/APPLICATIONS/TOPPBase.h>
+#include <OpenMS/FORMAT/ConsensusXMLFile.h>
+#include <OpenMS/FORMAT/ConsensusXMLFile.h>
+#include <OpenMS/KERNEL/BaseFeature.h>
 #include <OpenMS/ANALYSIS/ID/PeptideIndexing.h>
 #include <OpenMS/METADATA/ProteinIdentification.h>
 #include <OpenMS/METADATA/PeptideIdentification.h>
 #include <OpenMS/ANALYSIS/ID/FalseDiscoveryRate.h>
+#include <OpenMS/ANALYSIS/ID/IDConflictResolverAlgorithm.h>
+#include <OpenMS/TRANSFORMATIONS/RAW2PEAK/PeakPickerHiRes.h>
 #include <OpenMS/MATH/STATISTICS/PosteriorErrorProbabilityModel.h>
+#include <OpenMS/TRANSFORMATIONS/FEATUREFINDER/FeatureFinderMultiplexAlgorithm.h>
+
 
 using namespace OpenMS;
 using namespace std;
@@ -63,16 +78,14 @@ using namespace std;
 
 /**
     @page UTILS_SILACWorkflow
-
     @brief Template for a new Tool
-   This tool can be used for scientific stuff.
+    This tool can be used for scientific stuff and more scientific applications.
 
-    And more scientific applications.
 
-    <B>The command line parameters of this tool are:</B>
-    @verbinclude UTILS_SILACWOrkflow.cli
+    <B>The command line parameters of this tool are NANTIA SDF: </B>
+    @verbinclude UTILS_SILACWorkflow.cli
     <B>INI file documentation of this tool:</B>
-    @htmlinclude UTILS_SILACWOrkflow.html
+    @htmlinclude UTILS_SILACWorkflow.html
 */
 
 // We do not want this class to show up in the docu:
@@ -109,20 +122,45 @@ protected:
     registerInputFile_("database", "<file>", "", "input database");
     setValidFormats_("database", ListUtils::create<String>("fasta"));
 
+    //Output
+    registerOutputFile_("out", "<file>", "", "Output consensusXML file");
+    setValidFormats_("out",ListUtils::create<String>(".consensusXML"));
+
+/*
     registerStringOption_("decoy_string", "<text>", "DECOY_", "String to indicate decoy protein", false);
+    setValidStrings_("decoy_string", ListUtils::create<String>("DECOY_,dec_"));
 
     registerStringOption_("decoy_string_position", "<choice>", "prefix", "Should the string be prepended or appended?", false);
     setValidStrings_("decoy_string_position", ListUtils::create<String>("prefix,suffix"));
 
+<<<<<<< HEAD
     registerStringOption_("enzyme", "<choice>", "Trypsin/P", "Enzyme which determines valid cleavage sites", false);
     StringList enzymes;
     ProteaseDB::getInstance()->getAllNames(enzymes);
     setValidStrings_("enzyme", enzymes);
+=======
+    registerStringOption_("enzyme_name", "<choice>", "Trypsin/P", "Enzyme which determines valid cleavage sites", false);
+    StringList enzymes;
+    ProteaseDB::getInstance()->getAllNames(enzymes);
+    setValidStrings_("enzyme_name", enzymes);
+*/
+    //get all parameters from different algorithms at once
+    Param pp_defaults = PeakPickerHiRes().getDefaults();
+    Param ffm_defaults = FeatureFinderMultiplexAlgorithm().getDefaults();
+    Param pep_defaults = Math::PosteriorErrorProbabilityModel().getParameters();
+    Param index_defaults = PeptideIndexing().getParameters();
+    Param fdr_defaults = FalseDiscoveryRate().getParameters();
+    Param idMapper_defaults = IDMapper().getParameters();
+    Param combined;
+    combined.insert("Centroiding:", pp_defaults);
+    combined.insert("Quantification:", ffm_defaults);
+    combined.insert("PosteriorErrorProbability:", pep_defaults);
+    combined.insert("PeptideIndexing:", index_defaults);
+    combined.insert("FalseDiscoveryRate:", fdr_defaults);
+    combined.insert("IDMapper:", idMapper_defaults);
+    registerFullParam_(combined);
+>>>>>>> remotes/NantiaL/feature/SILACWorkflow
 
-    //registerInputFile_("accession", "<file>", "","Input IdXML file, containing the identified peptides.", true);
-    //setValidFormats_("accession", ListUtils::create<String>("idXML"));
-    //registerOutputFile_("out", "<file>", "", "Output FASTA file where the reduced database will be written to.");
-    //setValidFormats_("out", ListUtils::create<String>("fasta"));
     }
 
 /*
@@ -130,16 +168,32 @@ protected:
 P e p t i d e  I d e n t i f i c a t i o n
 ***************************************************************
 */
-
-public:
-  //give indexes to all protein and peptide ids
-  PeptideIndexing::ExitCodes indexPepAndProtIds(
+protected:
+  PeptideIndexing::ExitCodes indexPepAndProtIds_(
     const vector<FASTAFile::FASTAEntry>& fasta_db,
     vector<ProteinIdentification>& protein_ids,
     vector<PeptideIdentification>& peptide_ids
   )
-  {
-    PeptideIndexing indexer;
+  /**
+   * [indexPepAndProtIds_ give indexes to all protein and peptide ids]
+   * @param  fasta_db    [database]
+   * @param  protein_ids [vector of protein IDS]
+   * @param  peptide_ids [vector of peptide IDS]
+   * @return
+   */
+   {
+     Param pp_param = getParam_().copy("PeptideIndexing:", true);
+     writeDebug_("Parameters passed to PeptideIndexing algorithm", pp_param, 3);
+     PeptideIndexing indexer;
+     indexer.setLogType(log_type_);
+     indexer.setParameters(pp_param);
+
+     vector<FASTAFile::FASTAEntry> fasta_db_tmp(fasta_db);
+     PeptideIndexing::ExitCodes indexer_exit = indexer.run(fasta_db_tmp, protein_ids, peptide_ids);
+
+     return indexer_exit;
+
+/* PeptideIndexing indexer;
     Param param_pi = indexer.getParameters();
     param_pi.setValue("decoy_string", getStringOption_("decoy_string"));
     param_pi.setValue("decoy_string_position", getStringOption_("decoy_string_position"));
@@ -147,23 +201,23 @@ public:
     param_pi.setValue("missing_decoy_action", "warn");
     param_pi.setValue("enzyme:name", getStringOption_("enzyme"));
     indexer.setParameters(param_pi);
+*/
 
-    vector<FASTAFile::FASTAEntry> fasta_db_tmp(fasta_db);
-    PeptideIndexing::ExitCodes indexer_exit = indexer.run(fasta_db_tmp, protein_ids, peptide_ids);
-
-    return indexer_exit;
   };
 
-
-public:
-  //PEP calculation
-  void calculatePEP(
+protected:
+  void calculatePEP_(
     vector<ProteinIdentification>& protein_identifications,
     vector<PeptideIdentification>& peptide_identifications
   )
+  /**
+   * [calculatePEP_ PEP calculation]
+   * @param protein_identifications [vector of protein IDS]
+   * @param peptide_identifications [vector of peptide IDS]
+   */
   {
     //generate PEP_model
-    Param pep_param = getParam_().copy("Posterior Error Probability:", true);
+    Param pep_param = getParam_().copy("PosteriorErrorProbability:", true);
     writeDebug_("Parameters passed to PEP algorithm", pep_param, 3);
     Math::PosteriorErrorProbabilityModel PEP_model;
     PEP_model.setParameters(pep_param);
@@ -216,26 +270,31 @@ public:
         }
       };
 
-
-public:
+protected:
   //pair of protein and peptide identifications (vectors), as stored in an idXML file
   using ProtsPepsPair = std::pair< vector<ProteinIdentification>, vector<PeptideIdentification> >;
 
   //vector, of pair of IDs vectors
   using ProtsPepsPairs = vector<ProtsPepsPair>;
 
-  //prepare ID Files
-  ProtsPepsPairs prepareIDFiles(
+  ProtsPepsPairs prepareIDFiles_(
     const vector<FASTAFile::FASTAEntry>& fasta_db,
     const StringList & light,
     const StringList & heavy
   )
+  /**
+   * [prepareIDFiles_ prepare ID files]
+   * @param  fasta_db [database]
+   * @param  light
+   * @param  heavy
+   * @return          [vector, of pair, of IDSs vectors]
+   */
   {
 
     //if stringList sizes not equal, throw an exception
     if (light.size() != heavy.size())
     {
-      throw string("Not equal-sized lists");
+        throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Not equal-sized lists");
     }
 
     IdXMLFile idXML_file;
@@ -252,14 +311,13 @@ public:
       // read the identification file for light (contains both protein as well as peptide identifications)
       LOG_INFO << "Loading ID file (light): " << light[i] << endl;
       idXML_file.load(light[i], light_protein_identifications,  light_peptide_identifications);
-      PeptideIndexing::ExitCodes indexer_exit = indexPepAndProtIds(fasta_db, light_protein_identifications, light_peptide_identifications);
+      PeptideIndexing::ExitCodes indexer_exit = indexPepAndProtIds_(fasta_db, light_protein_identifications, light_peptide_identifications);
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
-        // TODO: write error message and return
-
+          throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Unable to execute");
       }
-      // call calculatePEP
-      calculatePEP(light_protein_identifications, light_peptide_identifications);
+      // call calculatePEP_
+      calculatePEP_(light_protein_identifications, light_peptide_identifications);
 
       /////////////////////////////////////////////////
       /////             heavy                    /////
@@ -269,23 +327,22 @@ public:
       // read the identification file for heavy (contains both protein as well as peptide identifications)
       LOG_INFO << "Loading ID file (heavy): " << heavy[i] << endl;
       idXML_file.load(heavy[i], heavy_protein_identifications,  heavy_peptide_identifications);
-      indexer_exit = indexPepAndProtIds(fasta_db, heavy_protein_identifications, heavy_peptide_identifications);
+      indexer_exit = indexPepAndProtIds_(fasta_db, heavy_protein_identifications, heavy_peptide_identifications);
 
       if (indexer_exit != PeptideIndexing::EXECUTION_OK)
       {
-        // TODO: write error message and return
-
+        throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "Unable to execute");
       }
-      // call calculatePEP
-      calculatePEP(heavy_protein_identifications, heavy_peptide_identifications);
+      // call calculatePEP_
+      calculatePEP_(heavy_protein_identifications, heavy_peptide_identifications);
 
       //merge light and heavy (for PROTEIN IDs) and stores the merged files in a vector
       vector<ProteinIdentification>  mergedProtIDs;
-      mergedProtIDs = mergeProteinIDs(light_protein_identifications,heavy_protein_identifications);
+      mergedProtIDs = mergeProteinIDs_(light_protein_identifications,heavy_protein_identifications);
 
       //merge light and heavy (for PEPTIDE IDs) and stores the merged files in a vector
       vector<PeptideIdentification>  mergedPeptIDs;
-      mergedPeptIDs = mergePeptideIDs(light_peptide_identifications,heavy_peptide_identifications);
+      mergedPeptIDs = mergePeptideIDs_(light_peptide_identifications,heavy_peptide_identifications);
 
       //create a pair of the merged files
       std::pair <vector<ProteinIdentification>, vector<PeptideIdentification>> mergedProtPepIDs;
@@ -299,22 +356,26 @@ public:
   };
 
 
-public:
-  //merge two vectors with peptide identifications
-  vector<PeptideIdentification> mergePeptideIDs(
+protected:
+  vector<PeptideIdentification> mergePeptideIDs_(
     const vector<PeptideIdentification>& light,
     const vector<PeptideIdentification>& heavy
   )
+  /**
+   * [mergePeptideIDs_ merge two vectors with peptide identifications]
+   * @param  light
+   * @param  heavy
+   * @return       [vector of PeptideIdentification]
+   */
   {
     std::map<String, PeptideIdentification> spectrum_to_id;
 
     /////////////////////////////////////////////////
     /////             light                    /////
     ///////////////////////////////////////////////
-
-    // insert all the spectrum references with the value l for the light ids in a map
     for (PeptideIdentification const & l : light)
     {
+      // insert all the spectrum references with the value l for the light ids in a map
       spectrum_to_id[l.getMetaValue("spectrum_reference")] = l;
     }
 
@@ -357,13 +418,17 @@ public:
   };
 
 
-
-public:
-  //merge two vectors (light and heavy) of protein identifications
-  vector<ProteinIdentification> mergeProteinIDs(
+protected:
+  vector<ProteinIdentification> mergeProteinIDs_(
     const vector<ProteinIdentification>& light,
     const vector<ProteinIdentification>& heavy
   )
+  /**
+   * [mergeProteinIDs merge two vectors (light and heavy) of protein identifications]
+   * @param  light
+   * @param  heavy
+   * @return       [vector of ProteinIdentification]
+   */
   {
     vector<ProteinIdentification> ret;
     //Concatenate two vectors (light and heavy)
@@ -374,9 +439,12 @@ public:
   };
 
 
- private:
-   //estimates false discovery rate of peptide
-   void calculateFDR_(vector<PeptideIdentification>& peptide_ids)
+protected:
+   void calculateFDR__(vector<PeptideIdentification>& peptide_ids)
+   /**
+    * [calculateFDR__ estimates false discovery rate of peptide]
+    * @param peptide_ids
+    */
    {
      FalseDiscoveryRate fdr;
      fdr.apply(peptide_ids);
@@ -384,24 +452,22 @@ public:
    }
 
 
-public:
-  //from vector of pairs of vectors take peptide vector and compute FDR
-  void peptFDR(ProtsPepsPairs& files)
+protected:
+  void peptFDR_(ProtsPepsPairs& files)
+  /**
+   * [peptFDR_ from vector of pairs of vectors take peptide vector and compute FDR]
+   * @param files
+   */
   {
     for (ProtsPepsPairs::iterator j = files.begin(); j != files.end(); j++) //for each pair
     {
       // pass vector of PeptideIdentification to FDR calculation
-      calculateFDR_(j->second); // j->second takes the second element of each pair
+      calculateFDR__(j->second); // j->second takes the second element of each pair
     }
   }
 
-/*
-***************************************************************
-Q u a n t i f i c a t i o n
-***************************************************************
-*/
 
-// the main_ function is called after all parameters are read
+/// the main_ function is called after all parameters are read
   ExitCodes main_(int, const char **)
   {
     //-------------------------------------------------------------
@@ -413,28 +479,35 @@ Q u a n t i f i c a t i o n
     StringList in_ids_light = getStringList_("in_ids_light"); //read idXML light file
     StringList in_ids_heavy = getStringList_("in_ids_heavy"); //read idXML heavy file
 
+    String out = getStringOption_("out"); //output in .consensusXML format
 
     //-------------------------------------------------------------
     // reading input (read protein database)
     //-------------------------------------------------------------
+    StopWatch a;
+    a.start();
     vector<FASTAFile::FASTAEntry> fasta_db;
-
     //Loads the identifications of a fasta file
     FASTAFile fasta_reader;
     fasta_reader.load(database, fasta_db);
 
-    ProtsPepsPairs id_files = prepareIDFiles(fasta_db, in_ids_light, in_ids_heavy);
+    ProtsPepsPairs id_files = prepareIDFiles_(fasta_db, in_ids_light, in_ids_heavy);
 
     //-------------------------------------------------------------
     // calculations
     //-------------------------------------------------------------
-    peptFDR(id_files);
+    peptFDR_(id_files);
+    a.stop();
+    LOG_INFO << "Peptide Identification tooks: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds\n";
+    a.reset();
 
     //-------------------------------------------------------------
     // writing output (after FDR calculation)
     //-------------------------------------------------------------
     IdXMLFile idXML_file;
+    ConsensusMap map;
 
+    a.start();
     for (unsigned i = 0; i < in.size(); i++) //for all file names
     {
       const vector<ProteinIdentification> &prot_ids = id_files[i].first; //take the first element from each pair
@@ -443,68 +516,125 @@ Q u a n t i f i c a t i o n
       String out_filename = File::removeExtension(in[i]);
       // add the extension .idXML
       out_filename = out_filename + "_fdr.idXML";
-      cout << "Writing to file: " << out_filename << endl;
+      LOG_INFO << "Writing to file: " << out_filename << endl;
       // test if a file exists, if yes throw exception.
-      if (File::exists(out_filename) == TRUE)
-      {
-        throw string("Same file was found");
-      }
+      //if (File::exists(out_filename) == true)
+      //{
+        try
+          {
+            (File::exists(out_filename) == true);
+          }
+        catch (Exception::UnableToCreateFile)
+          {
+            writeLog_("Error: Unable to create output file.");
+            return CANNOT_WRITE_OUTPUT_FILE;
+          }
+      //}
       idXML_file.store(out_filename, prot_ids, pept_ids);
     }
-
-
-    // For FIDO Adapter: merge all
+    a.stop();
+    LOG_INFO << "Extension remove tooks: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds\n";
+    a.reset();
 
 /*
-     // iteration in idXML- heavy file
-     for(i = 0; i < in_ids_heavy.size(); i++)
-     {
-          // read the identification file (contains both protein as well as peptide identifications)
-          vector<protein_identification> protein_identifications;
-          vector<PeptideIdentification> peptide_identifications;
-
-          //Loads the identifications of an idXML file
-          IdXMLFile idXML_file;
-          idXML_file.load(in_ids_heavy[i], protein_identifications, peptide_identifications);
-
-          //PeptideIndexing.run
-          PeptideIndexing::ExitCodes indexer_exit = indexer.run(fasta_db, protein_ids, peptide_ids);
-
-          if ((indexer_exit != PeptideIndexing::EXECUTION_OK) &&
-              (indexer_exit != PeptideIndexing::PEPTIDE_IDS_EMPTY))
-          {
-            if (indexer_exit == PeptideIndexing::DATABASE_EMPTY)
-            {
-              return INPUT_FILE_EMPTY;
-            }
-            else if (indexer_exit == PeptideIndexing::UNEXPECTED_RESULT)
-            {
-              return UNEXPECTED_RESULT;
-            }
-            else
-            {
-              return UNKNOWN_ERROR;
-            }
-          }
-}*/
-
-    //-------------------------------------------------------------
-    // writing output
-    //-------------------------------------------------------------
-    //this function compares set of proteins to fasta_accession
-    /** vector<FASTAFile::FASTAEntry> db_new;
-
-    for (Size i = 0; i != db.size() ; ++i)
-    {
-       const String& fasta_accession = db[i].identifier;
-       const bool found = id_accessions.find(fasta_accession) != id_accessions.end();
-       if ( (found && whitelist) || (!found && !whitelist) )
-       {
-          db_new.push_back(db[i]);
-       }
-    }
+***************************************************************
+Q u a n t i f i c a t i o n  &  M a p p i n g
+***************************************************************
 */
-  return  EXECUTION_OK;
+    a.start();
+    //get parameters for all algorithms
+    Param paramq = getParam_().copy("Quantification:", true); //set the parameters of the algorithm
+    writeDebug_("Parameters passed to FeatureFinderMultiplex algorithm", paramq, 3);
+    FeatureFinderMultiplexAlgorithm ffm;
+    ffm.setParameters(paramq);
+    ffm.setLogType(this->log_type_);
+
+    Param parami = getParam_().copy("IDMapper:", true); //set the parameters of the algorithm
+    writeDebug_("Parameters passed to IDMapper algorithm", parami, 3);
+    IDMapper id_mapper;
+    id_mapper.setParameters(parami);
+
+    MzMLFile mzML_input;
+
+    // only read MS1 spectra
+    std::vector<int> levels;
+    levels.push_back(1);
+    mzML_input.getOptions().setMSLevels(levels);
+
+    Param pp_param = getParam_().copy("Centroiding:", true);
+    writeDebug_("Parameters passed to PeakPickerHiRes algorithm", pp_param, 3);
+    PeakPickerHiRes pp;
+    pp.setLogType(log_type_);
+    pp.setParameters(pp_param);
+
+    ConsensusXMLFile cons_file;
+    ConsensusMap merged_map;
+
+    for (unsigned i = 0; i < in.size(); i++) //for all file names
+    {
+      MSExperiment exp;
+      mzML_input.load(in[i], exp); //load mzML file from stringList
+
+      //** PeakPickerHiRes ** //
+      // only pick if not already picked
+      PeakMap ms_centroided;
+      pp.pickExperiment(exp, ms_centroided, true);
+      exp.clear(true);// free memory of profile PeakMaps
+
+
+      //** FeatureFinderMultiplex ** //
+      ffm.run(ms_centroided, true);  // run feature detection algorithm
+      ConsensusMap cons_map = ffm.getConsensusMap();
+
+      //** IDMapper **//
+      id_mapper.annotate(cons_map, id_files[i].second, id_files[i].first, true, true);
+      // annotate output with data processing info
+      addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::IDENTIFICATION_MAPPING));
+
+      //** IDConflictResolver **//
+      IDConflictResolverAlgorithm::resolve(cons_map);
+      addDataProcessing_(cons_map, getProcessingInfo_(DataProcessing::FILTERING));
+
+      // TODO: MultiplexResolver
+      //** MultiplexResolver **//
+
+      // ** FileFilter **//
+      // remove unassigned peptide identifications
+      cons_map.getUnassignedPeptideIdentifications().clear();
+      //remove unannotated features
+      auto removeUnannotatedFeatures = [&](ConsensusFeature feature) -> bool
+      {
+        return feature.getPeptideIdentifications().empty();
+      };
+      auto iterator = remove_if(cons_map.begin(), cons_map.end(), removeUnannotatedFeatures);
+      cons_map.erase(iterator, cons_map.end());
+
+
+      //  (we don need this for storing )
+      out = File::removeExtension(in[i]);
+      out = out + ".consensusXML"; // add extension .idXML
+      LOG_INFO << "Writing to file: " << out << endl;
+      cons_file.store(out, cons_map); //store results
+
+
+      //** FileMerger **//
+      for (ConsensusMap::iterator it = map.begin(); it != map.end(); ++it)
+      {
+        it->setMetaValue("file_origin", DataValue(in[i]));
+      }
+
+      merged_map += cons_map;
+    }
+
+    cons_file.store(out, merged_map);
+
+    a.stop();
+    LOG_INFO << "Quantification and Mapping took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds\n";
+    a.reset();
+
+    //TODO: For FIDO Adapter: merge all
+
+    return  EXECUTION_OK;
   }
 
 };
@@ -512,7 +642,7 @@ Q u a n t i f i c a t i o n
 // the actual main function needed to create an executable
 int main(int argc, const char ** argv)
 {
-  SILACWorkflow tool; // TODO: change name to SILACWorklfow
+  SILACWorkflow tool;
   return tool.main(argc, argv);
 }
 /// @endcond
