@@ -657,16 +657,34 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
     LOG_INFO << "Quantification and Mapping took: " << a.getClockTime() << " seconds\n" "CPU time: " << a.getCPUTime() << " seconds\n";
     a.reset();
 
-    vector<PeptideIdentification> infered_peptides;
+
 
     //-------------------------------------------------------------
     // Protein inference
     //-------------------------------------------------------------
-    // TODO: ProteinInference on merged ids (how merged?)
-    // TODO: Output coverage on protein and group level
+    // TODO: Implement inference
+
+    vector<PeptideIdentification> infered_peptides;
     ProteinIdentification infered_protein_groups;
 
-    // TODO: For FIDO Adapter: merge all
+    // currenty no proper inference implemented - just extract from consensusMap
+    infered_peptides = merged_map.getUnassignedPeptideIdentifications();
+    for (ConsensusMap::Iterator cons_it = merged_map.begin();
+          cons_it != merged_map.end(); ++cons_it)
+    {
+      infered_peptides.insert(infered_peptides.end(),
+                      cons_it->getPeptideIdentifications().begin(),
+                      cons_it->getPeptideIdentifications().end());
+      cons_it->getPeptideIdentifications().clear();
+    }
+    // only keep unique peptides (for now)
+    IDFilter::keepUniquePeptidesPerProtein(infered_peptides);
+
+    // merge protein identifications (for now)
+    for (auto & p : merged_map.getProteinIdentifications())
+    {
+      for (auto & h : p.getHits()) { infered_protein_groups.insertHit(h); }
+    }
 
     //-------------------------------------------------------------
     // Peptide quantification
@@ -675,7 +693,6 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
     quantifier.setParameters(pq_param);
     quantifier.readQuantData(merged_map, design);
     quantifier.quantifyPeptides(infered_peptides);
-
 
     //-------------------------------------------------------------
     // Protein quantification
