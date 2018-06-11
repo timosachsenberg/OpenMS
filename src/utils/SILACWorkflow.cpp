@@ -705,7 +705,7 @@ Q u a n t i f i c a t i o n  &  M a p p i n g
     // Fill MzTab with meta data and quants annotated in identification data structure
     const bool report_unmapped(true);
     const bool report_unidentified_features(false);
-    MzTab m = MzTab::exportConsensusMapToMzTab(consensus, String("null"), report_unidentified_features, report_unmapped);
+    MzTab m = MzTab::exportConsensusMapToMzTab(merged_map, String("null"), report_unidentified_features, report_unmapped);
     MzTabFile().store(out, m);
 
     return  EXECUTION_OK;

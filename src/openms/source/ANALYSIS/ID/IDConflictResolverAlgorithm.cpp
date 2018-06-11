@@ -36,7 +36,6 @@
 
 using namespace std;
 
-
 namespace OpenMS
 {
   void IDConflictResolverAlgorithm::resolve(FeatureMap & features)
