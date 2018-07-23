@@ -8,14 +8,14 @@ from MzTab cimport *
 from StringList cimport *
 from libcpp cimport bool
 
-cdef extern from "<OpenMS/ANALYSIS/RNPXL/RNPxlModificationsGenerator.h>" namespace "OpenMS":
+cdef extern from "<OpenMS/ANALYSIS/XLMS/ONuXLModificationsGenerator.h>" namespace "OpenMS":
 
-    cdef cppclass RNPxlModificationsGenerator:
+    cdef cppclass ONuXLModificationsGenerator:
 
-        RNPxlModificationsGenerator() nogil except +
-        RNPxlModificationsGenerator(RNPxlModificationsGenerator) nogil except + 
+        ONuXLModificationsGenerator() nogil except +
+        ONuXLModificationsGenerator(ONuXLModificationsGenerator) nogil except + 
 
-        RNPxlModificationMassesResult initModificationMassesRNA(
+        ONuXLModificationMassesResult initModificationMassesRNA(
             StringList target_nucleotides,
             libcpp_set[char] can_xl,
             StringList mappings,
@@ -24,12 +24,12 @@ cdef extern from "<OpenMS/ANALYSIS/RNPXL/RNPxlModificationsGenerator.h>" namespa
             bool cysteine_adduct, 
             Int max_length) nogil except +
 
-cdef extern from "<OpenMS/ANALYSIS/RNPXL/RNPxlModificationsGenerator.h>" namespace "OpenMS":
+cdef extern from "<OpenMS/ANALYSIS/XLMS/ONuXLModificationsGenerator.h>" namespace "OpenMS":
 
-    cdef cppclass RNPxlModificationMassesResult:
+    cdef cppclass ONuXLModificationMassesResult:
 
-        RNPxlModificationMassesResult() nogil except +
-        RNPxlModificationMassesResult(RNPxlModificationMassesResult) nogil except + 
+        ONuXLModificationMassesResult() nogil except +
+        ONuXLModificationMassesResult(ONuXLModificationMassesResult) nogil except + 
 
         # libcpp_map[String, double] mod_masses # empirical formula -> mass
         # libcpp_map[String, libcpp_set[String] ] mod_combinations # empirical formula -> nucleotide formula(s) (formulas if modifications lead to ambiguities)

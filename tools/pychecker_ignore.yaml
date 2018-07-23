@@ -188,7 +188,7 @@ PyOpenMSChecker:
         - loadSize
         - isValid
 
-    OpenMS::RNPxlModificationMassesResult:
+    OpenMS::ONuXLModificationMassesResult:
         # STL attributes
         - mod_masses
         - mod_combinations
@@ -1635,9 +1635,9 @@ PyOpenMSChecker:
     - OpenMS::OpenSwathWorkflow::ChromExtractParams
     - OpenMS::OpenSwathTSVWriter
     - ModificationMassesResult
-    - RNPxlReportRow
+    - ONuXLReportRow
     - TOPPFuzzyDiff
     - TOPPRNPxlXICFilter
     - MarkerIonExtractor
-    - RNPxlReportRowHeader
+    - ONuXLReportRowHeader
     - TOPPRNPxl

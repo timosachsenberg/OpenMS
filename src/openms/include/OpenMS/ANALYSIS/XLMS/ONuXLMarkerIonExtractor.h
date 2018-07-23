@@ -32,62 +32,28 @@
 // $Authors: Timo Sachsenberg $
 // --------------------------------------------------------------------------
 
-#include <OpenMS/ANALYSIS/RNPXL/RNPxlMarkerIonExtractor.h>
-#include <OpenMS/FILTERING/TRANSFORMERS/Normalizer.h>
+#pragma once
 
-using namespace std;
+#include <OpenMS/KERNEL/StandardTypes.h>
+#include <OpenMS/DATASTRUCTURES/String.h>
+
+
+#include <map>
+#include <vector>
 
 namespace OpenMS
 {
-
-
-RNPxlMarkerIonExtractor::MarkerIonsType RNPxlMarkerIonExtractor::extractMarkerIons(const PeakSpectrum& s, const double marker_tolerance)
+namespace OpenNuXL
 {
-  MarkerIonsType marker_ions;
-  marker_ions["A"].push_back(make_pair(136.06231, 0.0));
-  marker_ions["A"].push_back(make_pair(330.06033, 0.0));
-  marker_ions["C"].push_back(make_pair(112.05108, 0.0));
-  marker_ions["C"].push_back(make_pair(306.04910, 0.0));
-  marker_ions["G"].push_back(make_pair(152.05723, 0.0));
-  marker_ions["G"].push_back(make_pair(346.05525, 0.0));
-  marker_ions["U"].push_back(make_pair(113.03509, 0.0));
-  marker_ions["U"].push_back(make_pair(307.03311, 0.0));
-
-  PeakSpectrum spec(s);
-  Normalizer normalizer;
-  normalizer.filterSpectrum(spec);
-  spec.sortByPosition();
-
-  // for each nucleotide with marker ions
-  for (MarkerIonsType::iterator it = marker_ions.begin(); it != marker_ions.end(); ++it)
+  struct OPENMS_DLLAPI ONuXLMarkerIonExtractor
   {
-    // for each marker ion of the current nucleotide
-    for (Size i = 0; i != it->second.size(); ++i)
-    {
-      double mz = it->second[i].first;
-      double max_intensity = 0;
-      for (PeakSpectrum::ConstIterator sit = spec.begin(); sit != spec.end(); ++sit)
-      {
-        if (sit->getMZ() + marker_tolerance < mz)
-        {
-          continue;
-        }
-        if (mz < sit->getMZ() - marker_tolerance)
-        {
-          break;
-        }
-        if (fabs(mz - sit->getMZ()) < marker_tolerance)
-        {
-          if (max_intensity < sit->getIntensity())
-          {
-            max_intensity = sit->getIntensity();
-          }
-        }
-      }
-      it->second[i].second = max_intensity;
-    }
-  }
-  return marker_ions;
+    // name to mass-intensity pair
+    typedef std::map<String, std::vector<std::pair<double, double> > > MarkerIonsType;
+  
+    // extract an annotate NA marker ions
+    static MarkerIonsType extractMarkerIons(const PeakSpectrum& s, const double marker_tolerance);
+  };
 }
 }
+
 

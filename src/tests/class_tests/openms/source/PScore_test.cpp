@@ -37,7 +37,7 @@
 #include <OpenMS/FORMAT/DTAFile.h>
 
 ///////////////////////////
-#include <OpenMS/ANALYSIS/RNPXL/PScore.h>
+#include <OpenMS/ANALYSIS/XLMS/PScore.h>
 ///////////////////////////
 #include <OpenMS/KERNEL/MSSpectrum.h>
 #include <OpenMS/KERNEL/MSExperiment.h>

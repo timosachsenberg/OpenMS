@@ -32,7 +32,7 @@
 // $Authors: Timo Sachsenberg $
 // --------------------------------------------------------------------------
 
-#include <OpenMS/ANALYSIS/RNPXL/MorpheusScore.h>
+#include <OpenMS/ANALYSIS/XLMS/MorpheusScore.h>
 #include <OpenMS/KERNEL/MSSpectrum.h>
 #include <cmath>
 

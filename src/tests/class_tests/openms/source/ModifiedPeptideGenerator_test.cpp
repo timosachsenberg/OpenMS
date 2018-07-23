@@ -39,7 +39,7 @@
 #include <OpenMS/DATASTRUCTURES/ListUtilsIO.h>
 
 ///////////////////////////
-#include <OpenMS/ANALYSIS/RNPXL/ModifiedPeptideGenerator.h>
+#include <OpenMS/ANALYSIS/XLMS/ModifiedPeptideGenerator.h>
 ///////////////////////////
 
 using namespace OpenMS;

@@ -34,39 +34,34 @@
 
 #pragma once
 
-#include <OpenMS/KERNEL/StandardTypes.h>
+#include <OpenMS/CHEMISTRY/EmpiricalFormula.h>
 #include <OpenMS/DATASTRUCTURES/String.h>
-#include <OpenMS/DATASTRUCTURES/ListUtils.h>
-#include <vector>
-#include <map>
-#include <set>
-#include <iostream>
 
 namespace OpenMS
-{  
-  class AASequence;
-
-  struct OPENMS_DLLAPI RNPxlModificationMassesResult
+{
+namespace OpenNuXL
+{ 
+  /* @brief nucleotide adduct observed on a fragment ion
+   */
+  struct OPENMS_DLLAPI ONuXLFragmentAdduct
   {
-    std::map<String, double> mod_masses; // empirical formula -> mass
-    std::map<String, std::set<String> > mod_combinations; // empirical formula -> nucleotide formula(s) (formulas if modifications lead to ambiguities)
-    std::map<Size, String> mod_formula_idx;
+    EmpiricalFormula formula; // formula
+    String name;  // name used in annotation
+    double mass = 0;
+
+    ONuXLFragmentAdduct() = default;
+
+    ONuXLFragmentAdduct(const ONuXLFragmentAdduct&) = default;
+
+    ONuXLFragmentAdduct(ONuXLFragmentAdduct&&) = default;
+
+    ONuXLFragmentAdduct& operator=(const ONuXLFragmentAdduct&) = default;
+
+    ONuXLFragmentAdduct& operator=(ONuXLFragmentAdduct&&) = default;
+
+    bool operator<(const ONuXLFragmentAdduct& other) const;
+
+    bool operator==(const ONuXLFragmentAdduct& other) const;
   };
-
-  class OPENMS_DLLAPI RNPxlModificationsGenerator
-  {
-    public:
-      static RNPxlModificationMassesResult initModificationMassesRNA(StringList target_nucleotides,
-                                                                     std::set<char> can_xl,
-                                                                     StringList mappings,
-                                                                     StringList modifications,
-                                                                     String sequence_restriction,
-                                                                     bool cysteine_adduct,
-                                                                     Int max_length = 4);
-    private:
-      static bool notInSeq(String res_seq, String query);
-      static void generateTargetSequences(const String& res_seq, Size param_pos, const std::map<char, std::vector<char> >& map_source2target, StringList& target_sequences);
-    };
 }
-
-
+}

@@ -33,7 +33,7 @@
 // --------------------------------------------------------------------------
 
 #include <OpenMS/KERNEL/StandardTypes.h>
-#include <OpenMS/ANALYSIS/RNPXL/PScore.h>
+#include <OpenMS/ANALYSIS/XLMS/PScore.h>
 #include <OpenMS/ANALYSIS/ID/AScore.h>
 
 #include <OpenMS/KERNEL/MSExperiment.h>

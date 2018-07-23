@@ -42,11 +42,11 @@
 #include <OpenMS/CHEMISTRY/AASequence.h>
 #include <OpenMS/KERNEL/MSSpectrum.h>
 #include <OpenMS/KERNEL/MSExperiment.h>
-#include <OpenMS/ANALYSIS/RNPXL/RNPxlDeisotoper.h>
+#include <OpenMS/ANALYSIS/XLMS/ONuXLDeisotoper.h>
 
 ///////////////////////////
 
-START_TEST(RNPxlDeisotoper, "$Id$")
+START_TEST(ONuXLDeisotoper, "$Id$")
 
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////

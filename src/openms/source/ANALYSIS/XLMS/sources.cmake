@@ -3,9 +3,23 @@ set(directory source/ANALYSIS/XLMS)
 
 ### list all filenames of the directory here
 set(sources_list
+ONuXLSpectrumProcessing.cpp
 OPXLDataStructs.cpp
 OPXLHelper.cpp
 OPXLSpectrumProcessingAlgorithms.cpp
+HyperScore.cpp
+ModifiedPeptideGenerator.cpp
+PScore.cpp
+ONuXLDeisotoper.cpp
+ONuXLFragmentAdduct.cpp
+ONuXLFragmentAnnotationHelper.cpp
+ONuXLFragmentIonGenerator.cpp
+ONuXLMarkerIonExtractor.cpp
+ONuXLModificationsGenerator.cpp
+ONuXLParameterParsing.cpp
+ONuXLReport.cpp
+ONuXLSearchEngine.cpp
+MorpheusScore.cpp
 XQuestScores.cpp
 )
 

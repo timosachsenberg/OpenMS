@@ -672,7 +672,7 @@ namespace OpenMS
 
               double ppm_error(0);
 
-              // Protein:RNA cross-link, Protein-Protein cross-link, or other data with a precomputed precursor error
+              // Protein:NA cross-link, Protein-Protein cross-link, or other data with a precomputed precursor error
               if (pi[pi_idx].getHits()[0].metaValueExists(Constants::PRECURSOR_ERROR_PPM_USERPARAM))
               {
                 ppm_error = fabs((double)pi[pi_idx].getHits()[0].getMetaValue(Constants::PRECURSOR_ERROR_PPM_USERPARAM));

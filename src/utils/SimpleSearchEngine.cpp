@@ -45,9 +45,9 @@
 #include <OpenMS/ANALYSIS/ID/PeptideIndexing.h>
 
 #include <OpenMS/CHEMISTRY/ModificationsDB.h>
-#include <OpenMS/ANALYSIS/RNPXL/ModifiedPeptideGenerator.h>
-#include <OpenMS/ANALYSIS/RNPXL/HyperScore.h>
-#include <OpenMS/ANALYSIS/RNPXL/RNPxlDeisotoper.h>
+#include <OpenMS/ANALYSIS/XLMS/ModifiedPeptideGenerator.h>
+#include <OpenMS/ANALYSIS/XLMS/HyperScore.h>
+#include <OpenMS/ANALYSIS/XLMS/ONuXLDeisotoper.h>
 
 // preprocessing and filtering
 #include <OpenMS/FILTERING/TRANSFORMERS/ThresholdMower.h>
@@ -82,14 +82,14 @@ class SimpleSearchEngine :
     public TOPPBase
 {
   /// Slimmer structure as storing all scored candidates in PeptideHit objects takes too much space
-  struct AnnotatedHit
+  struct AnnotatedHit_
   {
     StringView sequence;
-    SignedSize peptide_mod_index; // enumeration index of the non-RNA peptide modification
+    SignedSize peptide_mod_index; // enumeration index of peptide modification
     double score = 0; // main score
     std::vector<PeptideHit::PeakAnnotation> fragment_annotations;
 
-    static bool hasBetterScore(const AnnotatedHit& a, const AnnotatedHit& b)
+    static bool hasBetterScore(const AnnotatedHit_& a, const AnnotatedHit_& b)
     {
       return a.score > b.score;
     }
@@ -229,7 +229,7 @@ class SimpleSearchEngine :
     }
 
     void postProcessHits_(const PeakMap& exp, 
-      vector<vector<AnnotatedHit> >& annotated_hits, 
+      vector<vector<AnnotatedHit_> >& annotated_hits, 
       vector<ProteinIdentification>& protein_ids, 
       vector<PeptideIdentification>& peptide_ids, 
       Size top_hits,
@@ -245,7 +245,7 @@ class SimpleSearchEngine :
       {
         // sort and keeps n best elements according to score
         Size topn = top_hits > annotated_hits[scan_index].size() ? annotated_hits[scan_index].size() : top_hits;
-        std::partial_sort(annotated_hits[scan_index].begin(), annotated_hits[scan_index].begin() + topn, annotated_hits[scan_index].end(), AnnotatedHit::hasBetterScore);
+        std::partial_sort(annotated_hits[scan_index].begin(), annotated_hits[scan_index].begin() + topn, annotated_hits[scan_index].end(), AnnotatedHit_::hasBetterScore);
         annotated_hits[scan_index].resize(topn);
         annotated_hits.shrink_to_fit();
       }
@@ -268,7 +268,7 @@ class SimpleSearchEngine :
 
           // create full peptide hit structure from annotated hits
           vector<PeptideHit> phs;
-          for (vector<AnnotatedHit>::const_iterator a_it = annotated_hits[scan_index].begin(); a_it != annotated_hits[scan_index].end(); ++a_it)
+          for (vector<AnnotatedHit_>::const_iterator a_it = annotated_hits[scan_index].begin(); a_it != annotated_hits[scan_index].end(); ++a_it)
           {
             PeptideHit ph;
             ph.setCharge(charge);
@@ -422,7 +422,7 @@ class SimpleSearchEngine :
       spectrum_generator.setParameters(param);
 
       // preallocate storage for PSMs
-      vector<vector<AnnotatedHit> > annotated_hits(spectra.size(), vector<AnnotatedHit>());
+      vector<vector<AnnotatedHit_> > annotated_hits(spectra.size(), vector<AnnotatedHit_>());
       for (auto & a : annotated_hits) { a.reserve(2 * top_hits); }
 
 #ifdef _OPENMP
@@ -560,7 +560,7 @@ class SimpleSearchEngine :
               if (score == 0) { continue; } // no hit?
 
               // add peptide hit
-              AnnotatedHit ah;
+              AnnotatedHit_ ah;
               ah.sequence = c;
               ah.peptide_mod_index = mod_pep_idx;
               ah.score = score;
@@ -574,7 +574,7 @@ class SimpleSearchEngine :
                 // prevent vector from growing indefinitly (memory) but don't shrink the vector every time
                 if (annotated_hits[scan_index].size() >= 2 * top_hits)
                 {
-                  std::partial_sort(annotated_hits[scan_index].begin(), annotated_hits[scan_index].begin() + top_hits, annotated_hits[scan_index].end(), AnnotatedHit::hasBetterScore);
+                  std::partial_sort(annotated_hits[scan_index].begin(), annotated_hits[scan_index].begin() + top_hits, annotated_hits[scan_index].end(), AnnotatedHit_::hasBetterScore);
                   annotated_hits[scan_index].resize(top_hits); 
                 }
 #ifdef _OPENMP

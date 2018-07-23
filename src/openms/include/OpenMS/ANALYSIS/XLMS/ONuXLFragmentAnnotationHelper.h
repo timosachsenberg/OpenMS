@@ -46,14 +46,14 @@
 
 namespace OpenMS
 {
-namespace Internal
+namespace OpenNuXL
 {
 
 /* @brief Convenience functions to construct appealing fragment annotation strings
   *       and store them as PeptideHit::PeakAnnotation
  *
  */
-class OPENMS_DLLAPI RNPxlFragmentAnnotationHelper
+class OPENMS_DLLAPI ONuXLFragmentAnnotationHelper
 {
   public:
 

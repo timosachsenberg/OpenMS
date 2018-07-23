@@ -32,25 +32,22 @@
 // $Authors: Timo Sachsenberg $
 // --------------------------------------------------------------------------
 
-#pragma once
-
-#include <OpenMS/KERNEL/StandardTypes.h>
-
-#include <map>
-#include <vector>
+#include <OpenMS/ANALYSIS/XLMS/ONuXLFragmentAdduct.h>
 
 namespace OpenMS
 {
-  class String;
+namespace OpenNuXL
+{
+    bool ONuXLFragmentAdduct::operator<(const ONuXLFragmentAdduct& other) const
+    {
+      String fa = formula.toString();
+      String fb = other.formula.toString();
+      return std::tie(mass, fa, name) < std::tie(other.mass, fb, other.name);
+    }
 
-  struct OPENMS_DLLAPI RNPxlMarkerIonExtractor
-  {
-    // name to mass-intensity pair
-    typedef std::map<String, std::vector<std::pair<double, double> > > MarkerIonsType;
-  
-    // extract an annotate RNA marker ions
-    static MarkerIonsType extractMarkerIons(const PeakSpectrum& s, const double marker_tolerance);
-  };
+    bool ONuXLFragmentAdduct::operator==(const ONuXLFragmentAdduct& other) const
+    {
+      return std::tie(formula, name) == std::tie(other.formula, other.name);
+    }
 }
-
-
+}

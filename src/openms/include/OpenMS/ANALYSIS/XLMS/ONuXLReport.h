@@ -35,7 +35,7 @@
 #pragma once
 
 #include <OpenMS/KERNEL/StandardTypes.h>
-#include <OpenMS/ANALYSIS/RNPXL/RNPxlMarkerIonExtractor.h>
+#include <OpenMS/ANALYSIS/XLMS/ONuXLMarkerIonExtractor.h>
 #include <OpenMS/DATASTRUCTURES/ListUtilsIO.h>
 
 #include <OpenMS/METADATA/PeptideIdentification.h>
@@ -45,9 +45,10 @@
 
 namespace OpenMS
 {
-
+namespace OpenNuXL
+{
 // struct to hold a single report line
-struct OPENMS_DLLAPI RNPxlReportRow
+struct OPENMS_DLLAPI ONuXLReportRow
 {
   bool no_id;
   double rt;
@@ -65,7 +66,7 @@ struct OPENMS_DLLAPI RNPxlReportRow
   double xl_weight;
   double abs_prec_error;
   double rel_prec_error;
-  RNPxlMarkerIonExtractor::MarkerIonsType marker_ions;
+  ONuXLMarkerIonExtractor::MarkerIonsType marker_ions;
   double m_H;
   double m_2H;
   double m_3H;
@@ -76,17 +77,21 @@ struct OPENMS_DLLAPI RNPxlReportRow
 };
 
 // create header line
-struct OPENMS_DLLAPI RNPxlReportRowHeader
+struct OPENMS_DLLAPI ONuXLReportRowHeader
 {
   static String getString(const String& separator);
 };
 
 // create report
-struct OPENMS_DLLAPI RNPxlReport
+struct OPENMS_DLLAPI ONuXLReport
 {
-  static std::vector<RNPxlReportRow> annotate(const PeakMap& spectra, std::vector<PeptideIdentification>& peptide_ids, double marker_ions_tolerance);
+  static std::vector<ONuXLReportRow> annotate(
+    const PeakMap& spectra, 
+    std::vector<PeptideIdentification>& peptide_ids, 
+    double marker_ions_tolerance);
 };
 
+}
 }
 
 

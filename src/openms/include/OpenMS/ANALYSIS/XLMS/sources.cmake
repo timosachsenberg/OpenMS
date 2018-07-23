@@ -3,6 +3,19 @@ set(directory include/OpenMS/ANALYSIS/XLMS)
 
 ### list all header files of the directory here
 set(sources_list_h
+ModifiedPeptideGenerator.h
+HyperScore.h
+MorpheusScore.h
+PScore.h
+ONuXLDeisotoper.h
+ONuXLFragmentAdduct.h
+ONuXLFragmentAnnotationHelper.h
+ONuXLFragmentIonGenerator.h
+ONuXLMarkerIonExtractor.h
+ONuXLModificationsGenerator.h
+ONuXLParameterParsing.h
+ONuXLReport.h
+ONuXLSpectrumProcessing.h
 OPXLDataStructs.h
 OPXLHelper.h
 OPXLSpectrumProcessingAlgorithms.h

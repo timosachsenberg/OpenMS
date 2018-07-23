@@ -35,7 +35,7 @@
 
 #include <OpenMS/KERNEL/StandardTypes.h>
 #include <OpenMS/CONCEPT/Constants.h>
-#include <OpenMS/ANALYSIS/RNPXL/RNPxlDeisotoper.h>
+#include <OpenMS/ANALYSIS/XLMS/ONuXLDeisotoper.h>
 #include <OpenMS/KERNEL/MSSpectrum.h>
 
 namespace OpenMS
@@ -205,5 +205,7 @@ void Deisotoper::deisotopeAndSingleCharge(MSSpectrum& spectra,
   }
   spectra.sortByPosition();
 }
-} // namespace
+
+}
+
 

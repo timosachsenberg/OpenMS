@@ -32,7 +32,7 @@
 // $Authors: Timo Sachsenberg $
 // --------------------------------------------------------------------------
 
-#include <OpenMS/ANALYSIS/RNPXL/RNPxlModificationsGenerator.h>
+#include <OpenMS/ANALYSIS/XLMS/ONuXLModificationsGenerator.h>
 #include <OpenMS/CHEMISTRY/ElementDB.h>
 #include <OpenMS/CHEMISTRY/ResidueDB.h>
 #include <OpenMS/CHEMISTRY/ResidueModification.h>
@@ -43,9 +43,10 @@ using namespace std;
 
 namespace OpenMS
 {
-
+namespace OpenNuXL
+{
 //static
-bool RNPxlModificationsGenerator::notInSeq(String res_seq, String query)
+bool ONuXLModificationsGenerator::notInSeq(String res_seq, String query)
 {
   // special case: empty query is in every seq -> false
   if (query.empty()) { return false; }
@@ -65,7 +66,7 @@ bool RNPxlModificationsGenerator::notInSeq(String res_seq, String query)
 }
 
 //static
-RNPxlModificationMassesResult RNPxlModificationsGenerator::initModificationMassesRNA(StringList target_nucleotides,
+ONuXLModificationMassesResult ONuXLModificationsGenerator::initModificationMassesRNA(StringList target_nucleotides,
                                                                                      std::set<char> can_xl,
                                                                                      StringList mappings,
                                                                                      StringList modifications,
@@ -79,7 +80,7 @@ RNPxlModificationMassesResult RNPxlModificationsGenerator::initModificationMasse
   const String cysteine_adduct_string("C4H8S2O2");
   const EmpiricalFormula cysteine_adduct_formula(cysteine_adduct_string); // 152 modification
 
-  RNPxlModificationMassesResult result;
+  ONuXLModificationMassesResult result;
 
   // read nucleotides and empirical formula of monophosphate
   map<String, EmpiricalFormula> map_target_to_formula;
@@ -453,7 +454,7 @@ RNPxlModificationMassesResult RNPxlModificationsGenerator::initModificationMasse
 }
 
 //static
-void  RNPxlModificationsGenerator::generateTargetSequences(const String& res_seq,
+void  ONuXLModificationsGenerator::generateTargetSequences(const String& res_seq,
                                                            Size param_pos,
                                                            const map<char, vector<char> >& map_source2target,
                                                            StringList& target_sequences)
@@ -511,4 +512,4 @@ void  RNPxlModificationsGenerator::generateTargetSequences(const String& res_seq
 }
 
 }
-
+}

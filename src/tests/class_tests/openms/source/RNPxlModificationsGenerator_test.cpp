@@ -35,33 +35,34 @@
 #include <OpenMS/CONCEPT/ClassTest.h>
 
 ///////////////////////////
-#include <OpenMS/ANALYSIS/RNPXL/RNPxlModificationsGenerator.h>
+#include <OpenMS/ANALYSIS/XLMS/ONuXLModificationsGenerator.h>
 ///////////////////////////
 
 using namespace OpenMS;
+using namespace OpenNuXL;
 using namespace std;
 
-START_TEST(RNPxlModificationsGenerator, "$Id$")
+START_TEST(ONuXLModificationsGenerator, "$Id$")
 
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
 
-RNPxlModificationsGenerator* ptr = nullptr;
-RNPxlModificationsGenerator* null_ptr = nullptr;
-START_SECTION(RNPxlModificationsGenerator())
+ONuXLModificationsGenerator* ptr = nullptr;
+ONuXLModificationsGenerator* null_ptr = nullptr;
+START_SECTION(ONuXLModificationsGenerator())
 {
-	ptr = new RNPxlModificationsGenerator();
+	ptr = new ONuXLModificationsGenerator();
 	TEST_NOT_EQUAL(ptr, null_ptr)
 }
 END_SECTION
 
-START_SECTION(~RNPxlModificationsGenerator())
+START_SECTION(~ONuXLModificationsGenerator())
 {
 	delete ptr;
 }
 END_SECTION
 
-START_SECTION((static RNPxlModificationMassesResult initModificationMassesRNA(StringList target_nucleotides, StringList mappings, StringList restrictions, StringList modifications, String sequence_restriction, bool cysteine_adduct, Int max_length=4)))
+START_SECTION((static ONuXLModificationMassesResult initModificationMassesRNA(StringList target_nucleotides, StringList mappings, StringList restrictions, StringList modifications, String sequence_restriction, bool cysteine_adduct, Int max_length=4)))
 {
   // TODO
 }

@@ -1,7 +1,7 @@
 from ProgressLogger cimport *
 from libcpp cimport bool
 
-cdef extern from "<OpenMS/ANALYSIS/RNPXL/ModifiedPeptideGenerator.h>" namespace "OpenMS":
+cdef extern from "<OpenMS/ANALYSIS/XLMS/ModifiedPeptideGenerator.h>" namespace "OpenMS":
 
     cdef cppclass ModifiedPeptideGenerator:
 

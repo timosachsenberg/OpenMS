@@ -33,12 +33,14 @@
 // --------------------------------------------------------------------------
 
 #include <OpenMS/KERNEL/StandardTypes.h>
-#include <OpenMS/ANALYSIS/RNPXL/RNPxlReport.h>
+#include <OpenMS/ANALYSIS/XLMS/ONuXLReport.h>
 #include <OpenMS/MATH/MISC/MathFunctions.h>
 
 namespace OpenMS
 {
-  String RNPxlReportRow::getString(const String& separator) const
+namespace OpenNuXL
+{
+  String ONuXLReportRow::getString(const String& separator) const
   {
     StringList sl;
 
@@ -59,7 +61,7 @@ namespace OpenMS
     }
 
     // marker ions
-    for (RNPxlMarkerIonExtractor::MarkerIonsType::const_iterator it = marker_ions.begin(); it != marker_ions.end(); ++it)
+    for (ONuXLMarkerIonExtractor::MarkerIonsType::const_iterator it = marker_ions.begin(); it != marker_ions.end(); ++it)
     {
       for (Size i = 0; i != it->second.size(); ++i)
       {
@@ -91,7 +93,7 @@ namespace OpenMS
     return ListUtils::concatenate(sl, separator);
   }
 
-  String RNPxlReportRowHeader::getString(const String& separator)
+  String ONuXLReportRowHeader::getString(const String& separator)
   {
     StringList sl;
     sl << "#RT" << "original m/z" << "proteins" << "RNA" << "peptide" << "charge" << "score"
@@ -99,7 +101,7 @@ namespace OpenMS
        << "peptide weight" << "RNA weight" << "cross-link weight";
 
     // marker ion fields
-    RNPxlMarkerIonExtractor::MarkerIonsType marker_ions = RNPxlMarkerIonExtractor::extractMarkerIons(PeakSpectrum(), 0.0); // call only to generate header entries
+    ONuXLMarkerIonExtractor::MarkerIonsType marker_ions = ONuXLMarkerIonExtractor::extractMarkerIons(PeakSpectrum(), 0.0); // call only to generate header entries
     for (auto const & ma : marker_ions)
     {
       for (Size i = 0; i != ma.second.size(); ++i)
@@ -111,7 +113,7 @@ namespace OpenMS
     return ListUtils::concatenate(sl, separator);
   }
 
-  std::vector<RNPxlReportRow> RNPxlReport::annotate(const PeakMap& spectra, std::vector<PeptideIdentification>& peptide_ids, double marker_ions_tolerance)
+  std::vector<ONuXLReportRow> ONuXLReport::annotate(const PeakMap& spectra, std::vector<PeptideIdentification>& peptide_ids, double marker_ions_tolerance)
   {
     std::map<Size, Size> map_spectra_to_id;
     for (Size i = 0; i != peptide_ids.size(); ++i)
@@ -121,7 +123,7 @@ namespace OpenMS
       map_spectra_to_id[scan_index] = i;
     }
 
-    std::vector<RNPxlReportRow> csv_rows;
+    std::vector<ONuXLReportRow> csv_rows;
 
     for (PeakMap::ConstIterator s_it = spectra.begin(); s_it != spectra.end(); ++s_it)
     {
@@ -133,11 +135,11 @@ namespace OpenMS
       {
         Size charge = precursor[0].getCharge();
         double mz = precursor[0].getMZ();
-        RNPxlMarkerIonExtractor::MarkerIonsType marker_ions = RNPxlMarkerIonExtractor::extractMarkerIons(*s_it, marker_ions_tolerance);
+        ONuXLMarkerIonExtractor::MarkerIonsType marker_ions = ONuXLMarkerIonExtractor::extractMarkerIons(*s_it, marker_ions_tolerance);
 
         double rt = s_it->getRT();
 
-        RNPxlReportRow row;
+        ONuXLReportRow row;
 
         // case 1: no peptide identification: store rt, mz, charge and marker ion intensities
         if (map_spectra_to_id.find(scan_index) == map_spectra_to_id.end())
@@ -216,7 +218,7 @@ namespace OpenMS
           ph.setMetaValue("RNPxl:peptide_mass_z0", DataValue(peptide_weight));
           ph.setMetaValue("RNPxl:xl_mass_z0", xl_weight);
 
-          for (RNPxlMarkerIonExtractor::MarkerIonsType::const_iterator it = marker_ions.begin(); it != marker_ions.end(); ++it)
+          for (ONuXLMarkerIonExtractor::MarkerIonsType::const_iterator it = marker_ions.begin(); it != marker_ions.end(); ++it)
           {
             for (Size i = 0; i != it->second.size(); ++i)
             {
@@ -284,5 +286,7 @@ namespace OpenMS
     }
   }
   return csv_rows;
+}
+
 }
 }
