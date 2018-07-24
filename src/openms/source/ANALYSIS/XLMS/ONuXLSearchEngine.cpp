@@ -60,37 +60,28 @@ using namespace OpenNuXL;
     defaults_.setValue("precursor:mass_tolerance", 10.0, "Precursor mass tolerance (+/- around precursor m/z)");
     defaults_.setSectionDescription("precursor", "Precursor (Parent Ion) Options");
 
-    StringList precursor_mass_tolerance_unit_valid_strings;
-    precursor_mass_tolerance_unit_valid_strings.emplace_back("ppm");
-    precursor_mass_tolerance_unit_valid_strings.emplace_back("Da");
-
     defaults_.setValue("precursor:mass_tolerance_unit", "ppm", "Unit of precursor mass tolerance.");
-    defaults_.setValidStrings("precursor:mass_tolerance_unit", precursor_mass_tolerance_unit_valid_strings);
+    defaults_.setValidStrings("precursor:mass_tolerance_unit", StringList({"ppm", "Da"}));
 
     defaults_.setValue("precursor:min_charge", 2, "Minimum precursor charge to be considered.");
     defaults_.setValue("precursor:max_charge", 5, "Maximum precursor charge to be considered.");
 
     // consider one before annotated monoisotopic peak and the annotated one
-    IntList isotopes = {0, 1};
-    defaults_.setValue("precursor:isotopes", isotopes, "Corrects for mono-isotopic peak misassignments. (E.g.: 1 = prec. may be misassigned to first isotopic peak)");
+    defaults_.setValue("precursor:isotopes", IntList({0, 1}), "Corrects for mono-isotopic peak misassignments. (E.g.: 1 = prec. may be misassigned to first isotopic peak)");
 
     defaults_.setValue("fragment:mass_tolerance", 10.0, "Fragment mass tolerance (+/- around fragment m/z)");
-
-    StringList fragment_mass_tolerance_unit_valid_strings;
-    fragment_mass_tolerance_unit_valid_strings.emplace_back("ppm");
-    fragment_mass_tolerance_unit_valid_strings.emplace_back("Da");
-
     defaults_.setValue("fragment:mass_tolerance_unit", "ppm", "Unit of fragment mass");
-    defaults_.setValidStrings("fragment:mass_tolerance_unit", fragment_mass_tolerance_unit_valid_strings);
+    defaults_.setValidStrings("fragment:mass_tolerance_unit", StringList({"ppm", "Da"}));
     defaults_.setSectionDescription("fragment", "Fragments (Product Ion) Options");
-
 
     vector<String> all_mods;
     ModificationsDB::getInstance()->getAllSearchModifications(all_mods);
     defaults_.setValue("modifications:fixed", ListUtils::create<String>(""), "Fixed modifications, specified using UniMod (www.unimod.org) terms, e.g. 'Carbamidomethyl (C)'");
     defaults_.setValidStrings("modifications:fixed", all_mods);
+ 
     defaults_.setValue("modifications:variable", ListUtils::create<String>(""), "Variable modifications, specified using UniMod (www.unimod.org) terms, e.g. 'Oxidation (M)'");
     defaults_.setValidStrings("modifications:variable", all_mods);
+ 
     defaults_.setValue("modifications:variable_max_per_peptide", 2, "Maximum number of residues carrying a variable modification per candidate peptide");
     defaults_.setSectionDescription("modifications", "Modifications Options");
 
@@ -148,16 +139,20 @@ using namespace OpenNuXL;
     defaults_.setValue("RNPxl:modifications", modifications, "format: empirical formula e.g -H2O, ..., H2O+PO3");
 
     defaults_.setValue("RNPxl:scoring", "fast", "Scoring algorithm used in prescoring (fast: total-loss, slow: all losses).");
-    defaults_.setValue("RNPxl:scoring", StringList{"fast", "slow"});
+    defaults_.setValidStrings("RNPxl:scoring", StringList{"fast", "slow"});
 
     defaults_.setValue("RNPxl:decoys", "false", "Generate decoy sequences and spectra.");
     defaults_.setValidStrings("RNPxl:decoys", ListUtils::create<String>("true,false"));
+
     defaults_.setValue("RNPxl:CysteineAdduct", "false", "Use this flag if the +152 adduct is expected.");
     defaults_.setValidStrings("RNPxl:CysteineAdduct", ListUtils::create<String>("true,false"));
+    
     defaults_.setValue("RNPxl:filter_fractional_mass", "false", "Use this flag to filter non-crosslinks by fractional mass.");
     defaults_.setValidStrings("RNPxl:filter_fractional_mass", ListUtils::create<String>("true,false"));
+    
     defaults_.setValue("RNPxl:localization", "false", "Use this flag to perform crosslink localization by partial loss scoring as post-analysis.");
     defaults_.setValidStrings("RNPxl:localization", ListUtils::create<String>("true,false"));
+    
     defaults_.setValue("RNPxl:carbon_labeled_fragments", "false", "Generate fragment shifts assuming full labeling of carbon (e.g. completely labeled U13).");
     defaults_.setValidStrings("RNPxl:carbon_labeled_fragments", ListUtils::create<String>("true,false"));
 
