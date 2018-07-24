@@ -113,7 +113,10 @@ namespace OpenNuXL
     return ListUtils::concatenate(sl, separator);
   }
 
-  std::vector<ONuXLReportRow> ONuXLReport::annotate(const PeakMap& spectra, std::vector<PeptideIdentification>& peptide_ids, double marker_ions_tolerance)
+  std::vector<ONuXLReportRow> ONuXLReport::annotate(
+    const PeakMap& spectra, 
+    std::vector<PeptideIdentification>& peptide_ids, 
+    double marker_ions_tolerance)
   {
     std::map<Size, Size> map_spectra_to_id;
     for (Size i = 0; i != peptide_ids.size(); ++i)

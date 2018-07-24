@@ -156,7 +156,7 @@ using namespace OpenNuXL;
     defaults_.setValidStrings("RNPxl:CysteineAdduct", ListUtils::create<String>("true,false"));
     defaults_.setValue("RNPxl:filter_fractional_mass", "false", "Use this flag to filter non-crosslinks by fractional mass.");
     defaults_.setValidStrings("RNPxl:filter_fractional_mass", ListUtils::create<String>("true,false"));
-    defaults_.setValue("RNPxl:localization", "true", "Use this flag to perform crosslink localization by partial loss scoring as post-analysis.");
+    defaults_.setValue("RNPxl:localization", "false", "Use this flag to perform crosslink localization by partial loss scoring as post-analysis.");
     defaults_.setValidStrings("RNPxl:localization", ListUtils::create<String>("true,false"));
     defaults_.setValue("RNPxl:carbon_labeled_fragments", "false", "Generate fragment shifts assuming full labeling of carbon (e.g. completely labeled U13).");
     defaults_.setValidStrings("RNPxl:carbon_labeled_fragments", ListUtils::create<String>("true,false"));
@@ -860,9 +860,6 @@ using namespace OpenNuXL;
                      database_filename);
     endProgress();
 
-    // annotate ONuXL related information to hits and create report
-    vector<ONuXLReportRow> csv_rows = ONuXLReport::annotate(spectra, peptide_ids, marker_ions_tolerance);
-
     // reindex ids
     PeptideIndexing indexer;
     Param param_pi = indexer.getParameters();
@@ -898,8 +895,8 @@ using namespace OpenNuXL;
       fdr.apply(peptide_ids);	
     }
 
-    // store report
-    csv_rows = ONuXLReport::annotate(spectra, peptide_ids, marker_ions_tolerance);
+    // annotate ONuXL related information to hits and create report    
+    vector<ONuXLReportRow> csv_rows = ONuXLReport::annotate(spectra, peptide_ids, marker_ions_tolerance);
     csv_file.addLine(ONuXLReportRowHeader().getString("\t"));
     for (Size i = 0; i != csv_rows.size(); ++i)
     {
