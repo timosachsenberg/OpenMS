@@ -44,17 +44,12 @@ namespace OpenMS
 {
 namespace OpenNuXL
 {
-
-// forward declare search engine so we can make it a friend
-class ONuXLSearchEngine;
   
 /* @brief Filter spectra to remove noise. Parameter are passed to spectra filter.
   */
 class OPENMS_DLLAPI ONuXLSpectrumProcessing
 {
-  private:
- 
-  friend ONuXLSearchEngine;
+  public:
 
   static void preprocess(
     PeakMap& exp, 
@@ -62,6 +57,18 @@ class OPENMS_DLLAPI ONuXLSpectrumProcessing
     bool fragment_mass_tolerance_unit_ppm, 
     bool single_charge_spectra, 
     bool annotate_charge = false);
+
+  // @brief Conservativly filters out precursors in exp_treatment (cross-linked) 
+  //        if the untreated control has a higher XIC intensity (specified by fold change).
+  //        These are most likely no cross-links as they are also present in control (at even higher intensity)
+  static void filterByFoldChange(
+                          const PeakMap& exp_control, 
+                          PeakMap& exp_treatment,
+                          double rt_tolerance_s = 20.0, 
+                          double mz_tolerance_ppm = 10.0, 
+                          double fold_change = 2.0);
+
+
 };
 }
 }
