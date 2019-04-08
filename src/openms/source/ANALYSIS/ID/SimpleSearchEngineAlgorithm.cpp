@@ -173,18 +173,6 @@ namespace OpenMS
   }
 
   // static
-  vector<ResidueModification> SimpleSearchEngineAlgorithm::getModifications_(const StringList& modNames)
-  {
-    vector<ResidueModification> modifications;
-    // iterate over modification names and add to vector
-    for (const String& m : modNames)
-    {
-      modifications.push_back(*ModificationsDB::getInstance()->getModification(m));
-    }
-    return modifications;
-  }
-
-  // static
   void SimpleSearchEngineAlgorithm::preprocessSpectra_(PeakMap& exp, double fragment_mass_tolerance, bool fragment_mass_tolerance_unit_ppm)
   {
     // filter MS2 map
@@ -239,8 +227,8 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
       std::vector<ProteinIdentification>& protein_ids, 
       std::vector<PeptideIdentification>& peptide_ids, 
       Size top_hits,
-      const std::vector<ResidueModification>& fixed_modifications, 
-      const std::vector<ResidueModification>& variable_modifications, 
+      const ModifiedPeptideGenerator::MapToResidueType& fixed_modifications, 
+      const ModifiedPeptideGenerator::MapToResidueType& variable_modifications, 
       Size max_variable_mods_per_peptide,
       const StringList& modifications_fixed,
       const StringList& modifications_variable,
@@ -295,8 +283,8 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
 
           // reapply modifications (because for memory reasons we only stored the index and recreation is fast)
           vector<AASequence> all_modified_peptides;
-          ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications.begin(), fixed_modifications.end(), aas);
-          ModifiedPeptideGenerator::applyVariableModifications(variable_modifications.begin(), variable_modifications.end(), aas, max_variable_mods_per_peptide, all_modified_peptides);
+          ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications, aas);
+          ModifiedPeptideGenerator::applyVariableModifications(variable_modifications, aas, max_variable_mods_per_peptide, all_modified_peptides);
 
           // reannotate much more memory heavy AASequence object
           AASequence fixed_and_variable_modified_peptide = all_modified_peptides[a_it->peptide_mod_index]; 
@@ -361,8 +349,8 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
       return ExitCodes::ILLEGAL_PARAMETERS;
     }
 
-    vector<ResidueModification> fixed_modifications = getModifications_(modifications_fixed_);
-    vector<ResidueModification> variable_modifications = getModifications_(modifications_variable_);
+    ModifiedPeptideGenerator::MapToResidueType fixed_modifications = ModifiedPeptideGenerator::getModifications(modifications_fixed_);
+    ModifiedPeptideGenerator::MapToResidueType variable_modifications = ModifiedPeptideGenerator::getModifications(modifications_variable_);
 
     // load MS2 map
     PeakMap spectra;
@@ -505,8 +493,8 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
 #endif
         {
           AASequence aas = AASequence::fromString(current_peptide);
-          ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications.begin(), fixed_modifications.end(), aas);
-          ModifiedPeptideGenerator::applyVariableModifications(variable_modifications.begin(), variable_modifications.end(), aas, modifications_max_variable_mods_per_peptide_, all_modified_peptides);
+          ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications, aas);
+          ModifiedPeptideGenerator::applyVariableModifications(variable_modifications, aas, modifications_max_variable_mods_per_peptide_, all_modified_peptides);
         }
 
         for (SignedSize mod_pep_idx = 0; mod_pep_idx < (SignedSize)all_modified_peptides.size(); ++mod_pep_idx)

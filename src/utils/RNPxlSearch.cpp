@@ -927,8 +927,8 @@ static void scoreShiftedFragments_(
                       vector<vector<AnnotatedHit> >& annotated_hits, 
                       Size top_hits, 
                       const RNPxlModificationMassesResult& mm, 
-                      const vector<ResidueModification>& fixed_modifications, 
-                      const vector<ResidueModification>& variable_modifications, 
+                      const ModifiedPeptideGenerator::MapToResidueType& fixed_modifications, 
+                      const ModifiedPeptideGenerator::MapToResidueType& variable_modifications, 
                       Size max_variable_mods_per_peptide, 
                       const TheoreticalSpectrumGenerator& partial_loss_spectrum_generator, 
                       double fragment_mass_tolerance, bool fragment_mass_tolerance_unit_ppm, 
@@ -1005,8 +1005,8 @@ static void scoreShiftedFragments_(
           const String& unmodified_sequence = ah.sequence.getString();
           AASequence aas = AASequence::fromString(unmodified_sequence);
           vector<AASequence> all_modified_peptides;
-          ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications.begin(), fixed_modifications.end(), aas);
-          ModifiedPeptideGenerator::applyVariableModifications(variable_modifications.begin(), variable_modifications.end(), aas, max_variable_mods_per_peptide, all_modified_peptides);
+          ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications, aas);
+          ModifiedPeptideGenerator::applyVariableModifications(variable_modifications, aas, max_variable_mods_per_peptide, all_modified_peptides);
           AASequence fixed_and_variable_modified_peptide = all_modified_peptides[ah.peptide_mod_index]; 
           double current_peptide_mass_without_NA = fixed_and_variable_modified_peptide.getMonoWeight();
 
@@ -1148,8 +1148,8 @@ static void scoreShiftedFragments_(
 
         // reapply modifications (because for memory reasons we only stored the index and recreation is fast)
         vector<AASequence> all_modified_peptides;
-        ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications.begin(), fixed_modifications.end(), aas);
-        ModifiedPeptideGenerator::applyVariableModifications(variable_modifications.begin(), variable_modifications.end(), aas, max_variable_mods_per_peptide, all_modified_peptides);
+        ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications, aas);
+        ModifiedPeptideGenerator::applyVariableModifications(variable_modifications, aas, max_variable_mods_per_peptide, all_modified_peptides);
 
         // sequence with modifications - note: reannotated version requires much more memory heavy AASequence object
         const AASequence& fixed_and_variable_modified_peptide = all_modified_peptides[a.peptide_mod_index];
@@ -1753,8 +1753,8 @@ static void scoreShiftedFragments_(
     vector<PeptideIdentification>& peptide_ids, 
     Size top_hits, 
     const RNPxlModificationMassesResult& mm, 
-    const vector<ResidueModification>& fixed_modifications, 
-    const vector<ResidueModification>& variable_modifications, 
+    const ModifiedPeptideGenerator::MapToResidueType& fixed_modifications, 
+    const ModifiedPeptideGenerator::MapToResidueType& variable_modifications, 
     Size max_variable_mods_per_peptide,
     const vector<PrecursorPurity::PurityScores>& purities)
   {
@@ -1807,8 +1807,8 @@ static void scoreShiftedFragments_(
 
           // reapply modifications (because for memory reasons we only stored the index and recreation is fast)
           vector<AASequence> all_modified_peptides;
-          ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications.begin(), fixed_modifications.end(), aas);
-          ModifiedPeptideGenerator::applyVariableModifications(variable_modifications.begin(), variable_modifications.end(), aas, max_variable_mods_per_peptide, all_modified_peptides);
+          ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications, aas);
+          ModifiedPeptideGenerator::applyVariableModifications(variable_modifications, aas, max_variable_mods_per_peptide, all_modified_peptides);
 
           // reannotate much more memory heavy AASequence object
           AASequence fixed_and_variable_modified_peptide = all_modified_peptides[ah.peptide_mod_index]; 
@@ -2221,8 +2221,8 @@ static void scoreShiftedFragments_(
       return ILLEGAL_PARAMETERS;
     }
 
-    vector<ResidueModification> fixed_modifications = RNPxlParameterParsing::getModifications(fixedModNames);
-    vector<ResidueModification> variable_modifications = RNPxlParameterParsing::getModifications(varModNames);
+    ModifiedPeptideGenerator::MapToResidueType fixed_modifications = ModifiedPeptideGenerator::getModifications(fixedModNames);
+    ModifiedPeptideGenerator::MapToResidueType variable_modifications = ModifiedPeptideGenerator::getModifications(varModNames);
     Size max_variable_mods_per_peptide = getIntOption_("modifications:variable_max_per_peptide");
 
     size_t report_top_hits = (size_t)getIntOption_("report:top_hits");
@@ -2453,11 +2453,12 @@ static void scoreShiftedFragments_(
         //  determine which residues might give rise to an immonium ion
         ImmoniumIonsInPeptide iip(unmodified_sequence);
 
-        AASequence aas = AASequence::fromString(unmodified_sequence);
-        ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications.begin(), fixed_modifications.end(), aas);
         vector<AASequence> all_modified_peptides;
-        ModifiedPeptideGenerator::applyVariableModifications(variable_modifications.begin(), variable_modifications.end(), aas, max_variable_mods_per_peptide, all_modified_peptides);
-        
+
+        AASequence aas = AASequence::fromString(unmodified_sequence);
+        ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications, aas);
+        ModifiedPeptideGenerator::applyVariableModifications(variable_modifications, aas, max_variable_mods_per_peptide, all_modified_peptides);
+
         for (SignedSize mod_pep_idx = 0; mod_pep_idx < (SignedSize)all_modified_peptides.size(); ++mod_pep_idx)
         {
           const AASequence& fixed_and_variable_modified_peptide = all_modified_peptides[mod_pep_idx];
