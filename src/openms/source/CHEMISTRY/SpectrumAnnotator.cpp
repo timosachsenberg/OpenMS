@@ -137,16 +137,17 @@ namespace OpenMS
     sa.getSpectrumAlignment(al, theoretical_spec, spec);  // peaks from theor. may be matched to none or one in spec!
 
     PeakSpectrum::StringDataArray theo_annot = theoretical_spec.getStringDataArrays().front();
+    PeakSpectrum::IntegerDataArray theo_charge = theoretical_spec.getIntegerDataArrays().front();
     PeakSpectrum::StringDataArray type_annotations = PeakSpectrum::StringDataArray();
     PeakSpectrum::FloatDataArray error_annotations = PeakSpectrum::FloatDataArray();
     type_annotations.setName("IonName");
     error_annotations.setName("IonMatchError");
     type_annotations.resize(spec.size());
     error_annotations.resize(spec.size());
-    for (vector<pair<Size, Size > >::const_iterator it = al.begin(); it != al.end(); ++it)
+    for (auto it = al.begin(); it != al.end(); ++it)
     {
         error_annotations[it->second] = std::fabs(spec[it->second].getMZ() - theoretical_spec[it->first].getMZ());
-        type_annotations[it->second] = theo_annot[it->first];
+        type_annotations[it->second] = theo_annot[it->first] + String("+", theo_charge[it->first]);
     }
     Param sap = sa.getParameters();
     spec.setMetaValue("fragment_mass_tolerance", sap.getValue("tolerance"));
