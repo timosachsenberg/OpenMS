@@ -88,7 +88,7 @@ namespace OpenMS
       cerr << "MRMFragmentSelection: No Precursor peaks defined! Bailing out..." << endl;
       return;
     }
-    double precursor_pos =  spec.getPrecursors().begin()->getMZ();
+    double precursor_pos = spec.getPrecursors().begin()->getMZ();
     PeakSpectrum spec_copy = spec;
     spec_copy.sortByIntensity(true);
 
@@ -113,57 +113,35 @@ namespace OpenMS
 
   bool MRMFragmentSelection::peakselectionIsAllowed_(const String& name, const int charge)
   {
-    StringList allowed_charges = param_.getValue("allowed_charges");
+    const StringList& allowed_charges = param_.getValue("allowed_charges");
 
-    if (!name.empty())
+    if (name.empty()) return false;
+
+    StringList allowed_types = param_.getValue("allowed_ion_types");
+    bool type_found(false);
+    for (const auto& s : allowed_types)
     {
-      StringList allowed_types = param_.getValue("allowed_ion_types");
-      bool type_found(false);
-      for (StringList::const_iterator it = allowed_types.begin(); it != allowed_types.end(); ++it)
+      if (name.hasSubstring(s)) { type_found = true; }
+    }
+    if (!type_found) return false;
+
+    bool allow_loss_ions(param_.getValue("allow_loss_ions").toBool());
+    bool charges_ok = ListUtils::contains(allowed_charges, String(charge));
+    if (allow_loss_ions && charges_ok)
+    {
+      return true;
+    }
+    else
+    {
+      if (!(name.hasSubstring("-H") || name.hasSubstring("-C") || name.hasSubstring("-N")))
       {
-        if (name.hasSubstring(*it))
-        {
-          type_found = true;
-        }
-      }
-      if (type_found)
-      {
-        bool allow_loss_ions(param_.getValue("allow_loss_ions").toBool());
-        bool charges_ok = ListUtils::contains(allowed_charges, String(charge));
-        if (allow_loss_ions && charges_ok)
-        {
-          // TODO implement charges
-          return true;
-        }
-        else
-        {
-          if (!(name.hasSubstring("-H") || name.hasSubstring("-C") || name.hasSubstring("-N")))
-          {
-            Size c = count(name.begin(), name.end(), '+');
-            if (ListUtils::contains(allowed_charges, String(c)))
-            {
-              return true;
-            }
-            else
-            {
-              return false;
-            }
-          }
-          else
-          {
-            return false;
-          }
-        }
+	return ListUtils::contains(allowed_charges, String(charge));
       }
       else
       {
         return false;
       }
     }
-    else
-    {
-      return false;
-    }
   }
-
 }
+
