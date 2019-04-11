@@ -130,10 +130,8 @@ namespace OpenMS
     tg.getSpectrum(theoretical_spec, ph.getSequence(), zmin, min(ph.getCharge(), zmax));
     OPENMS_PRECONDITION(theoretical_spec.isSorted(), "TheoreticalSpectrumGenerator::getSpectrum did not yield a sorted spectrum!")
 
-    if (!spec.isSorted())
-    {
-      spec.sortByPosition();
-    }
+    if (!spec.isSorted()) { spec.sortByPosition(); }
+    
     sa.getSpectrumAlignment(al, theoretical_spec, spec);  // peaks from theor. may be matched to none or one in spec!
 
     PeakSpectrum::StringDataArray theo_annot = theoretical_spec.getStringDataArrays().front();
@@ -146,8 +144,8 @@ namespace OpenMS
     error_annotations.resize(spec.size());
     for (auto it = al.begin(); it != al.end(); ++it)
     {
-        error_annotations[it->second] = std::fabs(spec[it->second].getMZ() - theoretical_spec[it->first].getMZ());
-        type_annotations[it->second] = theo_annot[it->first] + String("+", theo_charge[it->first]);
+      error_annotations[it->second] = std::fabs(spec[it->second].getMZ() - theoretical_spec[it->first].getMZ());
+      type_annotations[it->second] = theo_annot[it->first] + String(theo_charge[it->first], '+');
     }
     Param sap = sa.getParameters();
     spec.setMetaValue("fragment_mass_tolerance", sap.getValue("tolerance"));
@@ -160,7 +158,7 @@ namespace OpenMS
   {
     if (!spec.empty())
     {
-      for (vector<PeptideHit>::iterator ph = pi.getHits().begin(); ph != pi.getHits().end(); ++ph)
+      for (auto ph = pi.getHits().begin(); ph != pi.getHits().end(); ++ph)
       {
         annotateMatches(spec, *ph, tg, sa);
         spec.sortByIntensity();
@@ -178,24 +176,22 @@ namespace OpenMS
 
         StringList allowed_types = ListUtils::create<String>("y,b,a,c,x,z");
         map<String, vector<bool> > ion_series;
-        for (StringList::iterator st = allowed_types.begin(); st != allowed_types.end(); ++st)
+        for (auto st = allowed_types.begin(); st != allowed_types.end(); ++st)
         {
           ion_series.insert(make_pair(*st, vector<bool>(ph->getSequence().size()-1, false)));
         }
 
-        PeakSpectrum::StringDataArray type_annotations = PeakSpectrum::StringDataArray();
-        PeakSpectrum::FloatDataArray error_annotations = PeakSpectrum::FloatDataArray();
-        for (PeakSpectrum::StringDataArrays::iterator it = spec.getStringDataArrays().begin(); it != spec.getStringDataArrays().end(); ++it)
+        PeakSpectrum::StringDataArray type_annotations;
+        PeakSpectrum::FloatDataArray error_annotations;
+        for (auto it = spec.getStringDataArrays().begin(); it != spec.getStringDataArrays().end(); ++it)
         {
-          if (it->getName() == "IonName")
-            type_annotations = *it;
+          if (it->getName() == "IonName") { type_annotations = *it; }
         }
-        for (PeakSpectrum::FloatDataArrays::iterator it = spec.getFloatDataArrays().begin(); it != spec.getFloatDataArrays().end(); ++it)
+        for (auto it = spec.getFloatDataArrays().begin(); it != spec.getFloatDataArrays().end(); ++it)
         {
-          if (it->getName() == "IonMatchError")
-            error_annotations = *it;
+          if (it->getName() == "IonMatchError") { error_annotations = *it; }
         }
-
+    
         for (size_t i = 0; i < spec.size(); ++i)
         {
           sum_intensity += spec[i].getIntensity();
