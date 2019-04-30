@@ -452,9 +452,8 @@ namespace OpenMS
         fractiongroup_label_to_sample[fractiongroup_label].insert(row.sample);
 
         if (fractiongroup_label_to_sample[fractiongroup_label].size() > 1)
-        { 
-
-         LOG_INFO << "Please correct your experimental design if this is a label free experiment." << std::endl;
+        {          
+         // LOG_INFO << "Please correct your experimental design if this is a label free experiment." << std::endl;
          // throw Exception::MissingInformation(
          //   __FILE__,
          //   __LINE__,

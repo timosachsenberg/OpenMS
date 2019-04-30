@@ -575,14 +575,14 @@ void OpenMS::MSstatsFile::storeISO(const OpenMS::String &filename, const Consens
 
               const Intensity intensity(consensus_feature_intensites[i][j]);
               const Coordinate retention_time(consensus_feature_retention_times[i][j]);
-              const unsigned channel(consensus_feature_labels[i][j]);
+              const unsigned channel(consensus_feature_labels[i][j] + 1);
 
               const String & accession = pep_ev.getProteinAccession();
               peptideseq_to_accessions[sequence].insert(accession);
               
               const pair< String, unsigned> tpl1 = make_pair(current_filename, channel);
-              const unsigned sample = path_label_to_sample[tpl1];
-              const unsigned fraction = path_label_to_fraction[tpl1];
+              const unsigned sample = path_label_to_sample.at(tpl1);
+              const unsigned fraction = path_label_to_fraction.at(tpl1);
 
               // Resolve techmixture, run
               const unsigned openms_fractiongroup = path_label_to_fractiongroup[tpl1];
