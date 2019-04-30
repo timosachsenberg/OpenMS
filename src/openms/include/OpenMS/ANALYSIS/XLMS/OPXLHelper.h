@@ -194,13 +194,25 @@ namespace OpenMS
       static void addProteinPositionMetaValues(std::vector< PeptideIdentification > & peptide_ids);
 
       /**
+       * @brief adds xl_target_decoy MetaValue that combines alpha and beta target_decoy info
+       * @param peptide_ids The vector of peptide_ids containing XL-MS search results, after mapping of peptides to proteins
+       */
+      static void addXLTargetDecoyMV(std::vector< PeptideIdentification > & peptide_ids);
+
+      /**
+       * @brief adds accessions_beta MetaValue to alpha peptides for TOPPView visualization and CSV table output
+       * @param peptide_ids The vector of peptide_ids containing XL-MS search results, after mapping of peptides to proteins
+       */
+      static void addBetaAccessions(std::vector< PeptideIdentification > & peptide_ids);
+
+      /**
        * @brief combines all hits to spectrum pairs with the same light spectrum into one ranked list
        *
        * This function is a post-processing step for OpenPepXL with labeled linkers.
        * This function collects PeptideIdentifications from all spectrum pairs with the same light spectrum,
        * then resorts them by the score, makes them unique in case of equal candidates and reduces their number down to the chosen number of reported top hits.
        *
-       * @param peptide_ids PeptideIdentifications from a Cross-Linking MS search with labaled linkers
+       * @param peptide_ids PeptideIdentifications from a Cross-Linking MS search with labeled linkers
        * @param number_top_hits The chosen number of reported top hits
        */
       static std::vector< PeptideIdentification > combineTopRanksFromPairs(std::vector< PeptideIdentification > & peptide_ids, Size number_top_hits);

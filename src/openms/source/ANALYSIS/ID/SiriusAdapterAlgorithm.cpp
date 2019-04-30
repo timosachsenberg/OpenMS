@@ -99,7 +99,6 @@ namespace OpenMS
     
     String SiriusAdapterAlgorithm::getFeatureOnly() { return feature_only_; }
     String SiriusAdapterAlgorithm::getNoMasstraceInfoIsotopePattern() { return no_masstrace_info_isotope_pattern_; }
-    String SiriusAdapterAlgorithm::getConverterMode() { return converter_mode_; }
     int SiriusAdapterAlgorithm::getIsotopePatternIterations() { return isotope_pattern_iterations_; }
     int SiriusAdapterAlgorithm::getCandidates() { return candidates_; }
     int SiriusAdapterAlgorithm::getTopNHits() { return top_n_hits_; }
@@ -244,33 +243,33 @@ namespace OpenMS
       // number of features to be processed 
       if (feature_only && !featureinfo.empty())
       {
-        LOG_INFO << "Number of features to be processed: " << feature_mapping.assignedMS2.size() << std::endl;
+        LOG_WARN << "Number of features to be processed: " << feature_mapping.assignedMS2.size() << std::endl;
       }
       else if (!featureinfo.empty())
       {
-        LOG_INFO << "Number of features to be processed: " << feature_mapping.assignedMS2.size() << std::endl;
-        LOG_INFO << "Number of additional MS2 spectra to be processed: " << feature_mapping.unassignedMS2.size() << std::endl;
+        LOG_WARN << "Number of features to be processed: " << feature_mapping.assignedMS2.size() << std::endl;
+        LOG_WARN << "Number of additional MS2 spectra to be processed: " << feature_mapping.unassignedMS2.size() << std::endl;
       } 
       else
       {
         int count_ms2 = 0;
-        for (auto spec_it : spectra)
+        for (const auto& spec_it : spectra)
         {
           if (spec_it.getMSLevel() == 2)
           {
             count_ms2++;
           }
         }
-        LOG_INFO << "Number of MS2 spectra to be processed: " << count_ms2 << std::endl;
+        LOG_WARN << "Number of MS2 spectra to be processed: " << count_ms2 << std::endl;
       }
     } 
 
     // tmp_msfile (store), all parameters, out_dir (tmpstructure)
     const std::vector<String> SiriusAdapterAlgorithm::callSiriusQProcess(const String& tmp_ms_file,
-                                                                   const String& tmp_out_dir,
-                                                                   String& executable,
-                                                                   const String& out_csifingerid,
-                                                                   const SiriusAdapterAlgorithm& sirius_algo)
+                                                                         const String& tmp_out_dir,
+                                                                         String& executable,
+                                                                         const String& out_csifingerid,
+                                                                         const SiriusAdapterAlgorithm& sirius_algo)
     {
       // assemble SIRIUS parameters
       QStringList process_params;

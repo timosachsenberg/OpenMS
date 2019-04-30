@@ -1639,7 +1639,7 @@ protected:
     // read list of nucleotides that can directly cross-link
     // these are responsible for shifted fragment ions. Their fragment adducts thus determine which shifts will be observed on b-,a-,y-ions
     String can_cross_link = getStringOption_("RNPxl:can_cross_link");
-    for (auto c : can_cross_link) { can_xl_.insert(c); }
+    for (const auto& c : can_cross_link) { can_xl_.insert(c); }
 
     StringList modifications = getStringList_("RNPxl:modifications");
 
@@ -1929,7 +1929,7 @@ protected:
               if (precursor_rna_adduct == "none")
               {
                 // score peptide without RNA (same method as fast scoring)
-                for (auto l = low_it; l != up_it; ++l)
+                for (auto l = low_it; l != up_it; ++l) // OMS_CODING_TEST_EXCLUDE
                 {
                   //const double exp_pc_mass = l->first;
                   const Size & scan_index = l->second.first;
@@ -2072,7 +2072,7 @@ protected:
                     marker_ions_sub_score_spectrum_z1.getIntegerDataArrays()[0],
                     marker_ions_sub_score_spectrum_z1.getStringDataArrays()[0]);
 
-                  for (auto l = low_it; l != up_it; ++l)
+                  for (auto l = low_it; l != up_it; ++l) // OMS_CODING_TEST_EXCLUDE
                   {
                     //const double exp_pc_mass = l->first;
                     const Size& scan_index = l->second.first;
@@ -2164,7 +2164,7 @@ protected:
             }
             else // fast scoring
             {
-              for (auto l = low_it; l != up_it; ++l)
+              for (auto l = low_it; l != up_it; ++l) // OMS_CODING_TEST_EXCLUDE
               {
                 //const double exp_pc_mass = l->first;
                 const Size &scan_index = l->second.first;

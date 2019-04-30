@@ -339,8 +339,7 @@ protected:
         {
           peptides.insert(peptides.end(), peps.begin(), peps.end());
         }
-        for (auto map_it =
-               proteins_by_id.begin(); map_it != proteins_by_id.end(); ++map_it)
+        for (auto map_it = proteins_by_id.begin(); map_it != proteins_by_id.end(); ++map_it)
         {
           proteins.push_back(map_it->second);
         }
@@ -367,13 +366,11 @@ protected:
                         base_peptides.end());
 
         // merge in data from other files:
-        for (auto file_it =
-               ++peptides_by_file.begin(); file_it != peptides_by_file.end();
+        for (auto file_it = ++peptides_by_file.begin(); file_it != peptides_by_file.end();
              ++file_it)
         {
           set<String> accessions; // keep track to avoid duplicates
-          for (auto pep_it =
-                 file_it->begin(); pep_it != file_it->end(); ++pep_it)
+          for (auto pep_it = file_it->begin(); pep_it != file_it->end(); ++pep_it)
           {
             if (pep_it->getHits().empty()) continue;
             pep_it->sort();
@@ -428,8 +425,7 @@ protected:
             }
           }
         }
-        for (auto map_it =
-               selected_proteins.begin(); map_it != selected_proteins.end();
+        for (auto map_it = selected_proteins.begin(); map_it != selected_proteins.end();
              ++map_it)
         {
           proteins.push_back(map_it->second);

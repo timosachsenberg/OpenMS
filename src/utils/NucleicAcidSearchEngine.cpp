@@ -213,7 +213,7 @@ protected:
 
     // add modified ribos from database
     vector<String> all_mods;
-    for (auto r : *RibonucleotideDB::getInstance())
+    for (const auto& r : *RibonucleotideDB::getInstance())
     {
       if (r->isModified())
       {
@@ -1183,7 +1183,7 @@ protected:
 
         // collect all relevant charge states for theoret. spectrum generation:
         set<Int> precursor_charges;
-        for (auto prec_it = low_it; prec_it != up_it; ++prec_it)
+        for (auto prec_it = low_it; prec_it != up_it; ++prec_it) // OMS_CODING_TEST_EXCLUDE
         {
           precursor_charges.insert(prec_it->second.charge * base_charge);
         }
@@ -1200,7 +1200,7 @@ protected:
                                                 candidate, precursor_charges,
                                                 base_charge);
 
-          for (auto prec_it = low_it; prec_it != up_it; ++prec_it)
+          for (auto prec_it = low_it; prec_it != up_it; ++prec_it) // OMS_CODING_TEST_EXCLUDE
           {
             LOG_DEBUG << "Matching precursor mass: " << float(prec_it->first)
                       << endl;
