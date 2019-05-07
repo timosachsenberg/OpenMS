@@ -1126,7 +1126,7 @@ static void scoreShiftedFragments_(
     param.setValue("add_z_ions", "false");
     partial_loss_spectrum_generator.setParameters(param);
 
-    assert(exp.size() == annotated_hits.size());
+    assert(exp.size() == 2 * annotated_hits.size());
 
     #ifdef DEBUG_RNPXLSEARCH
       LOG_DEBUG << exp.size() << " : " << annotated_hits.size() << endl;
@@ -1278,7 +1278,7 @@ static void scoreShiftedFragments_(
             marker_ions_sub_score_spectrum_z1.getIntegerDataArrays()[0],
             marker_ions_sub_score_spectrum_z1.getStringDataArrays()[0]);
 
-          const PeakSpectrum& exp_spectrum = exp[scan_index];
+          const PeakSpectrum& exp_spectrum = exp[scan_index % exp.size()];
           float  partial_loss_sub_score(0), 
             marker_ions_sub_score(0),
             plss_MIC(0), 
@@ -1324,7 +1324,7 @@ static void scoreShiftedFragments_(
     {
       if (annotated_hits[scan_index].empty()) { continue; }
 
-      const PeakSpectrum & exp_spectrum = exp[scan_index];
+      const PeakSpectrum & exp_spectrum = exp[scan_index % exp.size()];
       const Size & precursor_charge = exp_spectrum.getPrecursors()[0].getCharge();
 
       for (auto & a : annotated_hits[scan_index])
@@ -1968,12 +1968,12 @@ static void scoreShiftedFragments_(
 #endif
     for (SignedSize scan_index = 0; scan_index < (SignedSize)annotated_hits.size(); ++scan_index)
     {
-      const MSSpectrum& spec = exp[scan_index];
+      const MSSpectrum& spec = exp[scan_index % exp.size()];
       if (!annotated_hits[scan_index].empty())
       {
         // create empty PeptideIdentification object and fill meta data
         PeptideIdentification pi;
-        pi.setMetaValue("scan_index", static_cast<unsigned int>(scan_index));
+        pi.setMetaValue("scan_index", static_cast<unsigned int>(scan_index % exp.size()));
         pi.setMetaValue("spectrum_reference", spec.getNativeID());
         pi.setScoreType("RNPxlScore");
         pi.setHigherScoreBetter(true);
@@ -2287,13 +2287,14 @@ static void scoreShiftedFragments_(
     omp_set_lock(&(annotated_hits_lock));
   #endif
     {
-      annotated_hits.emplace_back(move(ah));
+      vector<AnnotatedHit>& psms = annotated_hits;
+      psms.emplace_back(move(ah));
 
       // prevent vector from growing indefinitly (memory) but don't shrink the vector every time
-      if (annotated_hits.size() >= 2 * report_top_hits)
+      if (psms.size() >= 2 * report_top_hits)
       {
-        std::partial_sort(annotated_hits.begin(), annotated_hits.begin() + report_top_hits, annotated_hits.end(), AnnotatedHit::hasBetterScore);
-        annotated_hits.resize(report_top_hits); 
+        std::partial_sort(psms.begin(), psms.begin() + report_top_hits, psms.end(), AnnotatedHit::hasBetterScore);
+        psms.resize(report_top_hits); 
       }
     }
   #ifdef _OPENMP
@@ -2561,8 +2562,8 @@ static void scoreShiftedFragments_(
 
 
 
-    // preallocate storage for PSMs
-    vector<vector<AnnotatedHit> > annotated_hits(spectra.size(), vector<AnnotatedHit>());
+    // preallocate storage for PSMs (first n are peptides, second n are cross-links to keep best hit of both classes)
+    vector<vector<AnnotatedHit> > annotated_hits(2 * spectra.size(), vector<AnnotatedHit>());
     for (auto & a : annotated_hits) { a.reserve(2 * report_top_hits); }
 
 #ifdef _OPENMP     
@@ -2813,13 +2814,14 @@ static void scoreShiftedFragments_(
                   omp_set_lock(&(annotated_hits_lock[scan_index]));
 #endif
                   {
-                    annotated_hits[scan_index].emplace_back(move(ah));
+                    vector<AnnotatedHit>& psms = annotated_hits[scan_index];
+                    psms.emplace_back(move(ah));
 
                     // prevent vector from growing indefinitly (memory) but don't shrink the vector every time
-                    if (annotated_hits[scan_index].size() >= 2 * report_top_hits)
+                    if (psms.size() >= 2 * report_top_hits)
                     {
-                      std::partial_sort(annotated_hits[scan_index].begin(), annotated_hits[scan_index].begin() + report_top_hits, annotated_hits[scan_index].end(), AnnotatedHit::hasBetterScore);
-                      annotated_hits[scan_index].resize(report_top_hits); 
+                      std::partial_sort(psms.begin(), psms.begin() + report_top_hits, psms.end(), AnnotatedHit::hasBetterScore);
+                      psms.resize(report_top_hits); 
                     }
                   }
 #ifdef _OPENMP 
@@ -3006,13 +3008,14 @@ static void scoreShiftedFragments_(
                     omp_set_lock(&(annotated_hits_lock[scan_index]));
 #endif
                     {
-                      annotated_hits[scan_index].emplace_back(move(ah));
+                      vector<AnnotatedHit>& psms = annotated_hits[scan_index + spectra.size()];
+                      psms.emplace_back(move(ah));
 
                       // prevent vector from growing indefinitly (memory) but don't shrink the vector every time
-                      if (annotated_hits[scan_index].size() >= 2 * report_top_hits)
+                      if (psms.size() >= 2 * report_top_hits)
                       {
-                        std::partial_sort(annotated_hits[scan_index].begin(), annotated_hits[scan_index].begin() + report_top_hits, annotated_hits[scan_index].end(), AnnotatedHit::hasBetterScore);
-                        annotated_hits[scan_index].resize(report_top_hits); 
+                        std::partial_sort(psms.begin(), psms.begin() + report_top_hits, psms.end(), AnnotatedHit::hasBetterScore);
+                        psms.resize(report_top_hits); 
                       }
                     }
 #ifdef _OPENMP
@@ -3029,6 +3032,8 @@ static void scoreShiftedFragments_(
                 const Size & scan_index = l->second.first;
                 const int & isotope_error = l->second.second;
                 const double & exp_pc_mass = l->first;
+
+                Size hit_index = rna_mod_index == 0 ? scan_index : spectra.size() + scan_index;
 
                 // generate PSMs for spectrum[scan_index] and add them to annotated_hits[scan_index]
                 addPSMsTotalLossScoring_(
@@ -3047,7 +3052,7 @@ static void scoreShiftedFragments_(
                   mass_error_prior_negatives, 
                   fragment_mass_tolerance,
                   fragment_mass_tolerance_unit_ppm,
-                  annotated_hits[scan_index],
+                  annotated_hits[hit_index],
                   annotated_hits_lock[scan_index],
                   report_top_hits
                 );
