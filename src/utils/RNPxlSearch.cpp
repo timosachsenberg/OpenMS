@@ -1950,6 +1950,7 @@ static void scoreShiftedFragments_(
     Size max_variable_mods_per_peptide,
     const vector<PrecursorPurity::PurityScores>& purities)
   {
+
       // remove all but top n scoring (Note: this is currently necessary as postScoreHits_ might reintroduce nucleotide specific hits for fast scoring)
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -1960,8 +1961,16 @@ static void scoreShiftedFragments_(
         Size topn = top_hits > annotated_hits[scan_index].size() ? annotated_hits[scan_index].size() : top_hits;
         std::partial_sort(annotated_hits[scan_index].begin(), annotated_hits[scan_index].begin() + topn, annotated_hits[scan_index].end(), AnnotatedHit::hasBetterScore);
         annotated_hits[scan_index].resize(topn);
-        annotated_hits.shrink_to_fit();
+        annotated_hits[scan_index].shrink_to_fit();
       }
+
+      // merge top n results from peptide / XL only results 
+      for (SignedSize scan_index = 0; scan_index < (SignedSize)exp.size(); ++scan_index)
+      {
+        auto & XL_psms = annotated_hits[scan_index + exp.size()];
+        annotated_hits[scan_index].insert(annotated_hits[scan_index].begin(), XL_psms.begin(), XL_psms.end());
+      }
+      annotated_hits.resize(exp.size());
 
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -1973,7 +1982,7 @@ static void scoreShiftedFragments_(
       {
         // create empty PeptideIdentification object and fill meta data
         PeptideIdentification pi;
-        pi.setMetaValue("scan_index", static_cast<unsigned int>(scan_index % exp.size()));
+        pi.setMetaValue("scan_index", static_cast<unsigned int>(scan_index));
         pi.setMetaValue("spectrum_reference", spec.getNativeID());
         pi.setScoreType("RNPxlScore");
         pi.setHigherScoreBetter(true);
@@ -2507,6 +2516,7 @@ static void scoreShiftedFragments_(
     FalseDiscoveryRate fdr;
     Param p = fdr.getParameters();
     p.setValue("add_decoy_peptides", "true"); // we still want decoys in the result (e.g., to run percolator)
+    p.setValue("use_all_hits", "true");
     if (report_top_hits >= 2)
     {
       p.setValue("use_all_hits", "true");
