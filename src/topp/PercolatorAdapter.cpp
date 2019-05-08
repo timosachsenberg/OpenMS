@@ -281,6 +281,7 @@ protected:
     registerStringOption_("decoy-pattern", "<value>", "random", "Define the text pattern to identify the decoy proteins and/or PSMs, set this up if the label that identifies the decoys in the database is not the default (Only valid if option -protein-level-fdrs is active).", !is_required, is_advanced_option);
     registerFlag_("post-processing-tdc", "Use target-decoy competition to assign q-values and PEPs.", is_advanced_option);
     registerFlag_("train-best-positive", "Enforce that, for each spectrum, at most one PSM is included in the positive set during each training iteration. If the user only provides one PSM per spectrum, this filter will have no effect.", is_advanced_option);
+    registerIntOption_("nested-xval-bins", "<value>", 1, "Experimental: Number of nested cross validation bins.", !is_required, is_advanced_option);
 
     //OSW/IPF parameters
     registerDoubleOption_("ipf_max_peakgroup_pep", "<value>", 0.7, "OSW/IPF: Assess transitions only for candidate peak groups until maximum posterior error probability.", !is_required, is_advanced_option);
@@ -981,6 +982,10 @@ protected:
       if (getFlag_("quick-validation")) arguments << "-x";
       if (getFlag_("post-processing-tdc")) arguments << "-Y";
       if (getFlag_("train-best-positive")) arguments << "--train-best-positive";
+      if (getIntOption_("nested-xval-bins") > 1)
+      {
+        arguments << "--nested-xval-bins" << QString(getIntOption_("nested-xval-bins"));
+      }
       
       String weights_file = getStringOption_("weights");
       String init_weights_file = getStringOption_("init-weights");
