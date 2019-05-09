@@ -984,7 +984,7 @@ protected:
       if (getFlag_("train-best-positive")) arguments << "--train-best-positive";
       if (getIntOption_("nested-xval-bins") > 1)
       {
-        arguments << "--nested-xval-bins" << QString(getIntOption_("nested-xval-bins"));
+        arguments << "--nested-xval-bins" << String(getIntOption_("nested-xval-bins")).toQString();
       }
       
       String weights_file = getStringOption_("weights");
