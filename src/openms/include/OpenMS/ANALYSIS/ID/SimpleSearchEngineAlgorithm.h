@@ -111,8 +111,44 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
       }
     };
 
+
+    using ResidueEvidenceMatrix = std::vector<std::vector<double>>;
+    using CumScoreHistogram = std::vector<double>;
+
     /// @brief filter, deisotope, decharge spectra
     static void preprocessSpectra_(PeakMap& exp, double fragment_mass_tolerance, bool fragment_mass_tolerance_unit_ppm);
+ 
+    static unsigned int mass2bin_(double mass, int charge = 1);
+    static double bin2mass_(int bin, int charge = 1);
+
+    static void preprocessResidueEvidence_(PeakMap& exp,    
+      std::vector<ResidueEvidenceMatrix>& rems, 
+      std::vector<CumScoreHistogram>& cums);
+
+    static void createResidueEvidenceMatrix(const MSSpectrum& spectrum,
+      double fragment_tolerance_Da,
+      size_t max_precursor_mass_bin,
+      std::vector<std::vector<double> >& residueEvidenceMatrix);
+    static void addEvidToResEvMatrix(
+      std::vector<double>& ionMass,
+      std::vector<int>& ionMassBin,
+      std::vector<double>& ionIntens,
+      int maxPrecurMassBin,
+      int nAA,
+      const std::vector<double>& aaMass,
+      const std::vector<int>& aaMassBin,
+      const double fragment_tolerance_Da,
+      std::vector<std::vector<double> >& residueEvidenceMatrix
+      );
+
+    // calculate the raw residue evidence score for candidate peptide
+    size_t calculateRawResEv_(const AASequence& candidate, const ResidueEvidenceMatrix& rem) const;
+
+    // calculate the calibrated p-value for candidate peptide    
+    double calculatePValue_(
+      const AASequence& candidate, 
+      const ResidueEvidenceMatrix& rem, 
+      const std::vector<double>& cumsumsC_sm) const;
 
     /// @brief filter and annotate search results
     /// most of the parameters are used to properly add meta data to the id objects
@@ -163,6 +199,8 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
     String peptide_motif_;
 
     Size report_top_hits_;
+
+    std::map<char, size_t> mapResidue2Index_;
 };
 
 } // namespace
