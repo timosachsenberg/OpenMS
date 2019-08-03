@@ -94,7 +94,7 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
     ExitCodes search(const String& in_mzML, 
       const String& in_db, 
       std::vector<ProteinIdentification>& prot_ids,
-      std::vector<PeptideIdentification>& pep_ids) const;
+      std::vector<PeptideIdentification>& pep_ids);
   protected:
     void updateMembers_() override;
 
@@ -118,17 +118,35 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
     /// @brief filter, deisotope, decharge spectra
     static void preprocessSpectra_(PeakMap& exp, double fragment_mass_tolerance, bool fragment_mass_tolerance_unit_ppm);
  
+    std::map<double, double> dAAFreqN;
+    std::map<double, double> dAAFreqI;
+    std::map<double, double> dAAFreqC;
+    std::map<double, double> dAAMass; 
+
+  void getAminoAcidFrequencies_(
+      const std::vector<FASTAFile::FASTAEntry>& fasta_db, 
+      const ProteaseDigestion& digestor,   
+      std::map<double, double>& dAAFreqN,
+      std::map<double, double>& dAAFreqI,
+      std::map<double, double>& dAAFreqC,
+      std::map<double, double>& dAAMass 
+    );
+
     static unsigned int mass2bin_(double mass, int charge = 1);
     static double bin2mass_(int bin, int charge = 1);
 
-    static void preprocessResidueEvidence_(PeakMap& exp,    
+    void preprocessResidueEvidence_(PeakMap& exp,    
+      const std::set<const Residue*>& aas,
       std::vector<ResidueEvidenceMatrix>& rems, 
       std::vector<CumScoreHistogram>& cums);
 
-    static void createResidueEvidenceMatrix(const MSSpectrum& spectrum,
+    static void createResidueEvidenceMatrix(
+      const MSSpectrum& spectrum,
+      const std::set<const Residue*>& aas,
       double fragment_tolerance_Da,
       size_t max_precursor_mass_bin,
       std::vector<std::vector<double> >& residueEvidenceMatrix);
+
     static void addEvidToResEvMatrix(
       std::vector<double>& ionMass,
       std::vector<int>& ionMassBin,
