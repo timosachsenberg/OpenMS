@@ -380,7 +380,7 @@ namespace OpenMS
         }
       
         // calculate (cumulative) sum of counts for precursor mass with score larger than s once
-        size_t m = mass2bin_(precursorMass);
+        size_t m = mass2bin_(precursorMass - cTermMass + 1);
         OPENMS_LOG_DEBUG << "Precursor mass (neutral) bin: " << m << endl;
         double cumsum(0);
         for (int s = s_max; s >= 0; --s) 
