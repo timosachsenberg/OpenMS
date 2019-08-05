@@ -166,8 +166,7 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
 
     // calculate the calibrated p-value for candidate peptide    
     double calculatePValue_(
-      const AASequence& candidate, 
-      const ResidueEvidenceMatrix& rem, 
+      const double res_ev_score,
       const std::vector<double>& cumsumsC_sm) const;
 
     /// @brief filter and annotate search results
@@ -220,7 +219,7 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
 
     Size report_top_hits_;
 
-    std::map<char, size_t> mapResidue2Index_;
+    std::map<const Residue*, size_t> mapResidue2Index_;
 };
 
 } // namespace

@@ -379,7 +379,7 @@ namespace OpenMS
         }
       
         // calculate (cumulative) sum of counts for precursor mass with score larger than s once
-        size_t m = mass2bin_(precursorMass); 
+        size_t m = mass2bin_(precursorMass);
         OPENMS_LOG_DEBUG << "Precursor mass (neutral) bin: " << m << endl;
         double cumsum(0);
         for (int s = s_max; s >= 0; --s) 
@@ -413,7 +413,7 @@ namespace OpenMS
         }
 #endif
         // output cumulative count distribution
-        // for (int s = 0; s <= s_max; ++s)  { cout << "Score: " << s << "\t" << cumsumsC_sm[s] << endl; }
+        /// for (int s = 0; s <= s_max; ++s)  { if (s != 0) cout << "Score: " << s << "\t" << cumsumsC_sm[s] << endl; }
 
         // cumsumsC_sm[0] holds the cumulative sum for all scores ([0] means total count for all scores > 0) - (denominator in eq. 10)
         OPENMS_LOG_DEBUG << "Sum of C_{s,m}=" << cumsumsC_sm[0] << std::endl;
@@ -437,7 +437,7 @@ namespace OpenMS
       m += aa_mass;
       size_t m_bin = mass2bin_(m);
       
-      auto it = mapResidue2Index_.find(candidate[i].getOneLetterCode()[0]); // TODO: handle modified residues / I vs. L
+      auto it = mapResidue2Index_.find(&(candidate[i])); // TODO: handle modified residues / I vs. L
       if (it != mapResidue2Index_.end())
       {
 #ifdef RES_EV_DEBUG
@@ -454,16 +454,21 @@ namespace OpenMS
     return res_ev_score;
   }
 
+  // probability of other peptide of same mass with higher score
   double SimpleSearchEngineAlgorithm::calculatePValue_(
-    const AASequence& candidate, 
-    const ResidueEvidenceMatrix& rem, 
+    const double res_ev_score, 
     const vector<double>& cumsumsC_sm) const
   {
-    const size_t res_ev_score = calculateRawResEv_(candidate, rem);
+    if (res_ev_score <= 0) return 1.0;
+
+    OPENMS_PRECONDITION(cumsumsC_sm[0] > 0, "No DP-amino acid sequence exist matching to mass bin of precursor.")
+    OPENMS_PRECONDITION(cumsumsC_sm[res_ev_score] > 0, "At least one peptide needs to match score.")
+
+    if (cumsumsC_sm[res_ev_score] == 0) return 1e-200; // TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO fix
 
     // number of peptides with score equal or better then residue evidence score of candidate / total peptide count
-    const double p_value = (cumsumsC_sm[res_ev_score] + 1.0)  / cumsumsC_sm[0]; // TODO: check why +1 is needed here? should be at least 1 but there are zeros?
-    // OPENMS_LOG_DEBUG << "ResEv: p-value of " << candidate.toString() << ": " << p_value << " " << cumsumsC_sm[res_ev_score] << " sum: " << cumsumsC_sm[0] << std::endl;
+    //cout << "(res-ev: p count>=res-ev count>=0) " << res_ev_score << ": " << cumsumsC_sm[res_ev_score]  / cumsumsC_sm[0] << " " << cumsumsC_sm[res_ev_score] << " " << cumsumsC_sm[0] << std::endl;
+    const double p_value = cumsumsC_sm[res_ev_score]  / cumsumsC_sm[0]; // TODO: check why +1 is needed here? should be at least 1 but there are zeros?
     return p_value;
   }
 
@@ -493,7 +498,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
     const double precurMz = spectrum.getPrecursors()[0].getMZ(); 
     const int precurCharge = spectrum.getPrecursors()[0].getCharge();
     const double precursorMass = precurMz * precurCharge - precurCharge * Constants::PROTON_MASS_U; // neutral mass
-    const int granularityScale = 25; // TOOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOOOOOOOo default is 25
+    const int granularityScale = 25;
 
     // TODO: these are different for fixed modified termini
     double cTermMass = Residue::getInternalToCTerm().getMonoWeight();
@@ -1172,7 +1177,7 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
     size_t index(0);
     for (auto & r : aas)
     {
-      mapResidue2Index_[r->getOneLetterCode()[0]] = index;
+      mapResidue2Index_[r] = index;
       ++index;
     }
     preprocessResidueEvidence_(spectra, fragment_mass_tolerance_, fragment_mass_tolerance_unit_ppm, aas, rems, cums);
@@ -1275,8 +1280,15 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
             // cout << "ResEv: Matching scan_index: " << scan_index << endl;
             // const PeakSpectrum& exp_spectrum = spectra[scan_index];
 
-            //const double score = -log10(calculatePValue_(candidate, rems[scan_index], cums[scan_index]));
-            const double& score = calculateRawResEv_(candidate, rems[scan_index]);
+            double score;
+            score = calculateRawResEv_(candidate, rems[scan_index]);
+#ifdef RES_EV_DEBUG
+            cout << candidate.toString() << " res-ev: " << score << endl;
+#endif
+            score = -log10(calculatePValue_(score, cums[scan_index]));
+#ifdef RES_EV_DEBUG
+            cout << candidate.toString() << " p-value: " << score << endl;
+#endif
 
             //if (score == 0) { continue; } // no hit?
 
