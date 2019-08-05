@@ -136,6 +136,8 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
     static double bin2mass_(int bin, int charge = 1);
 
     void preprocessResidueEvidence_(PeakMap& exp,    
+      double fragment_mass_tolerance, 
+      bool fragment_mass_tolerance_unit_ppm,
       const std::set<const Residue*>& aas,
       std::vector<ResidueEvidenceMatrix>& rems, 
       std::vector<CumScoreHistogram>& cums);

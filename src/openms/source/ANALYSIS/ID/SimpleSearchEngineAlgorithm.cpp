@@ -175,8 +175,12 @@ namespace OpenMS
     report_top_hits_ = param_.getValue("report:top_hits");
   }
 
+
   // static
-  void SimpleSearchEngineAlgorithm::preprocessResidueEvidence_(PeakMap& exp,
+  void SimpleSearchEngineAlgorithm::preprocessResidueEvidence_(
+    PeakMap& exp,
+    double fragment_mass_tolerance, 
+    bool fragment_mass_tolerance_unit_ppm,
     const std::set<const Residue*>& aas,
     vector<ResidueEvidenceMatrix>& rems, 
     vector<CumScoreHistogram>& cums)
@@ -186,12 +190,29 @@ namespace OpenMS
     rems = vector<ResidueEvidenceMatrix>(exp.size(), ResidueEvidenceMatrix());
     cums = vector<CumScoreHistogram>(exp.size(), CumScoreHistogram());
 
-    // sort by rt
-    exp.sortSpectra(false);
+    // sort
+    exp.sortSpectra(true);
 
     // remove 0 or negative intensities
     ThresholdMower threshold_mower_filter;
     threshold_mower_filter.filterPeakMap(exp);
+
+    // deisotope (not part of original implementation)
+    for (auto & spectrum : exp)
+    {
+      Deisotoper::deisotopeAndSingleCharge(spectrum, 
+        fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm,
+        1, 3,   // min / max charge 
+        false,  // keep all peaks
+        2, 5,  // min / max isopeaks 
+        false, false);  // don't convert fragment m/z to mono charge and don't annotate charge
+        
+      // remove precursor peaks?  disabled by default in tide but in publication on residue evidence score
+      const double precurMz = spectrum.getPrecursors()[0].getMZ();
+      auto left = spectrum.MZBegin(precurMz - 0.02);
+      auto right = spectrum.MZEnd(precurMz + 0.02); 
+      std::transform(left, right, left, [](Peak1D& p) { p.setIntensity(0); return p; }); // set to zero - removed in threshold mower
+    }
 
     // 2. replace by square root
     SqrtMower sqrt_mower_filter;
@@ -225,7 +246,6 @@ namespace OpenMS
     }
     size_t maxPrecurMassBin = mass2bin_(max_precursorMass + 50.0); // no peak beyond this m/z after filtering
 
-    // TODO: optionally remove precursor peaks? disabled by default in tide but in publication on residue evidence score
 
     // 4. divide spectrum into 10 segments, normalize intensities to 50
     for (auto & spec : exp)
@@ -249,21 +269,26 @@ namespace OpenMS
         std::transform(left, right, left, [max_intensity](Peak1D& p) { p.setIntensity(p.getIntensity() / max_intensity * 50.0); return p; });        
       }    
 
-      // calculate ranks and assign intensity/ranks as new intensities
-
-      // initialize original index locations
-      vector<size_t> idx(spec.size());
-      std::iota(idx.begin(), idx.end(), 1);
-
-      // sort indexes based on comparing intensity values (1 = highest intensity)
-      sort(idx.begin(), idx.end(),
-        [&spec](size_t i1, size_t i2) { return spec[i1].getIntensity() > spec[i2].getIntensity(); });
-            
-      // calculate 1.0/rank intensity
-      for (Size i = 0; i != spec.size(); ++i) { spec[i].setIntensity(1.0 / static_cast<double>(idx[i])); }
+      // calculate ranks and assign intensity/ranks as new intensities. 
+      // Identical intensities (e.g, the ten 50.0 the segment maxima) get the same rank - seems to be critical for score perfomance
+      vector<double> intensities(spec.size());
+      for (Size i = 0; i != spec.size(); ++i) { intensities[i] = spec[i].getIntensity(); }
+      std::sort(intensities.begin(), intensities.end(), greater<double>()); // sort decreasing
+      OPENMS_LOG_DEBUG << "before unique: " <<  intensities.size() << endl;
+      intensities.resize(std::distance(intensities.begin(), std::unique(intensities.begin(), intensities.end(), 
+          [](double l, double r) { return std::abs(l - r) < 1e-6; })
+         ));
+      OPENMS_LOG_DEBUG << "after unique: " <<  intensities.size() << endl;
+      // calculate 1.0 / rank intensity
+      for (Size i = 0; i != spec.size(); ++i) 
+      {
+        int rank = 1 + lower_bound(intensities.begin(), intensities.end(), spec[i].getIntensity() + 1e-3, greater<double>()) - intensities.begin();
+        spec[i].setIntensity(1.0 / (double)rank);
+      }
+       
     } 
 
-    MzMLFile().store("testX.mzML", exp);
+    // MzMLFile().store("testX.mzML", exp);
 
     // TODO: depends on terminal mods
     double cTermMass = Residue::getInternalToCTerm().getMonoWeight();
@@ -282,7 +307,8 @@ namespace OpenMS
       aaMassBin.push_back(binMass);
     }
 
-    for (size_t spectrum_index = 0; spectrum_index != exp.size(); ++spectrum_index)
+    #pragma omp parallel for
+    for (SignedSize spectrum_index = 0; spectrum_index < exp.size(); ++spectrum_index)
     {
       MSSpectrum& spectrum = exp[spectrum_index];
       const double precurMz = spectrum.getPrecursors()[0].getMZ(); 
@@ -292,7 +318,7 @@ namespace OpenMS
       // calculate residue evidence matrix rem
       // rem[row][column]: rows are amino acids (or modified amino acids), columns are mass bins 
       ResidueEvidenceMatrix rem = ResidueEvidenceMatrix(aas.size(), vector<double>(maxPrecurMassBin, 0));  
-//TODO: changed TOOOOOOOOOOOOOOOOOOOOOOOOOODOOOOOOOOOOOODDDDOOOOOOO
+//TODO: changed TOOOOOOOOOOOOOOOOOOOOOOOOOODOOOOOOOOOOOODDDDOOOOOOO but should be correct
       createResidueEvidenceMatrix(spectrum, aas, 0.02,  mass2bin_(precursorMass), rem); // 0.02 = default fragment mass tolerance for high-res
       
       // calculate s_max: an upper bound for the maximum score to limit the number of rows of the count matrix
@@ -444,14 +470,14 @@ namespace OpenMS
   unsigned int SimpleSearchEngineAlgorithm::mass2bin_(double mass, int charge /*=1*/) 
   {
     const double bin_width = 1.0005079;
-    const double bin_offset = 0.68; // 0.4 tide & comet default - paper default: 0.68
+    const double bin_offset = 0.4; // 0.4 tide & comet default - paper default: 0.68
     return (unsigned int)((mass + (charge - 1) * Constants::PROTON_MASS_U) / (charge * bin_width) + 1.0 - bin_offset);
   }
 
   double SimpleSearchEngineAlgorithm::bin2mass_(int bin, int charge /*=1*/) 
   {
     const double bin_width = 1.0005079;
-    const double bin_offset = 0.68; // tide & comet default - paper default: 0.68
+    const double bin_offset = 0.4; // tide & comet default - paper default: 0.68
     return (bin - 1.0 + bin_offset) * charge * bin_width + (charge - 1) * Constants::PROTON_MASS_U;
   }
 
@@ -467,7 +493,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
     const double precurMz = spectrum.getPrecursors()[0].getMZ(); 
     const int precurCharge = spectrum.getPrecursors()[0].getCharge();
     const double precursorMass = precurMz * precurCharge - precurCharge * Constants::PROTON_MASS_U; // neutral mass
-    const int granularityScale = 25;
+    const int granularityScale = 25; // TOOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOOOOOOOo default is 25
 
     // TODO: these are different for fixed modified termini
     double cTermMass = Residue::getInternalToCTerm().getMonoWeight();
@@ -665,6 +691,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
 
   // Discretize residue evidence so largest value is residueEvidenceIntScale
   double residueEvidenceIntScale = (double)granularityScale;
+  size_t truncated_evidence(0);
   for (int i = 0; i < max_precursor_mass_bin; i++) 
   {
     for (size_t aa_index = 0; aa_index < aas.size(); ++aa_index) 
@@ -673,9 +700,12 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
       if (residueEvidence > 0) 
       {
         residueEvidenceMatrix[aa_index][i] = round(residueEvidenceIntScale * residueEvidence / maxEvidence);  
+        //if (residueEvidenceMatrix[aa_index][i] == 0) { ++truncated_evidence; residueEvidenceMatrix[aa_index][i] = 1; } // prevent truncation TODOOOOOOOOOOOOOOOO makes this sense
       }
     }
   }
+  //cout << "Truncated evidence: " << truncated_evidence << endl; // these evidences will not contribute anymore (Improvements?)
+
 #ifdef RES_EV_DEBUG
   cout << "max evidence after scaling: " << residueEvidenceIntScale << endl;
 #endif
@@ -741,7 +771,7 @@ void SimpleSearchEngineAlgorithm::addEvidToResEvMatrix(
 
           const double aa_mass = aaMass[aa_index];
           // linearly weight deviation from expected amino acid distance
-          const double aaTolScore = 1.0 - (std::abs(ionMassDiff - aa_mass) / fragment_tolerance_Da);
+          const double aaTolScore = 1.0 - (std::fabs(ionMassDiff - aa_mass) / fragment_tolerance_Da);
 
           if (aaTolScore > 0.0) // in tolerance window?
           {         
@@ -757,7 +787,7 @@ void SimpleSearchEngineAlgorithm::addEvidToResEvMatrix(
         // When assuming each fragment peak is a 2+ charge, it is possible
         // to have a fragment peak larger than precursor mass (ie why
         // bounds check is needed).
-        if (newResMassBin <= maxPrecurMassBin) 
+        if (score != 0.0 && newResMassBin <= maxPrecurMassBin) 
         {
           residueEvidenceMatrix[aa_index][newResMassBin - 1] += score; // add evidence for neutral mass (hence -1 proton)
         }
@@ -1145,7 +1175,7 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
       mapResidue2Index_[r->getOneLetterCode()[0]] = index;
       ++index;
     }
-    preprocessResidueEvidence_(spectra, aas, rems, cums);
+    preprocessResidueEvidence_(spectra, fragment_mass_tolerance_, fragment_mass_tolerance_unit_ppm, aas, rems, cums);
 
 #ifdef RES_EV_DEBUG
      double test_score = -log(calculatePValue_(AASequence::fromString(fasta_db[0].sequence), rems[0], cums[0]));
@@ -1245,7 +1275,7 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
             // cout << "ResEv: Matching scan_index: " << scan_index << endl;
             // const PeakSpectrum& exp_spectrum = spectra[scan_index];
 
-            //const double& score = -log(calculatePValue_(candidate, rems[scan_index], cums[scan_index]));
+            //const double score = -log10(calculatePValue_(candidate, rems[scan_index], cums[scan_index]));
             const double& score = calculateRawResEv_(candidate, rems[scan_index]);
 
             //if (score == 0) { continue; } // no hit?
