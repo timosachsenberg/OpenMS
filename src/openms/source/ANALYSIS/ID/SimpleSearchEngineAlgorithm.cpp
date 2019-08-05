@@ -349,7 +349,8 @@ namespace OpenMS
         // calculate count matrix C using dynamic programming
         // C[row][column]: rows are discretized scores s, columns are mass bins
         vector<vector<double>> C(s_max + 1, vector<double>(maxPrecurMassBin, 0));
-        C[0][mass2bin_(nTermMass)] = 1; // count the N-terminus once
+        C[0][0] = 1; // count the N-terminus once
+        //TODOOOOOOOOOOOO C[0][mass2bin_(nTermMass)] = 1; // count the N-terminus once
         for (size_t m = mass2bin_(nTermMass); m <= mass2bin_(precursorMass); ++m)
         {
           for (size_t s = 0; s <= s_max; ++s)
@@ -565,7 +566,6 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
   ionMassBin.clear();
   ionIntens.clear();
 
-
   // Find pairs of y ions in 1+ charge state
   ionMass.push_back(precursorMass - cTermMass);
   ionMassBin.push_back(mass2bin_(precursorMass - cTermMass));
@@ -577,7 +577,6 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
     double tmpIonMass = precursorMass - spectrum[ion].getMZ() + (2.0 * Constants::PROTON_MASS_U); //TODO: should this be H instead of H+
     int binTmpIonMass = mass2bin_(tmpIonMass);
 
-    
     if (tmpIonMass > 0) 
     {
       ionMass.push_back(tmpIonMass);
@@ -682,7 +681,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
 
   // Get maxEvidence value
   double maxEvidence = -1.0;
-  for (size_t i = 0; i < max_precursor_mass_bin; ++i) 
+  for (size_t i = 0; i <= mass2bin_(precursorMass); ++i) 
   {
     for (size_t aa_index = 0; aa_index < aas.size(); ++aa_index) 
     {
@@ -697,7 +696,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
   // Discretize residue evidence so largest value is residueEvidenceIntScale
   double residueEvidenceIntScale = (double)granularityScale;
   size_t truncated_evidence(0);
-  for (int i = 0; i < max_precursor_mass_bin; i++) 
+  for (int i = 0; i <= mass2bin_(precursorMass); i++) 
   {
     for (size_t aa_index = 0; aa_index < aas.size(); ++aa_index) 
     {
@@ -708,6 +707,10 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
         //if (residueEvidenceMatrix[aa_index][i] == 0) { ++truncated_evidence; residueEvidenceMatrix[aa_index][i] = 1; } // prevent truncation TODOOOOOOOOOOOOOOOO makes this sense
       }
     }
+  }
+  for (size_t aa_index = 0; aa_index < aas.size(); ++aa_index) 
+  {
+    residueEvidenceMatrix[aa_index].resize(mass2bin_(precursorMass) + 1); 
   }
   //cout << "Truncated evidence: " << truncated_evidence << endl; // these evidences will not contribute anymore (Improvements?)
 
