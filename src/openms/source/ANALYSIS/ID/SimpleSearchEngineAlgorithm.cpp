@@ -242,7 +242,7 @@ namespace OpenMS
     threshold_mower_filter.setParameters(p_t);
     threshold_mower_filter.filterPeakMap(exp);
     
-    // determine maximum mass bin and remove peaks outside of possible range
+    // remove peaks outside of possible range
     double max_precursorMass(0);    
     for (auto & spectrum : exp)
     {
@@ -254,11 +254,7 @@ namespace OpenMS
       // there should be no peaks right to neutral precursor mass
       const double experimentalMassCutoff = precursorMass + 1.02;
       spectrum.erase(spectrum.MZBegin(experimentalMassCutoff), spectrum.end());
-      
-      if (precursorMass > max_precursorMass) max_precursorMass = precursorMass;
     }
-    size_t maxPrecurMassBin = mass2bin_(max_precursorMass + 50.0); // no peak beyond this m/z after filtering
-
 
     // 4. divide spectrum into 10 segments, normalize intensities to 50
     for (auto & spec : exp)
@@ -329,16 +325,17 @@ namespace OpenMS
 
       // calculate residue evidence matrix rem
       // rem[row][column]: rows are amino acids (or modified amino acids), columns are mass bins 
-      ResidueEvidenceMatrix rem = ResidueEvidenceMatrix(aas.size(), vector<double>(maxPrecurMassBin, 0));  
-      createResidueEvidenceMatrix(spectrum, aas, 0.02, false,  mass2bin_(maxPrecurMassBin), rem); // 0.02 = default fragment mass tolerance for high-res
+      size_t last_prefix_bin = mass2bin_(precursorMass - cTermMass);
+      ResidueEvidenceMatrix rem = ResidueEvidenceMatrix(aas.size(), vector<double>(last_prefix_bin + 1, 0));  
+      createResidueEvidenceMatrix(spectrum, aas, 0.02, false, last_prefix_bin, rem); // 0.02 = default fragment mass tolerance for high-res
       
       // calculate s_max: an upper bound for the maximum score to limit the number of rows of the count matrix
       // 1. maximum number of amino acids q is bounded by ceil(precursor_mass / lightest amino acid)
       // 2. maximum possible score is then the sum of the q largest column maxima
       size_t s_max(0);
       {
-        vector<double> column_maxima(maxPrecurMassBin, 0);
-        for (Size c = 0; c != maxPrecurMassBin; ++c) // for all mass bins (columns)
+        vector<double> column_maxima(last_prefix_bin + 1, 0);
+        for (Size c = 0; c <= last_prefix_bin; ++c) // for all mass bins (columns)
         {
           double column_maximum(0);
           for (Size r = 0; r != rem.size(); ++r) // for all entries in current mass bin column c
@@ -359,10 +356,10 @@ namespace OpenMS
       {
         // calculate count matrix C using dynamic programming
         // C[row][column]: rows are discretized scores s, columns are mass bins
-        vector<vector<double>> C(s_max + 1, vector<double>(maxPrecurMassBin, 0));
+        vector<vector<double>> C(s_max + 1, vector<double>(last_prefix_bin + 1, 0));
         C[0][0] = 1; // count the N-terminus once
         //C[0][mass2bin_(nTermMass)] = 1; // count the N-terminus once
-        for (size_t m = 1; m <= mass2bin_(precursorMass - cTermMass); ++m)
+        for (size_t m = 1; m <= last_prefix_bin; ++m)
         {
           for (size_t s = 0; s <= s_max; ++s)
           {
@@ -385,7 +382,7 @@ namespace OpenMS
               const size_t aa_mass = aaMass[a] * 1000.0; // int scaling
               double pAA(1);
               if (left_bin == 0) pAA = dAAFreqN.at(aa_mass);
-              else if (m == mass2bin_(precursorMass - cTermMass - 1)) pAA = dAAFreqC.at(aa_mass);
+              else if (m == last_prefix_bin - 1) pAA = dAAFreqC.at(aa_mass); // TODO: check why -1 is correct here?
               else pAA = dAAFreqI.at(aa_mass);
 
               left_sum += left_count * pAA;
@@ -395,7 +392,7 @@ namespace OpenMS
         }
       
         // calculate (cumulative) sum of counts for precursor mass with score larger than s once
-        size_t m = mass2bin_(precursorMass - cTermMass - 1);
+        size_t m = last_prefix_bin - 1; // TODO: check why -1 is correct? probably started one to the left in C matrix
         OPENMS_LOG_DEBUG << "Precursor mass (neutral) bin: " << m << endl;
         double cumsum(0);
         for (int s = s_max; s >= 0; --s) 
@@ -512,7 +509,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
     const std::set<const Residue*>& aas,
     double fragment_mass_tolerance, 
     bool fragment_mass_tolerance_unit_ppm,
-    size_t max_precursor_mass_bin,
+    size_t last_prefix_bin,
     vector<vector<double> >& residueEvidenceMatrix) 
   {
     const double precurMz = spectrum.getPrecursors()[0].getMZ(); 
@@ -579,7 +576,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
 
   // add evidence for b+ ions
   addEvidToResEvMatrix(ionMass, ionMassBin, ionIntens,
-                       max_precursor_mass_bin, aas.size(), aaMass, aaMassBin,
+                       last_prefix_bin, aas.size(), aaMass, aaMassBin,
                        fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, residueEvidenceMatrix);
   ionMass.clear();
   ionMassBin.clear();
@@ -619,7 +616,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
 #endif
 
   addEvidToResEvMatrix(ionMass, ionMassBin, ionIntens,
-                       max_precursor_mass_bin, aas.size(), aaMass, aaMassBin,
+                       last_prefix_bin, aas.size(), aaMass, aaMassBin,
                        fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, residueEvidenceMatrix);
 
   ionMass.clear();
@@ -654,7 +651,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
 #endif
 
     addEvidToResEvMatrix(ionMass, ionMassBin, ionIntens,
-                         max_precursor_mass_bin, aas.size(), aaMass, aaMassBin,
+                         last_prefix_bin, aas.size(), aaMass, aaMassBin,
                          fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, residueEvidenceMatrix);
     ionMass.clear();
     ionMassBin.clear();
@@ -691,7 +688,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
   cout << endl;
 #endif
     addEvidToResEvMatrix(ionMass, ionMassBin, ionIntens,
-                         max_precursor_mass_bin, aas.size(), aaMass, aaMassBin,
+                         last_prefix_bin, aas.size(), aaMass, aaMassBin,
                          fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, residueEvidenceMatrix);
     ionMass.clear();
     ionMassBin.clear();
@@ -700,7 +697,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
 
   // Get maxEvidence value
   double maxEvidence = -1.0;
-  for (size_t i = 0; i <= mass2bin_(precursorMass - cTermMass); ++i) 
+  for (size_t i = 0; i <= last_prefix_bin; ++i) 
   {
     for (size_t aa_index = 0; aa_index < aas.size(); ++aa_index) 
     {
@@ -715,7 +712,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
   // Discretize residue evidence so largest value is residueEvidenceIntScale
   double residueEvidenceIntScale = (double)granularityScale;
   size_t truncated_evidence(0);
-  for (int i = 0; i <= mass2bin_(precursorMass - cTermMass); i++) 
+  for (int i = 0; i <= last_prefix_bin; i++) 
   {
     for (size_t aa_index = 0; aa_index < aas.size(); ++aa_index) 
     {
@@ -723,21 +720,19 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
       if (residueEvidence > 0) 
       {
         residueEvidenceMatrix[aa_index][i] = round(residueEvidenceIntScale * residueEvidence / maxEvidence);  
-        //if (residueEvidenceMatrix[aa_index][i] == 0) { ++truncated_evidence; residueEvidenceMatrix[aa_index][i] = 1; } // prevent truncation TODOOOOOOOOOOOOOOOO makes this sense
+        // preventing truncation seems to save some hits (< 1%)
+        if (residueEvidenceMatrix[aa_index][i] == 0) { ++truncated_evidence; residueEvidenceMatrix[aa_index][i] = 1; }
       }
     }
   }
   for (size_t aa_index = 0; aa_index < aas.size(); ++aa_index) 
   {
-    residueEvidenceMatrix[aa_index].resize(mass2bin_(precursorMass - cTermMass) + 1); 
+    residueEvidenceMatrix[aa_index].resize(last_prefix_bin + 1); 
   }
-  //cout << "Truncated evidence: " << truncated_evidence << endl; // these evidences will not contribute anymore (Improvements?)
 
 #ifdef RES_EV_DEBUG
+  cout << "Saved truncated evidence: " << truncated_evidence << endl;
   cout << "max evidence after scaling: " << residueEvidenceIntScale << endl;
-#endif
-
-/*
   size_t aa_index(0);
   for (auto & r : residueEvidenceMatrix)
   {
@@ -755,8 +750,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
     cout << (*it)->getName() << endl;
     if (!only_zeros) cout << line << endl;
     ++aa_index;
-  }
-*/
+#endif
 }
 
 // adapted from code written by Andy Lin in Feb 2018
