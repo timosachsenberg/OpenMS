@@ -116,8 +116,6 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
     using CumScoreHistogram = std::vector<double>;
 
     /// @brief filter, deisotope, decharge spectra
-    static void preprocessSpectra_(PeakMap& exp, double fragment_mass_tolerance, bool fragment_mass_tolerance_unit_ppm);
- 
     std::map<double, double> dAAFreqN;
     std::map<double, double> dAAFreqI;
     std::map<double, double> dAAFreqC;
@@ -126,6 +124,8 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
   void getAminoAcidFrequencies_(
       const std::vector<FASTAFile::FASTAEntry>& fasta_db, 
       const ProteaseDigestion& digestor,   
+      ModifiedPeptideGenerator::MapToResidueType fixed_modifications,
+      ModifiedPeptideGenerator::MapToResidueType variable_modifications,
       std::map<double, double>& dAAFreqN,
       std::map<double, double>& dAAFreqI,
       std::map<double, double>& dAAFreqC,
@@ -145,7 +145,8 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
     static void createResidueEvidenceMatrix(
       const MSSpectrum& spectrum,
       const std::set<const Residue*>& aas,
-      double fragment_tolerance_Da,
+      const double fragment_mass_tolerance,
+      const bool fragment_mass_tolerance_unit_ppm,
       size_t max_precursor_mass_bin,
       std::vector<std::vector<double> >& residueEvidenceMatrix);
 
@@ -157,7 +158,8 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
       int nAA,
       const std::vector<double>& aaMass,
       const std::vector<int>& aaMassBin,
-      const double fragment_tolerance_Da,
+      const double fragment_mass_tolerance,
+      const bool fragment_mass_tolerance_unit_ppm,
       std::vector<std::vector<double> >& residueEvidenceMatrix
       );
 
@@ -219,7 +221,7 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
 
     Size report_top_hits_;
 
-    std::map<const Residue*, size_t> mapResidue2Index_;
+    std::unordered_map<const Residue*, size_t> mapResidue2Index_;
 };
 
 } // namespace
