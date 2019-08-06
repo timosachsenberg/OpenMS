@@ -251,8 +251,8 @@ namespace OpenMS
       const int precurCharge = spectrum.getPrecursors()[0].getCharge();
       const double precursorMass = precurMz * precurCharge - precurCharge * Constants::PROTON_MASS_U;
 
-      // there should be no peaks right to neutral precursor mass (+ 50.0 as a safeguard)
-      const double experimentalMassCutoff = precursorMass + 50.0;
+      // there should be no peaks right to neutral precursor mass
+      const double experimentalMassCutoff = precursorMass + 1.02;
       spectrum.erase(spectrum.MZBegin(experimentalMassCutoff), spectrum.end());
       
       if (precursorMass > max_precursorMass) max_precursorMass = precursorMass;
@@ -330,8 +330,7 @@ namespace OpenMS
       // calculate residue evidence matrix rem
       // rem[row][column]: rows are amino acids (or modified amino acids), columns are mass bins 
       ResidueEvidenceMatrix rem = ResidueEvidenceMatrix(aas.size(), vector<double>(maxPrecurMassBin, 0));  
-//TODO: changed  highest bin TOOOOOOOOOOOOOOOOOOOOOOOOOODOOOOOOOOOOOODDDDOOOOOOO but should be correct
-      createResidueEvidenceMatrix(spectrum, aas, 0.02, false,  mass2bin_(precursorMass), rem); // 0.02 = default fragment mass tolerance for high-res
+      createResidueEvidenceMatrix(spectrum, aas, 0.02, false,  mass2bin_(maxPrecurMassBin), rem); // 0.02 = default fragment mass tolerance for high-res
       
       // calculate s_max: an upper bound for the maximum score to limit the number of rows of the count matrix
       // 1. maximum number of amino acids q is bounded by ceil(precursor_mass / lightest amino acid)
@@ -374,9 +373,10 @@ namespace OpenMS
             double left_sum(0);
             for (size_t a = 0; a != aaMassBin.size(); ++a)
             {
-              size_t a_bin = aaMassBin[a];
-              size_t R_am = rem[a][m];  // residue evidence that a peptide(-prefix) with mass m (z=0) ended with a
-              if ((int)s - (int)R_am < 0 || (int)m - (int)a_bin < 0) continue;
+              const size_t a_bin = aaMassBin[a];
+              const size_t R_am = rem[a][m];  // residue evidence that a peptide(-prefix) with mass m (z=0) ended with a
+
+              if ((int)s - (int)R_am < 0 || (int)m - (int)a_bin < 0) continue; // outside of count matrix
              
               const size_t left_bin = m - a_bin;
               const double left_count = C[s - R_am][left_bin];
@@ -566,8 +566,8 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
     ionMassBin.push_back(binTmpIonMass);
     ionIntens.push_back(spectrum[ion].getIntensity());
   }
-  // 3. add peak for last amino acid without cTerm (no proton charge)
-  ionMass.push_back(precursorMass - cTermMass); // TODO: should this get a proton charge? otherwise distance calculation might not be correct
+  // 3. add peak for last amino acid without cTerm (no proton charge?)
+  ionMass.push_back(precursorMass - cTermMass); 
   ionMassBin.push_back(mass2bin_(precursorMass - cTermMass));
   ionIntens.push_back(0.0);
 
@@ -577,7 +577,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
   cout << endl;
 #endif
 
-  // add evidence fo
+  // add evidence for b+ ions
   addEvidToResEvMatrix(ionMass, ionMassBin, ionIntens,
                        max_precursor_mass_bin, aas.size(), aaMass, aaMassBin,
                        fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, residueEvidenceMatrix);
@@ -593,7 +593,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
   for (size_t ion = 0; ion < spectrum.size(); ++ion) 
   {
     // Convert to equivalent b ion masses for ease of processing
-    double tmpIonMass = precursorMass - spectrum[ion].getMZ() + (2.0 * Constants::PROTON_MASS_U); //TODO: should this be H instead of H+
+    double tmpIonMass = precursorMass - spectrum[ion].getMZ() + (2.0 * Constants::PROTON_MASS_U); //TODO: should this be H instead of H+?
     int binTmpIonMass = mass2bin_(tmpIonMass);
 
     if (tmpIonMass > 0) 
