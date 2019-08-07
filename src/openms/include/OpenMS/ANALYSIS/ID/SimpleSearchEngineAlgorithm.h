@@ -73,6 +73,87 @@
 namespace OpenMS
 {
 
+class OPENMS_DLLAPI ResidueEvidenceScore
+{
+public:
+  using ResidueEvidenceMatrix = std::vector<std::vector<double>>;
+  using CumScoreHistogram = std::vector<double>;
+
+  std::vector<ResidueEvidenceMatrix> rems;
+  std::vector<CumScoreHistogram> cums;
+
+  ResidueEvidenceScore(
+      const std::vector<FASTAFile::FASTAEntry>& fasta_db, 
+      const ProteaseDigestion& digestor,   
+      const Size peptide_min_size,
+      const Size peptide_max_size, 
+      const Size max_variable_mods_per_peptide,
+      ModifiedPeptideGenerator::MapToResidueType fixed_modifications,
+      ModifiedPeptideGenerator::MapToResidueType variable_modifications,
+      PeakMap& exp,
+      double fragment_mass_tolerance,
+      bool fragment_mass_tolerance_unit_ppm);
+
+    // calculate the raw residue evidence score for candidate peptide
+    size_t calculateRawResidueEvidence(
+      const AASequence& candidate, 
+      const Size spectrum_index) const;
+
+    // calculate the calibrated p-value for candidate peptide    
+    double calculatePValue(
+      const double res_ev_score,
+      const Size spectrum_index) const;
+private:
+    void preprocessResidueEvidence_(PeakMap& exp,    
+      double fragment_mass_tolerance, 
+      bool fragment_mass_tolerance_unit_ppm);
+
+    static unsigned int mass2bin_(double mass, int charge = 1);
+
+    static double bin2mass_(int bin, int charge = 1);
+
+    static void createResidueEvidenceMatrix_(
+      const MSSpectrum& spectrum,
+      const std::set<const Residue*>& aas,
+      const double fragment_mass_tolerance,
+      const bool fragment_mass_tolerance_unit_ppm,
+      size_t max_precursor_mass_bin,
+      std::vector<std::vector<double> >& residueEvidenceMatrix);
+
+    static void addEvidence_(
+      std::vector<double>& ionMass,
+      std::vector<int>& ionMassBin,
+      std::vector<double>& ionIntens,
+      int maxPrecurMassBin,
+      int nAA,
+      const std::vector<double>& aaMass,
+      const std::vector<int>& aaMassBin,
+      const double fragment_mass_tolerance,
+      const bool fragment_mass_tolerance_unit_ppm,
+      std::vector<std::vector<double> >& residueEvidenceMatrix
+      );
+
+    std::map<double, double> dAAFreqN;
+    std::map<double, double> dAAFreqI;
+    std::map<double, double> dAAFreqC;
+    std::map<double, double> dAAMass; 
+
+    std::unordered_map<const Residue*, size_t> mapResidue2Index_;
+
+    std::set<const Residue*> aas;
+ 
+  void calculateAminoAcidFrequencies_(
+      const std::vector<FASTAFile::FASTAEntry>& fasta_db, 
+      const ProteaseDigestion& digestor,   
+      const Size peptide_min_size,
+      const Size peptide_max_size, 
+      const Size max_variable_mods_per_peptide,
+      ModifiedPeptideGenerator::MapToResidueType fixed_modifications,
+      ModifiedPeptideGenerator::MapToResidueType variable_modifications
+    );
+};
+
+
 class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
   public DefaultParamHandler,
   public ProgressLogger
@@ -112,64 +193,7 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
     };
 
 
-    using ResidueEvidenceMatrix = std::vector<std::vector<double>>;
-    using CumScoreHistogram = std::vector<double>;
 
-    /// @brief filter, deisotope, decharge spectra
-    std::map<double, double> dAAFreqN;
-    std::map<double, double> dAAFreqI;
-    std::map<double, double> dAAFreqC;
-    std::map<double, double> dAAMass; 
-
-  void getAminoAcidFrequencies_(
-      const std::vector<FASTAFile::FASTAEntry>& fasta_db, 
-      const ProteaseDigestion& digestor,   
-      ModifiedPeptideGenerator::MapToResidueType fixed_modifications,
-      ModifiedPeptideGenerator::MapToResidueType variable_modifications,
-      std::map<double, double>& dAAFreqN,
-      std::map<double, double>& dAAFreqI,
-      std::map<double, double>& dAAFreqC,
-      std::map<double, double>& dAAMass 
-    );
-
-    static unsigned int mass2bin_(double mass, int charge = 1);
-    static double bin2mass_(int bin, int charge = 1);
-
-    void preprocessResidueEvidence_(PeakMap& exp,    
-      double fragment_mass_tolerance, 
-      bool fragment_mass_tolerance_unit_ppm,
-      const std::set<const Residue*>& aas,
-      std::vector<ResidueEvidenceMatrix>& rems, 
-      std::vector<CumScoreHistogram>& cums);
-
-    static void createResidueEvidenceMatrix(
-      const MSSpectrum& spectrum,
-      const std::set<const Residue*>& aas,
-      const double fragment_mass_tolerance,
-      const bool fragment_mass_tolerance_unit_ppm,
-      size_t max_precursor_mass_bin,
-      std::vector<std::vector<double> >& residueEvidenceMatrix);
-
-    static void addEvidToResEvMatrix(
-      std::vector<double>& ionMass,
-      std::vector<int>& ionMassBin,
-      std::vector<double>& ionIntens,
-      int maxPrecurMassBin,
-      int nAA,
-      const std::vector<double>& aaMass,
-      const std::vector<int>& aaMassBin,
-      const double fragment_mass_tolerance,
-      const bool fragment_mass_tolerance_unit_ppm,
-      std::vector<std::vector<double> >& residueEvidenceMatrix
-      );
-
-    // calculate the raw residue evidence score for candidate peptide
-    size_t calculateRawResEv_(const AASequence& candidate, const ResidueEvidenceMatrix& rem) const;
-
-    // calculate the calibrated p-value for candidate peptide    
-    double calculatePValue_(
-      const double res_ev_score,
-      const std::vector<double>& cumsumsC_sm) const;
 
     /// @brief filter and annotate search results
     /// most of the parameters are used to properly add meta data to the id objects
@@ -221,7 +245,6 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
 
     Size report_top_hits_;
 
-    std::unordered_map<const Residue*, size_t> mapResidue2Index_;
 };
 
 } // namespace

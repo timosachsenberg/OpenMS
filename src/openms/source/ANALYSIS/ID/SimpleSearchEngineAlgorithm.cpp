@@ -177,15 +177,58 @@ namespace OpenMS
     report_top_hits_ = param_.getValue("report:top_hits");
   }
 
+  ResidueEvidenceScore::ResidueEvidenceScore(
+      const std::vector<FASTAFile::FASTAEntry>& fasta_db, 
+      const ProteaseDigestion& digestor,   
+      const Size peptide_min_size,
+      const Size peptide_max_size, 
+      const Size max_variable_mods_per_peptide,
+      ModifiedPeptideGenerator::MapToResidueType fixed_modifications,
+      ModifiedPeptideGenerator::MapToResidueType variable_modifications,
+      PeakMap& exp,
+      double fragment_mass_tolerance,
+      bool fragment_mass_tolerance_unit_ppm)
+  {
 
-  // static
-  void SimpleSearchEngineAlgorithm::preprocessResidueEvidence_(
+    calculateAminoAcidFrequencies_(
+      fasta_db, 
+      digestor,
+      peptide_min_size,
+      peptide_min_size,
+      max_variable_mods_per_peptide,
+      fixed_modifications,
+      variable_modifications);
+
+    aas = ResidueDB::getInstance()->getResidues("Natural20");
+    // determine residues replaced by fixed modifications
+    std::set<const Residue*> replaced_by_fixed_modified_residue;
+    for (auto & r : aas)
+    {
+      for (const auto & mr : fixed_modifications.val) 
+      { 
+        if (mr.second->getOneLetterCode()[0] == r->getOneLetterCode()[0]) { replaced_by_fixed_modified_residue.insert(r); break; }
+      }
+    }
+    // erase replaced ones from residue set and add modified ones
+    for (auto & r : replaced_by_fixed_modified_residue) { aas.erase(r); } 
+    for (const auto & mr : fixed_modifications.val) { aas.insert(mr.second); }
+    for (const auto & mr : variable_modifications.val) { aas.insert(mr.second); }
+
+    size_t index(0);
+    for (auto & r : aas)
+    {
+      mapResidue2Index_[r] = index;
+      ++index;
+    }
+
+    preprocessResidueEvidence_(exp, fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm);
+  }
+
+
+  void ResidueEvidenceScore::preprocessResidueEvidence_(
     PeakMap& exp,
     double fragment_mass_tolerance, 
-    bool fragment_mass_tolerance_unit_ppm,
-    const std::set<const Residue*>& aas,
-    vector<ResidueEvidenceMatrix>& rems, 
-    vector<CumScoreHistogram>& cums)
+    bool fragment_mass_tolerance_unit_ppm)
   {
     rems.clear();
     cums.clear();
@@ -327,7 +370,7 @@ namespace OpenMS
       // rem[row][column]: rows are amino acids (or modified amino acids), columns are mass bins 
       size_t last_prefix_bin = mass2bin_(precursorMass - cTermMass);
       ResidueEvidenceMatrix rem = ResidueEvidenceMatrix(aas.size(), vector<double>(last_prefix_bin + 1, 0));  
-      createResidueEvidenceMatrix(spectrum, aas, 0.02, false, last_prefix_bin, rem); // 0.02 = default fragment mass tolerance for high-res
+      createResidueEvidenceMatrix_(spectrum, aas, 0.02, false, last_prefix_bin, rem); // 0.02 = default fragment mass tolerance for high-res
       
       // calculate s_max: an upper bound for the maximum score to limit the number of rows of the count matrix
       // 1. maximum number of amino acids q is bounded by ceil(precursor_mass / lightest amino acid)
@@ -442,8 +485,11 @@ namespace OpenMS
     }    
   }
 
-  size_t SimpleSearchEngineAlgorithm::calculateRawResEv_(const AASequence& candidate, const ResidueEvidenceMatrix& rem) const
+  size_t ResidueEvidenceScore::calculateRawResidueEvidence(
+      const AASequence& candidate,
+      Size spectrum_index) const
   {
+    const ResidueEvidenceMatrix& rem = rems[spectrum_index];
     // calculate residue evidence score
     size_t res_ev_score(0);
     double m(Residue::getInternalToBIon().getMonoWeight()); 
@@ -473,11 +519,13 @@ namespace OpenMS
   }
 
   // probability of other peptide of same mass with higher score
-  double SimpleSearchEngineAlgorithm::calculatePValue_(
+  double ResidueEvidenceScore::calculatePValue(
     const double res_ev_score, 
-    const vector<double>& cumsumsC_sm) const
+    const Size spectrum_index) const
   {
-    if (res_ev_score <= 0) return 1.0;
+   const vector<double>& cumsumsC_sm = cums[spectrum_index];
+
+   if (res_ev_score <= 0) return 1.0;
 
     OPENMS_PRECONDITION(cumsumsC_sm[0] > 0, "No DP-amino acid sequence exist matching to mass bin of precursor.")
     OPENMS_PRECONDITION(cumsumsC_sm[res_ev_score] > 0, "At least one peptide needs to match score.")
@@ -488,14 +536,14 @@ namespace OpenMS
     return p_value;
   }
 
-  unsigned int SimpleSearchEngineAlgorithm::mass2bin_(double mass, int charge /*=1*/) 
+  unsigned int ResidueEvidenceScore::mass2bin_(double mass, int charge /*=1*/) 
   {
     const double bin_width = 1.0005079;
     const double bin_offset = 0.4; // 0.4 tide & comet default 0.4 - paper default: 0.68
     return (unsigned int)((mass + (charge - 1) * Constants::PROTON_MASS_U) / (charge * bin_width) + 1.0 - bin_offset);
   }
 
-  double SimpleSearchEngineAlgorithm::bin2mass_(int bin, int charge /*=1*/) 
+  double ResidueEvidenceScore::bin2mass_(int bin, int charge /*=1*/) 
   {
     const double bin_width = 1.0005079;
     const double bin_offset = 0.4; // tide & comet default 0.4 - paper default: 0.68
@@ -504,7 +552,7 @@ namespace OpenMS
 
 
 // adapted from Crux/Tide Andy Lin
-void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
+void ResidueEvidenceScore::createResidueEvidenceMatrix_(
     const MSSpectrum& spectrum,
     const std::set<const Residue*>& aas,
     double fragment_mass_tolerance, 
@@ -575,7 +623,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
 #endif
 
   // add evidence for b+ ions
-  addEvidToResEvMatrix(ionMass, ionMassBin, ionIntens,
+  addEvidence_(ionMass, ionMassBin, ionIntens,
                        last_prefix_bin, aas.size(), aaMass, aaMassBin,
                        fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, residueEvidenceMatrix);
   ionMass.clear();
@@ -615,7 +663,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
   cout << endl;
 #endif
 
-  addEvidToResEvMatrix(ionMass, ionMassBin, ionIntens,
+  addEvidence_(ionMass, ionMassBin, ionIntens,
                        last_prefix_bin, aas.size(), aaMass, aaMassBin,
                        fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, residueEvidenceMatrix);
 
@@ -650,7 +698,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
   cout << endl;
 #endif
 
-    addEvidToResEvMatrix(ionMass, ionMassBin, ionIntens,
+    addEvidence_(ionMass, ionMassBin, ionIntens,
                          last_prefix_bin, aas.size(), aaMass, aaMassBin,
                          fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, residueEvidenceMatrix);
     ionMass.clear();
@@ -687,7 +735,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
   for (Size i = 0; i != ionMassBin.size(); ++i) cout << " " << ionMassBin[i];
   cout << endl;
 #endif
-    addEvidToResEvMatrix(ionMass, ionMassBin, ionIntens,
+    addEvidence_(ionMass, ionMassBin, ionIntens,
                          last_prefix_bin, aas.size(), aaMass, aaMassBin,
                          fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm, residueEvidenceMatrix);
     ionMass.clear();
@@ -754,7 +802,7 @@ void SimpleSearchEngineAlgorithm::createResidueEvidenceMatrix(
 }
 
 // adapted from code written by Andy Lin in Feb 2018
-void SimpleSearchEngineAlgorithm::addEvidToResEvMatrix(
+void ResidueEvidenceScore::addEvidence_(
   vector<double>& ionMass,
   vector<int>& ionMassBin,
   vector<double>& ionIntens,
@@ -925,15 +973,14 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
     protein_ids[0].setSearchParameters(std::move(search_parameters));
   }
 
-  void SimpleSearchEngineAlgorithm::getAminoAcidFrequencies_(
+  void ResidueEvidenceScore::calculateAminoAcidFrequencies_(
       const vector<FASTAFile::FASTAEntry>& fasta_db, 
-      const ProteaseDigestion& digestor,   
+      const ProteaseDigestion& digestor,
+      const Size peptide_min_size,
+      const Size peptide_max_size, 
+      const Size max_variable_mods_per_peptide,
       ModifiedPeptideGenerator::MapToResidueType fixed_modifications,
-      ModifiedPeptideGenerator::MapToResidueType variable_modifications,
-      map<double, double>& dAAFreqN,
-      map<double, double>& dAAFreqI,
-      map<double, double>& dAAFreqC,
-      map<double, double>& dAAMass 
+      ModifiedPeptideGenerator::MapToResidueType variable_modifications
     )
   {
     map<double, double> cN;
@@ -947,7 +994,7 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
     for (int fasta_index = 0; fasta_index != fasta_db.size(); ++fasta_index)
     {
       vector<StringView> current_digest;
-      digestor.digestUnmodified(fasta_db[fasta_index].sequence, current_digest, peptide_min_size_, peptide_max_size_);
+      digestor.digestUnmodified(fasta_db[fasta_index].sequence, current_digest, peptide_min_size, peptide_max_size);
       for (auto const & c : current_digest)
       { 
         const String current_peptide = c.getString();
@@ -955,7 +1002,7 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
         AASequence aas = AASequence::fromString(current_peptide);
         ModifiedPeptideGenerator::applyFixedModifications(fixed_modifications, aas);
         vector<AASequence> all_modified_peptides;
-        ModifiedPeptideGenerator::applyVariableModifications(variable_modifications, aas, modifications_max_variable_mods_per_peptide_, all_modified_peptides);
+        ModifiedPeptideGenerator::applyVariableModifications(variable_modifications, aas, max_variable_mods_per_peptide, all_modified_peptides);
         
         // count how often a (unique) AA mass occurs at N-,C-term or internal 
         for (SignedSize mod_pep_idx = 0; mod_pep_idx < (SignedSize)all_modified_peptides.size(); ++mod_pep_idx)
@@ -1063,15 +1110,6 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
     digestor.setEnzyme(enzyme_);
     digestor.setMissedCleavages(peptide_missed_cleavages_);
 
-    getAminoAcidFrequencies_(fasta_db, 
-      digestor,
-      fixed_modifications,
-      variable_modifications,
-      dAAFreqN,
-      dAAFreqI,
-      dAAFreqC,
-      dAAMass 
-    );
 
 #ifdef RES_EV_DEBUG
     peptide_min_size_= 0;
@@ -1156,36 +1194,22 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
 
     // residue evidence matrix and cumulative peptide vs score counts
     startProgress(0, 1, "Filtering spectra...");
-    std::vector<ResidueEvidenceMatrix> rems;
-    std::vector<CumScoreHistogram> cums;
 
-    std::set<const Residue*> aas = ResidueDB::getInstance()->getResidues("Natural20");
-    // determine residues replaced by fixed modifications
-    std::set<const Residue*> replaced_by_fixed_modified_residue;
-    for (auto & r : aas)
-    {
-      for (const auto & mr : fixed_modifications.val) 
-      { 
-        if (mr.second->getOneLetterCode()[0] == r->getOneLetterCode()[0]) { replaced_by_fixed_modified_residue.insert(r); break; }
-      }
-    }
-    // erase replaced ones from residue set and add modified ones
-    for (auto & r : replaced_by_fixed_modified_residue) { aas.erase(r); } 
-    for (const auto & mr : fixed_modifications.val) { aas.insert(mr.second); }
-    for (const auto & mr : variable_modifications.val) { aas.insert(mr.second); }
-
-    size_t index(0);
-    for (auto & r : aas)
-    {
-      mapResidue2Index_[r] = index;
-      ++index;
-    }
-
-    preprocessResidueEvidence_(spectra, fragment_mass_tolerance_, fragment_mass_tolerance_unit_ppm, aas, rems, cums);
+    ResidueEvidenceScore residue_evidence_scorer(
+      fasta_db, 
+      digestor,   
+      peptide_min_size_,
+      peptide_max_size_, 
+      modifications_max_variable_mods_per_peptide_,
+      fixed_modifications, 
+      variable_modifications,
+      spectra, 
+      fragment_mass_tolerance_, 
+      fragment_mass_tolerance_unit_ppm);
 
 #ifdef RES_EV_DEBUG
-     double res_ev_0 = calculateRawResEv_(AASequence::fromString(fasta_db[0].sequence), rems[0]);
-     double pvalue_0 = -log(calculatePValue_(res_ev_0, cums[0]));
+     double res_ev_0 = ResidueEvidenceScore::calculateRawResidueEvidence(AASequence::fromString(fasta_db[0].sequence), rems[0]);
+     double pvalue_0 = -log(ResidueEvidenceScore::calculatePValue(res_ev_0, cums[0]));
      cout << "test_score res-ev: " << res_ev_0 << endl;
      cout << "test_score p-value: " << pvalue_0 << endl;
      return ExitCodes::EXECUTION_OK;
@@ -1283,11 +1307,11 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
             // const PeakSpectrum& exp_spectrum = spectra[scan_index];
 
             double score;
-            score = calculateRawResEv_(candidate, rems[scan_index]);
+            score = residue_evidence_scorer.calculateRawResidueEvidence(candidate, scan_index);
 #ifdef RES_EV_DEBUG
             cout << candidate.toString() << " res-ev: " << score << endl;
 #endif
-            score = -log10(calculatePValue_(score, cums[scan_index]));
+            score = -log10(residue_evidence_scorer.calculatePValue(score, scan_index));
 #ifdef RES_EV_DEBUG
             cout << candidate.toString() << " p-value: " << score << endl;
 #endif
@@ -1390,6 +1414,5 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
 
     return ExitCodes::EXECUTION_OK;
   }
-
 } // namespace
 
