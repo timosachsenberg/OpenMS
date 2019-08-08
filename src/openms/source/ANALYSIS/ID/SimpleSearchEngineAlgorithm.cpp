@@ -248,7 +248,7 @@ namespace OpenMS
     {
       Deisotoper::deisotopeAndSingleCharge(spectrum, 
         fragment_mass_tolerance, fragment_mass_tolerance_unit_ppm,
-        1, 3,   // min / max charge 
+        1, 3,  // min / max charge 
         false,  // keep all peaks
         2, 5,  // min / max isopeaks 
         false, false);  // don't convert fragment m/z to mono charge and don't annotate charge
@@ -335,10 +335,11 @@ namespace OpenMS
       for (Size i = 0; i != spec.size(); ++i) 
       {
         int rank = 1 + lower_bound(intensities.begin(), intensities.end(), spec[i].getIntensity() + 1e-3, greater<double>()) - intensities.begin();
-        spec[i].setIntensity(1.0 / (double)rank);
-        // cout << "peak intensities spectrum: " << i << "\t" << spec[i].getIntensity() << endl;
+        // original
+        // spec[i].setIntensity(1.0 / (double)rank);
+        // modified: performs equal or better on tested data (e.g., 2500 vs 2200 PSMs)
+        spec[i].setIntensity(1.0 - (double)(rank - 1) / (double)intensities.size());
       }
-       
     } 
 
     // TODO: depends on terminal mods
@@ -523,33 +524,29 @@ namespace OpenMS
     const double res_ev_score, 
     const Size spectrum_index) const
   {
-   const vector<double>& cumsumsC_sm = cums[spectrum_index];
+    const vector<double>& cumsumsC_sm = cums[spectrum_index];
 
-   if (res_ev_score <= 0) return 1.0;
+    if (res_ev_score <= 0) return 1.0;
 
     OPENMS_PRECONDITION(cumsumsC_sm[0] > 0, "No DP-amino acid sequence exist matching to mass bin of precursor.")
     OPENMS_PRECONDITION(cumsumsC_sm[res_ev_score] > 0, "At least one peptide needs to match score.")
 
     // number of peptides with score equal or better then residue evidence score of candidate / total peptide count
-    //cout << "(res-ev: p count>=res-ev count>=0) " << res_ev_score << ": " << cumsumsC_sm[res_ev_score]  / cumsumsC_sm[0] << " " << cumsumsC_sm[res_ev_score] << " " << cumsumsC_sm[0] << std::endl;
-    const double p_value = cumsumsC_sm[res_ev_score]  / cumsumsC_sm[0]; // TODO: check why +1 is needed here? should be at least 1 but there are zeros?
+    const double p_value = cumsumsC_sm[res_ev_score]  / cumsumsC_sm[0];
+#ifdef RES_EV_DEBUG
+    cout << "(res-ev: p count>=res-ev count>=0) " << res_ev_score << ": " << cumsumsC_sm[res_ev_score]  / cumsumsC_sm[0] << " " << cumsumsC_sm[res_ev_score] << " " << cumsumsC_sm[0] << std::endl;
+#endif
     return p_value;
   }
 
-  unsigned int ResidueEvidenceScore::mass2bin_(double mass, int charge /*=1*/) 
+  // basically maps m/z to nominal mass bin
+  // offset and scaling ensures (up to large mass) that round((a+b+c)/bin_width)=round(a/bin_width)+round(b/bin_width)+round(c/bin_width)
+  unsigned int ResidueEvidenceScore::mass2bin_(double mass) 
   {
     const double bin_width = 1.0005079;
     const double bin_offset = 0.4; // 0.4 tide & comet default 0.4 - paper default: 0.68
-    return (unsigned int)((mass + (charge - 1) * Constants::PROTON_MASS_U) / (charge * bin_width) + 1.0 - bin_offset);
+    return (unsigned int)(mass / bin_width + 1.0 - bin_offset);
   }
-
-  double ResidueEvidenceScore::bin2mass_(int bin, int charge /*=1*/) 
-  {
-    const double bin_width = 1.0005079;
-    const double bin_offset = 0.4; // tide & comet default 0.4 - paper default: 0.68
-    return (bin - 1.0 + bin_offset) * charge * bin_width + (charge - 1) * Constants::PROTON_MASS_U;
-  }
-
 
 // adapted from Crux/Tide Andy Lin
 void ResidueEvidenceScore::createResidueEvidenceMatrix_(
@@ -1287,13 +1284,13 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
 
           if (precursor_mass_tolerance_unit_ppm) // ppm
           {
-            low_it = multimap_mass_2_scan_index.lower_bound(current_peptide_mass - 0.5 * current_peptide_mass * precursor_mass_tolerance_ * 1e-6);
-            up_it = multimap_mass_2_scan_index.upper_bound(current_peptide_mass + 0.5 * current_peptide_mass * precursor_mass_tolerance_ * 1e-6);
+            low_it = multimap_mass_2_scan_index.lower_bound(current_peptide_mass - current_peptide_mass * precursor_mass_tolerance_ * 1e-6);
+            up_it = multimap_mass_2_scan_index.upper_bound(current_peptide_mass +  current_peptide_mass * precursor_mass_tolerance_ * 1e-6);
           }
           else // Dalton
           {
-            low_it = multimap_mass_2_scan_index.lower_bound(current_peptide_mass - 0.5 * precursor_mass_tolerance_);
-            up_it = multimap_mass_2_scan_index.upper_bound(current_peptide_mass + 0.5 * precursor_mass_tolerance_);
+            low_it = multimap_mass_2_scan_index.lower_bound(current_peptide_mass - precursor_mass_tolerance_);
+            up_it = multimap_mass_2_scan_index.upper_bound(current_peptide_mass +  precursor_mass_tolerance_);
           }
 
           // no matching precursor in data

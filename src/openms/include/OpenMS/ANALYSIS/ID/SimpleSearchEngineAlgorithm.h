@@ -108,9 +108,8 @@ private:
       double fragment_mass_tolerance, 
       bool fragment_mass_tolerance_unit_ppm);
 
-    static unsigned int mass2bin_(double mass, int charge = 1);
-
-    static double bin2mass_(int bin, int charge = 1);
+    // charge = 1
+    static unsigned int mass2bin_(double mass);
 
     static void createResidueEvidenceMatrix_(
       const MSSpectrum& spectrum,

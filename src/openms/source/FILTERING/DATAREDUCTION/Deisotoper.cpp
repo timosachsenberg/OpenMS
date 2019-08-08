@@ -90,6 +90,9 @@ void Deisotoper::deisotopeAndSingleCharge(MSSpectrum& spec,
 
     for (int q = max_charge; q >= min_charge; --q) // important: test charge hypothesis from high to low
     {
+      // skip peaks with mass > precursor mass 
+      Size pc_z = spec.getPrecursors()[0].getCharge();      
+      if (current_mz * q - q * Constants::PROTON_MASS_U > spec.getPrecursors()[0].getMZ() * pc_z - pc_z * Constants::PROTON_MASS_U  ) continue;
       // try to extend isotopes from mono-isotopic peak
       // if extension larger then min_isopeaks possible:
       //   - save charge q in mono_isotopic_peak[]
