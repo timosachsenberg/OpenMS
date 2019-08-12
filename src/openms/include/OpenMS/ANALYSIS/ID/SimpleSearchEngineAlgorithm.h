@@ -97,7 +97,9 @@ public:
     // calculate the raw residue evidence score for candidate peptide
     size_t calculateRawResidueEvidence(
       const AASequence& candidate, 
-      const Size spectrum_index) const;
+      const Size spectrum_index,
+      const PeakMap& spectra
+      ) const;
 
     // calculate the calibrated p-value for candidate peptide    
     double calculatePValue(
@@ -214,7 +216,8 @@ class OPENMS_DLLAPI SimpleSearchEngineAlgorithm :
       const Int precursor_min_charge,
       const Int precursor_max_charge,
       const String& enzyme,
-      const String& database_name);
+      const String& database_name, 
+      const std::vector<size_t>& nr_candidates);
 
     double precursor_mass_tolerance_;
     String precursor_mass_tolerance_unit_;

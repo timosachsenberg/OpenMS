@@ -242,7 +242,6 @@ namespace OpenMS
     ThresholdMower threshold_mower_filter;
     threshold_mower_filter.filterPeakMap(exp);
 
-
     // deisotope (not part of original implementation)
     for (auto & spectrum : exp)
     {
@@ -488,18 +487,23 @@ namespace OpenMS
 
   size_t ResidueEvidenceScore::calculateRawResidueEvidence(
       const AASequence& candidate,
-      Size spectrum_index) const
+      Size spectrum_index, 
+      const PeakMap& spectra) const
   {
     const ResidueEvidenceMatrix& rem = rems[spectrum_index];
     // calculate residue evidence score
     size_t res_ev_score(0);
     double m(Residue::getInternalToBIon().getMonoWeight()); 
-
+    double m_y(Residue::getInternalToYIon().getMonoWeight()); 
+    const double precurMz = spectra[spectrum_index].getPrecursors()[0].getMZ();
+    const double precurCharge = spectra[spectrum_index].getPrecursors()[0].getCharge();
+    const double precursorMass = precurMz * precurCharge - precurCharge * Constants::PROTON_MASS_U; // neutral mass
     // TODO: add modified terminus
     for (Size i = 0; i != candidate.size(); ++i)
     {
       const double aa_mass = candidate[i].getMonoWeight(Residue::Internal);
       m += aa_mass;
+      m_y += candidate[candidate.size() - 1 - i].getMonoWeight(Residue::Internal);
       size_t m_bin = mass2bin_(m);
       
       auto it = mapResidue2Index_.find(&(candidate[i]));
@@ -508,7 +512,18 @@ namespace OpenMS
 #ifdef RES_EV_DEBUG
         cout << "candidate residue: '" << candidate[i].getOneLetterCode() << "' mass_bin: " << m_bin << " index: " << it->second << " ev:" << rem[it->second][m_bin] << " sum:" << res_ev_score << endl; 
 #endif
-        res_ev_score += rem[it->second][m_bin];  
+/*
+        double b_z1 = m + Constants::PROTON_MASS_U;
+        double b_z2 = (m + 2.0 * Constants::PROTON_MASS_U) / 2.0;
+        double y_z1 = m_y + Constants::PROTON_MASS_U;
+        double y_z2 = (m_y + 2.0 * Constants::PROTON_MASS_U) / 2.0;
+        if (spectra[spectrum_index].findNearest(b_z1, 0.02) != -1 
+         || spectra[spectrum_index].findNearest(b_z2, 0.02) != -1
+         || spectra[spectrum_index].findNearest(y_z1, 0.02) != -1 
+         || spectra[spectrum_index].findNearest(y_z2, 0.02) != -1) */
+        {
+          res_ev_score += rem[it->second][m_bin];
+        }
       }
       else
       {
@@ -532,7 +547,14 @@ namespace OpenMS
     OPENMS_PRECONDITION(cumsumsC_sm[res_ev_score] > 0, "At least one peptide needs to match score.")
 
     // number of peptides with score equal or better then residue evidence score of candidate / total peptide count
-    const double p_value = cumsumsC_sm[res_ev_score]  / cumsumsC_sm[0];
+    //const double p_value = cumsumsC_sm[res_ev_score]  / cumsumsC_sm[0]; // as in paper
+
+    // as in Exact p-values for Cross-correlation Score Function paper - slightly better result
+    const double C_larger = cumsumsC_sm[res_ev_score + 1];
+    const double C_equal_larger = cumsumsC_sm[res_ev_score];
+    const double C_equal = C_equal_larger - C_equal;
+    const double p_value =  (0.5 * C_equal + C_larger) / cumsumsC_sm[0];
+
 #ifdef RES_EV_DEBUG
     cout << "(res-ev: p count>=res-ev count>=0) " << res_ev_score << ": " << cumsumsC_sm[res_ev_score]  / cumsumsC_sm[0] << " " << cumsumsC_sm[res_ev_score] << " " << cumsumsC_sm[0] << std::endl;
 #endif
@@ -882,7 +904,9 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
       const Int precursor_min_charge,
       const Int precursor_max_charge,
       const String& enzyme,
-      const String& database_name)
+      const String& database_name,
+      const std::vector<size_t>& nr_candidates
+      )
   {
     // remove all but top n scoring
 #ifdef _OPENMP
@@ -907,7 +931,7 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
         // create empty PeptideIdentification object and fill meta data
         PeptideIdentification pi{};
         pi.setMetaValue("scan_index", static_cast<unsigned int>(scan_index));
-        pi.setScoreType("hyperscore");
+        pi.setScoreType("p-value");
         pi.setHigherScoreBetter(true);
         pi.setRT(exp[scan_index].getRT());
         pi.setMZ(exp[scan_index].getPrecursors()[0].getMZ());
@@ -930,12 +954,52 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
 
           // reannotate much more memory heavy AASequence object
           AASequence fixed_and_variable_modified_peptide = all_modified_peptides[a_it->peptide_mod_index]; 
-          ph.setScore(a_it->score);
+
+          // Sidac correction of p-value
+          const double old_p = std::pow(10.0, -a_it->score);
+          double sidac_pvalue = nr_candidates[scan_index] * log10(1.0 - old_p);
+
+          ph.setScore(sidac_pvalue);
+          ph.setMetaValue("p no sidac", a_it->score);
+          ph.setMetaValue("p sidac", sidac_pvalue);
+          ph.setMetaValue("candidate", nr_candidates[scan_index]);
+
+          //ph.setScore(a_it->score);
           ph.setSequence(fixed_and_variable_modified_peptide);
           phs.push_back(ph);
         }
         pi.setHits(phs);
         pi.assignRanks();
+
+        if (phs.size() >= 2)
+        {
+          if ( (phs[0].getScore() - phs[1].getScore()) < 1e-6 )
+          {
+            String a = phs[0].getSequence().toUnmodifiedString();
+            String b = phs[1].getSequence().toUnmodifiedString();
+            a = a.substitute('I', 'L');
+            b = b.substitute('I', 'L');
+            if (a != b)
+            {
+              double theo_mz_a = (phs[0].getSequence().getMonoWeight() + static_cast<double>(charge) * Constants::PROTON_MASS_U) / (double)charge;
+              double theo_mz_b = (phs[1].getSequence().getMonoWeight() + static_cast<double>(charge) * Constants::PROTON_MASS_U) / (double)charge;
+              double a_err = fabs(Math::getPPM(theo_mz_a, pi.getMZ()));
+              double b_err = fabs(Math::getPPM(theo_mz_b, pi.getMZ()));
+              if (b_err < a_err) // use mass error to resolve ambiguity
+              {
+                std::swap(phs[0], phs[1]);
+                pi.setHits(phs);
+                pi.assignRanks();
+              }
+              else if ( fabs(b_err - a_err) < 1e-6 ) // equal score and equal mass error ppm
+              {
+                cout << "ambigious top scoring hits: " << a_err << " " << b_err << " " << phs[0].getScore() << " " << phs[0].getSequence().toUnmodifiedString() << " " << phs[1].getSequence().toUnmodifiedString() << endl;
+                pi.setHits(vector<PeptideHit>());
+              } 
+            }
+          }
+        }
+
 
 #ifdef _OPENMP
 #pragma omp critical (peptide_ids_access)
@@ -1089,6 +1153,7 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
     spectrum_generator.setParameters(param);
 
     // preallocate storage for PSMs
+    vector<size_t> nr_candidates(spectra.size(), 0);
     vector<vector<AnnotatedHit_> > annotated_hits(spectra.size(), vector<AnnotatedHit_>());
     for (auto & a : annotated_hits) { a.reserve(2 * report_top_hits_); }
 
@@ -1101,6 +1166,8 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
     startProgress(0, 1, "Load database from FASTA file...");
     vector<FASTAFile::FASTAEntry> fasta_db;
     FASTAFile::load(in_db, fasta_db);
+    std::random_shuffle (fasta_db.begin(), fasta_db.end());
+	
     endProgress();
 
     ProteaseDigestion digestor;
@@ -1303,8 +1370,15 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
             // cout << "ResEv: Matching scan_index: " << scan_index << endl;
             // const PeakSpectrum& exp_spectrum = spectra[scan_index];
 
-            double score;
-            score = residue_evidence_scorer.calculateRawResidueEvidence(candidate, scan_index);
+            double score = residue_evidence_scorer.calculateRawResidueEvidence(candidate, scan_index, spectra);
+
+#ifdef _OPENMP
+            omp_set_lock(&(annotated_hits_lock[scan_index]));
+            ++nr_candidates[scan_index];
+            omp_unset_lock(&(annotated_hits_lock[scan_index]));
+#endif
+            if (score == 0) continue; // no evidence at all
+
 #ifdef RES_EV_DEBUG
             cout << candidate.toString() << " res-ev: " << score << endl;
 #endif
@@ -1313,7 +1387,6 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
             cout << candidate.toString() << " p-value: " << score << endl;
 #endif
 
-            //if (score == 0) { continue; } // no hit?
 
             // add peptide hit
             AnnotatedHit_ ah;
@@ -1366,7 +1439,8 @@ void SimpleSearchEngineAlgorithm::postProcessHits_(const PeakMap& exp,
       precursor_min_charge_,
       precursor_max_charge_,
       enzyme_,
-      in_db
+      in_db,
+      nr_candidates
       );
     endProgress();
 
