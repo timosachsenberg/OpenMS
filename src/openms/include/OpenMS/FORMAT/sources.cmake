@@ -34,6 +34,7 @@ DTAFile.h
 EDTAFile.h
 ExperimentalDesignFile.h
 FASTAFile.h
+FeatureSQLFile.h
 FeatureXMLFile.h
 FileHandler.h
 GzipIfstream.h

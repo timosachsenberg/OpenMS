@@ -20,6 +20,7 @@ DTAFile.cpp
 EDTAFile.cpp
 ExperimentalDesignFile.cpp
 FASTAFile.cpp
+FeatureSQLFile.cpp
 FeatureXMLFile.cpp
 FileHandler.cpp
 FileTypes.cpp

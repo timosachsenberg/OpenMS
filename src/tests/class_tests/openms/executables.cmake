@@ -166,6 +166,7 @@ set(format_executables_list
   ExperimentalDesignFile_test
   FASTAFile_test
   FeatureFileOptions_test
+  FeatureSQLFile_test
   FeatureXMLFile_test
   FileHandler_test
   FileTypes_test
