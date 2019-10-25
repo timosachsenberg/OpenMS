@@ -115,6 +115,8 @@ END_SECTION
 */
 
 
+
+
 START_SECTION((void write(std::string& out_fm, FeatureMap& feature_map)))
 {
   FeatureXMLFile dfmap_file;
@@ -147,26 +149,21 @@ START_SECTION((void write(std::string& out_fm, FeatureMap& feature_map)))
   dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_output.featureXML"), e2); //ExperimentalDesign_input_6.featureXML", e2); //FeatureXMLFile_1.featureXML"), e2);
 
   FeatureSQLFile fsf;
-  fsf.write("test", e2);
+  fsf.write("MetaboIdent_1_outputSQL", e2);
 
 }
 END_SECTION
-
-
-
 
 START_SECTION((FeatureMap read(std::string& in_featureSQL)))
 {
 
   //dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("FeatureXMLFile_1.featureXML"), e2);
   //ExperimentalDesign_input_6.featureXML", e2); //FeatureXMLFile_1.featureXML"), e2);
+
   FeatureMap output;
   FeatureSQLFile fsf;
 
-  output = fsf.read(OPENMS_GET_TEST_DATA_PATH("test"));
-
-
-
+  output = fsf.read(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_outputSQL"));
 
   FeatureXMLFile f;
 
@@ -175,8 +172,6 @@ START_SECTION((FeatureMap read(std::string& in_featureSQL)))
   f.store(tmp_filename, output);
   WHITELIST("?xml-stylesheet")
   TEST_FILE_SIMILAR(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_output.featureXML"), tmp_filename)  
-
-
 
 }
 END_SECTION
