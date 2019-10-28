@@ -918,15 +918,13 @@ namespace OpenMS
   } // end of FeatureSQLFile::write
 
 
-
-
-
-
-
-
   // read functions
+<<<<<<< HEAD
 
   ConvexHull2D readBBox_(sqlite3_stmt * stmt, int  column_nr)
+=======
+  ConvexHull2D readBBox_(sqlite3_stmt * stmt, int column_nr)
+>>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
   {
     std::cout << "\n column_nr = " << column_nr << std::endl;
 
@@ -955,7 +953,10 @@ namespace OpenMS
     std::istringstream iss(id_string);
     int64_t id_sub = 0;
     iss >> id_sub;
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
 
     double rt = 0.0;
     Sql::extractValue<double>(&rt, stmt, column_nr + 1);
@@ -967,7 +968,11 @@ namespace OpenMS
     Sql::extractValue<int>(&charge, stmt, column_nr + 4);
     double quality = 0.0;
     Sql::extractValue<double>(&quality, stmt, column_nr + 5);
+<<<<<<< HEAD
     subordinate.setUniqueId(id_sub  );
+=======
+    subordinate.setUniqueId(id_sub);
+>>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
     subordinate.setRT(rt);
     subordinate.setMZ(mz);
     subordinate.setIntensity(intensity);
@@ -1057,7 +1062,11 @@ namespace OpenMS
     ConvexHull2D hull = readBBox_(stmt, column_nr);
     subordinate.getConvexHulls().push_back(hull);
 
+<<<<<<< HEAD
     std::cout << "subordinate id " << id_sub  << std::endl;
+=======
+    std::cout << "subordinate id " << id_sub << std::endl;
+>>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
   
     return subordinate;
   }
@@ -1559,14 +1568,20 @@ namespace OpenMS
           ConvexHull2D hull = readBBox_(stmt, column_nr);
           feature->getConvexHulls().push_back(hull);
         }
-
         sqlite3_step(stmt);
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
       }
       sqlite3_finalize(stmt);
     }
 
+<<<<<<< HEAD
     // add subordinate entries
+=======
+    // subordinates
+>>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
     if (subordinates_switch)
     {
       // join features with subordinates + subordinate bounding boxes
@@ -1575,7 +1590,11 @@ namespace OpenMS
       sqlite3_step(stmt);
 
       int column_nr = 0;
+<<<<<<< HEAD
       int64_t f_id_prev = 0;
+=======
+      size_t f_id_prev = 0;
+>>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
 
       while (sqlite3_column_type( stmt, 0 ) != SQLITE_NULL)
       {
@@ -1585,7 +1604,6 @@ namespace OpenMS
         Sql::extractValue<String>(&f_id_string, stmt, 0);
         std::istringstream iss(f_id_string);
         iss >> f_id;
-        cout << "Feature id from query  " << f_id << endl;
 
         // get boundingbox index
         int bbox_col = cols_features_join_subordinates_join_bbox - 1; // - 1 to address last column
@@ -1594,18 +1612,24 @@ namespace OpenMS
 
 
         Feature* feature = &feature_map[map_fid_to_index[f_id]];
+<<<<<<< HEAD
 
         std::vector<Feature>* subordinates = &feature->getSubordinates();
 
+=======
+        std::vector<Feature>* subordinates = &feature->getSubordinates();
+>>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
 
         if (f_id != f_id_prev) // new feature
         {
-
           f_id_prev = f_id;
           column_nr = cols_features + 1 + 1;// size features + column SUB_IDX + column REF_ID
           subordinates->push_back(readSubordinate_(stmt, column_nr, cols_features, cols_subordinates)); // add subordinate and first bounding box (if present)
+<<<<<<< HEAD
           sqlite3_step(stmt);
           continue;
+=======
+>>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
         }
         else // same feature, different subordinate or bounding box
         {
@@ -1620,9 +1644,13 @@ namespace OpenMS
             column_nr = cols_features + cols_subordinates + 1; //+ 1 = REF_ID
             (*subordinates)[subordinates->size()-1].getConvexHulls().push_back(readBBox_(stmt, column_nr));
           }
+<<<<<<< HEAD
           sqlite3_step(stmt);       
           continue;
+=======
+>>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
         }
+        sqlite3_step(stmt);
       } // while
       sqlite3_finalize(stmt);
     }  // subordinate switch
