@@ -1190,7 +1190,7 @@ namespace OpenMS
     // timo
     // ONLY features
   
-    map<int, size_t> map_fid_to_index; 
+    map<int64_t, size_t> map_fid_to_index; 
 
   
     if (features_switch)
@@ -1201,8 +1201,7 @@ namespace OpenMS
       //SqliteConnector::executePreparedStatement(db, &stmt, sql);
       sqlite3_step(stmt);
       
-      //FeatureMap feature_map;
-      Feature feature;
+      Feature* feature = nullptr;
 
       while (sqlite3_column_type( stmt, 0 ) != SQLITE_NULL)
       {
@@ -1212,18 +1211,17 @@ namespace OpenMS
 
         if (bbox_idx == 0)
         {
-          if (feature != Feature()) feature_map.push_back(feature);
-          feature = Feature();
+          feature_map.push_back(Feature());
+          feature = &feature_map[feature_map.size() - 1];
 
           // set feature parameters
           String id_s;
-          size_t id = 0;
+          int64_t id = 0;
+
           // extract as String TODO
           Sql::extractValue<String>(&id_s, stmt, 0);
-          //id = stol(id_s);
           std::istringstream iss(id_s);
           iss >> id;
-
 
           double rt = 0.0;
           Sql::extractValue<double>(&rt, stmt, 1);
@@ -1238,12 +1236,12 @@ namespace OpenMS
 
           // get values id, RT, MZ, Intensity, Charge, Quality
           // save SQL column elements as feature
-          feature.setUniqueId(id);
-          feature.setRT(rt);
-          feature.setMZ(mz);
-          feature.setIntensity(intensity);
-          feature.setCharge(charge);
-          feature.setOverallQuality(quality);
+          feature->setUniqueId(id);
+          feature->setRT(rt);
+          feature->setMZ(mz);
+          feature->setIntensity(intensity);
+          feature->setCharge(charge);
+          feature->setOverallQuality(quality);
 
           // index to account for offsets in joined tables
           int col_nr = 6;
@@ -1260,7 +1258,7 @@ namespace OpenMS
               column_name = column_name.substr(3);
               String value;
               Sql::extractValue<String>(&value, stmt, i);
-              feature.setMetaValue(column_name, value); 
+              feature->setMetaValue(column_name, value); 
               continue;
             } 
             else if (column_type == DataValue::INT_VALUE)
@@ -1268,7 +1266,7 @@ namespace OpenMS
               column_name = column_name.substr(3);
               int value = 0;
               Sql::extractValue<int>(&value, stmt, i);
-              feature.setMetaValue(column_name, value); 
+              feature->setMetaValue(column_name, value); 
               continue;
             } 
             else if (column_type == DataValue::DOUBLE_VALUE)
@@ -1276,7 +1274,7 @@ namespace OpenMS
               column_name = column_name.substr(3);
               double value = 0.0;
               Sql::extractValue<double>(&value, stmt, i);          
-              feature.setMetaValue(column_name, value); 
+              feature->setMetaValue(column_name, value); 
               continue;
             } 
             else if (column_type == DataValue::STRING_LIST)
@@ -1290,7 +1288,7 @@ namespace OpenMS
               value = value.chop(1);
               value = value.substr(1);
               value.split(", ", sl);
-              feature.setMetaValue(column_name, sl);
+              feature->setMetaValue(column_name, sl);
               continue;
             } 
             else if (column_type == DataValue::INT_LIST)
@@ -1302,7 +1300,7 @@ namespace OpenMS
               value = value.substr(1);
               std::vector<String> value_list;
               IntList il = ListUtils::create<int>(value, ',');
-              feature.setMetaValue(column_name, il);
+              feature->setMetaValue(column_name, il);
               continue;
             } 
             else if (column_type == DataValue::DOUBLE_LIST)
@@ -1313,7 +1311,7 @@ namespace OpenMS
               value = value.chop(1);
               value = value.substr(1);          
               DoubleList dl = ListUtils::create<double>(value, ',');
-              feature.setMetaValue(column_name, dl);
+              feature->setMetaValue(column_name, dl);
               continue;
             } 
             else if (column_type == DataValue::EMPTY_VALUE)
@@ -1339,8 +1337,11 @@ namespace OpenMS
           ConvexHull2D hull;
           hull.addPoint({min_mz, min_rt});
           hull.addPoint({max_mz, max_rt});
-          feature.getConvexHulls().push_back(hull);
+          feature->getConvexHulls().push_back(hull);
 
+          // map feature id to index in feature map (needed to map subordinates to features)
+          cout << "Adding feature ID with map index: " << feature->getUniqueId() << "\t" << feature_map.size() - 1 << endl;
+          map_fid_to_index[feature->getUniqueId()] = feature_map.size() - 1; 
         } 
         else if (bbox_idx > 0) // add new bb to existing feature
         {
@@ -1360,15 +1361,14 @@ namespace OpenMS
           ConvexHull2D hull;
           hull.addPoint({min_mz, min_rt});
           hull.addPoint({max_mz, max_rt});
-          feature.getConvexHulls().push_back(hull);
+          feature->getConvexHulls().push_back(hull);
         }
 
         sqlite3_step(stmt);
 
-        if (sqlite3_column_type( stmt, 0 ) == SQLITE_NULL) 
-        feature_map.push_back(feature); 
-        // map feature id to index in feature map (needed to map subordinates to features)
-        map_fid_to_index[feature.getUniqueId()] = feature_map.size() - 1; 
+//        if (sqlite3_column_type( stmt, 0 ) == SQLITE_NULL) 
+
+
 
         /// save feature in FeatureMap object
         //feature_map.ensureUniqueId();
@@ -1377,9 +1377,12 @@ namespace OpenMS
       sqlite3_finalize(stmt);
     }
 
-
-
-
+    for (auto & f : map_fid_to_index) 
+    { 
+      cout << f.first << "\t";
+      cout << f.second << "\t";
+      cout  << feature_map.at(f.second).getUniqueId() << endl; 
+    }
 
     // subordinates
     if (subordinates_switch)
@@ -1400,14 +1403,12 @@ namespace OpenMS
       {
 
         // get feature ID
-        String feat_id;
-        size_t f_id = 0;
-        Sql::extractValue<String>(&feat_id, stmt, 0);
-        f_id = stol(feat_id);
-        std::istringstream iss(feat_id);
+        int64_t f_id = 0;
+        String f_id_string;
+        Sql::extractValue<String>(&f_id_string, stmt, 0);
+        std::istringstream iss(f_id_string);
         iss >> f_id;
-
-
+        cout << "Feature id from query - 2 " << f_id << endl;
 
         // get boundingbox index
         int bbox_col = cols_features_join_subordinates_join_bbox - 1; // - 1 to address last column
@@ -1420,7 +1421,7 @@ namespace OpenMS
         if (f_id != f_id_prev) // new feature
         {
           f_id_prev = f_id;
-          feature = &feature_map[map_fid_to_index[f_id]];
+          feature = &feature_map.at(map_fid_to_index[f_id]);
 
           std::cout << "check feature  " << feature->getUniqueId()  << std::endl;
           
