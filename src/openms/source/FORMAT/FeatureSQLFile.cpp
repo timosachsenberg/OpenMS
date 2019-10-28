@@ -947,7 +947,7 @@ namespace OpenMS
     String id_s;
     size_t id = 0;
     // extract as String TODO
-    Sql::extractValue<String>(&id_s, stmt, 0);
+    Sql::extractValue<String>(&id_s, stmt, cols_features);
     //id = stol(id_s);
     std::istringstream iss(id_s);
     iss >> id;
@@ -1065,8 +1065,8 @@ namespace OpenMS
     hull.addPoint({max_mz, max_rt});
     subordinate.getConvexHulls().push_back(hull);
 
-    std::cout << "check subordinate  " << subordinate.getUniqueId()  << std::endl;
-
+    std::cout << "subordinate id " << id  << std::endl;
+  
     return subordinate;
   }
 
@@ -1366,7 +1366,7 @@ namespace OpenMS
 
         sqlite3_step(stmt);
 
-//        if (sqlite3_column_type( stmt, 0 ) == SQLITE_NULL) 
+        // if (sqlite3_column_type( stmt, 0 ) == SQLITE_NULL) 
 
 
 
@@ -1393,22 +1393,19 @@ namespace OpenMS
       sqlite3_step(stmt);
 
       int column_nr = 0;
-
       size_t f_id_prev = 0;
-      //size_t s_id_prev = 0;
 
-      //bool first_feat_switch = false;
+      std::vector<Feature>* subordinates;
 
       while (sqlite3_column_type( stmt, 0 ) != SQLITE_NULL)
       {
-
         // get feature ID
         int64_t f_id = 0;
         String f_id_string;
         Sql::extractValue<String>(&f_id_string, stmt, 0);
         std::istringstream iss(f_id_string);
         iss >> f_id;
-        cout << "Feature id from query - 2 " << f_id << endl;
+        cout << "Feature id from query  " << f_id << endl;
 
         // get boundingbox index
         int bbox_col = cols_features_join_subordinates_join_bbox - 1; // - 1 to address last column
@@ -1416,21 +1413,24 @@ namespace OpenMS
         Sql::extractValue<int>(&bbox_idx, stmt, bbox_col);
 
         Feature* feature = &feature_map[map_fid_to_index[f_id]];
-        std::vector<Feature>* subordinates = &feature->getSubordinates();
+        //subordinates = &feature->getSubordinates();
+
+
 
         if (f_id != f_id_prev) // new feature
         {
+
           f_id_prev = f_id;
           feature = &feature_map.at(map_fid_to_index[f_id]);
 
           std::cout << "check feature  " << feature->getUniqueId()  << std::endl;
           
-          subordinates = &(feature->getSubordinates());
+          //subordinates = &(feature->getSubordinates());
           column_nr = cols_features + 1 + 1;// size features + column SUB_IDX + column REF_ID
 
-          std::cout << "check subordinates  " << subordinates->size()  << std::endl;
-
           subordinates->push_back(readSubordinate_(stmt, column_nr, cols_features, cols_subordinates)); // add subordinate and first bounding box (if present)
+
+          std::cout << "check subordinates  " << subordinates->size()  << std::endl;
 
           sqlite3_step(stmt);
           
@@ -1438,6 +1438,7 @@ namespace OpenMS
         }
         else // same feature, different subordinate or bounding box
         {
+
           if (bbox_idx == 0) 
           {
             column_nr = cols_features + 1 + 1;// size features + column SUB_IDX + column REF_ID
@@ -1462,6 +1463,30 @@ namespace OpenMS
     return feature_map;
   }  // end of FeatureSQLFile::read
 } // namespace OpenMS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
