@@ -33,23 +33,14 @@
 // --------------------------------------------------------------------------
 
 
-
 #include <OpenMS/CONCEPT/Exception.h>
 #include <OpenMS/CONCEPT/UniqueIdInterface.h>
-
-#include <OpenMS/DATASTRUCTURES/DBoundingBox.h>
-#include <OpenMS/DATASTRUCTURES/DateTime.h>
-#include <OpenMS/DATASTRUCTURES/DataValue.h>
-#include <OpenMS/DATASTRUCTURES/ListUtils.h>
-#include <OpenMS/DATASTRUCTURES/Param.h>
-#include <OpenMS/DATASTRUCTURES/String.h>
 
 #include <OpenMS/FORMAT/FeatureSQLFile.h>
 #include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/FORMAT/SqliteConnector.h>
 
 #include <OpenMS/KERNEL/FeatureMap.h>
-#include <OpenMS/KERNEL/ConsensusMap.h>
 #include <OpenMS/KERNEL/StandardTypes.h>
 
 #include <OpenMS/METADATA/DataProcessing.h>
@@ -58,21 +49,16 @@
 
 #include <OpenMS/SYSTEM/File.h>
 
-#include <unordered_set>
 #include <sqlite3.h>
-#include <sstream>
-#include <map>
-#include <boost/algorithm/string/join.hpp>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <algorithm>
-#include <vector>
-#include <boost/algorithm/string.hpp>
 
-#include <typeinfo>
+/*
+  #include <sstream>
+  #include <map>
+  #include <iostream>
+  #include <fstream>
+  #include <string>
+*/
 
-// #include <Boost>
 
 using namespace std;
 
@@ -80,13 +66,13 @@ namespace OpenMS
 { 
   namespace Sql = Internal::SqliteHelper;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //                                                            helper functions                                                          //
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  // helper functions                                                                               //
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // store functions
   // convert int of enum datatype to a struct with prefix and type 
-  PrefixSQLTypePair enumToPrefix(const DataValue::DataType& dt)
+  PrefixSQLTypePair enumToPrefix_(const DataValue::DataType& dt)
   {
     // create label prefix according to type
     String prefix;
@@ -126,14 +112,14 @@ namespace OpenMS
     return pSTP;
   }
 
-  String createTable(const String& table_name, const String& table_stmt)
+  String createTable_(const String& table_name, const String& table_stmt)
   {
     String create_table_stmt = "CREATE TABLE " + table_name + " (" + table_stmt + ");";
     return create_table_stmt;
   }
 
   // get datatype
-  DataValue::DataType getColumnDatatype(const  String& label)
+  DataValue::DataType getColumnDatatype_(const  String& label)
   { 
     DataValue::DataType type;
     if (label.hasPrefix("_S_"))
@@ -172,48 +158,7 @@ namespace OpenMS
     return type;
   }
 
-  /*
-    // get userparameter
-    String getColumnName(const String& label)
-    { 
-      String label_userparam;
-      if (label.hasPrefix("_S_"))
-      {
-        label_userparam = label.substr(3);
-      } 
-      else if (label.hasPrefix("_I_"))
-      {
-        label_userparam = label.substr(3);
-      } 
-      else if (label.hasPrefix("_D_"))
-      {
-        label_userparam = label.substr(3);
-      } 
-      else if (label.hasPrefix("_SL_"))
-      {
-        label_userparam = label.substr(4);
-      } 
-      else if (label.hasPrefix("_IL_"))
-      {
-        label_userparam = label.substr(4);
-      } 
-      else if (label.hasPrefix("_DL_"))
-      {
-        label_userparam = label.substr(4);
-      } else 
-      {
-        label_userparam = label;
-        
-        //if (!label.hasPrefix("_"))
-        //{
-        //  datatype = 6;
-        //}
-        
-      }
-      return label_userparam;
-    }
-  */
-
+/*
   // write userparameter to feature
   void setUserParams(Feature& current_feature, String &column_name, const DataValue::DataType column_type, int i, sqlite3_stmt* stmt)
   {
@@ -258,7 +203,7 @@ namespace OpenMS
       Sql::extractValue<String>(&value, stmt, i); //IntList
       value = value.chop(1);
       value = value.substr(1);
-      std::vector<String> value_list;
+      vector<String> value_list;
       IntList il = ListUtils::create<int>(value, ',');
       current_feature.setMetaValue(column_name, il);
     } 
@@ -278,184 +223,220 @@ namespace OpenMS
       Sql::extractValue<String>(&value, stmt, i);
     }
   }
+*/
+
 
   // probe first feature in feature_map as template to set tables
   // check once for features, subordinates, dataprocessing, convexhull bboxes respectively 
-  std::tuple<bool, bool, bool, bool, bool> getTables(const FeatureMap& feature_map)
+  tuple<bool, bool, bool, bool, bool> getTables_(const FeatureMap& feature_map)
   {
-    bool features_switch, subordinates_switch, dataprocessing_switch, features_bbox_switch, subordinates_bbox_switch;
-    features_switch = false;
-    features_bbox_switch = false;
-    subordinates_switch = false;
-    subordinates_bbox_switch = false;
-    dataprocessing_switch = false;
+    bool features_switch_, subordinates_switch_, dataprocessing_switch_, features_bbox_switch_, subordinates_bbox_switch_;
+    features_switch_ = false;
+    features_bbox_switch_ = false;
+    subordinates_switch_ = false;
+    subordinates_bbox_switch_ = false;
+    dataprocessing_switch_ = false;
+
     if (feature_map.getDataProcessing().size() > 0)
     {
-      dataprocessing_switch = true;
+      dataprocessing_switch_ = true;
     }
+
     for (auto feature : feature_map)
     {
-      features_switch = true;
+      features_switch_ = true;
       if (feature.getConvexHulls().size() > 0)
       {
-        features_bbox_switch = true;
+        features_bbox_switch_ = true;
       }
       for (Feature sub : feature.getSubordinates())
       {
-        subordinates_switch = true;
+        subordinates_switch_ = true;
         if (sub.getConvexHulls().size() > 0)
         {
-          subordinates_bbox_switch = true;
+          subordinates_bbox_switch_ = true;
         }
-        break;
       }
-      break;
     }
-    return std::make_tuple(features_switch, subordinates_switch, dataprocessing_switch, features_bbox_switch, subordinates_bbox_switch);
+    return make_tuple(features_switch_, subordinates_switch_, dataprocessing_switch_, features_bbox_switch_, subordinates_bbox_switch_);
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //                                                store FeatureMap as SQL database                                                      //
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  //write FeatureMap as SQL database                                                      //
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
   // fitted snippet of FeatureXMLFile::load
-  void FeatureSQLFile::write(const std::string& out_fm, const FeatureMap& feature_map) const
+  void FeatureSQLFile::write(const string& out_fm, const FeatureMap& feature_map) const
   {
-    String path="/home/mkf/Development/OpenMS/src/tests/class_tests/openms/data/";
-    String filename = path.append(out_fm);
+    String path_="/home/mkf/Development/OpenMS/src/tests/class_tests/openms/data/";
+    String filename_ = path_.append(out_fm);
     
     // delete file if present
-    File::remove(filename);
+    File::remove(filename_);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                        variable declaration                                                          //
+    //variable declaration                                                          //
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////   
 
     // declare table entries
-    std::vector<String> feature_elements = {"ID", "RT", "MZ", "Intensity", "Charge", "Quality"};
-    std::vector<String> feature_elements_types = {"INTEGER", "REAL", "REAL", "REAL", "INTEGER", "REAL"};
+    vector<String> feature_elements_ = {"ID", "RT", "MZ", "Intensity", "Charge", "Quality"};
+    vector<String> feature_elements_types_ = {"INTEGER", "REAL", "REAL", "REAL", "INTEGER", "REAL"};
     
-    std::vector<String> subordinate_elements = {"ID", "SUB_IDX" , "REF_ID", "RT", "MZ", "Intensity", "Charge", "Quality"};
-    std::vector<String> subordinate_elements_types = {"INTEGER", "INTEGER", "INTEGER", "REAL", "REAL", "REAL", "INTEGER", "REAL"};
+    vector<String> subordinate_elements_ = {"ID", "SUB_IDX" , "REF_ID", "RT", "MZ", "Intensity", "Charge", "Quality"};
+    vector<String> subordinate_elements_types_ = {"INTEGER", "INTEGER", "INTEGER", "REAL", "REAL", "REAL", "INTEGER", "REAL"};
 
-    std::vector<String> dataprocessing_elements = {"ID", "SOFTWARE", "SOFTWARE_VERSION", "DATA", "TIME", "ACTIONS"};
-    std::vector<String> dataprocessing_elements_types = {"INTEGER" ,"TEXT" ,"TEXT" ,"TEXT" ,"TEXT" , "TEXT"};
+    vector<String> dataprocessing_elements_ = {"ID", "SOFTWARE", "SOFTWARE_VERSION", "DATA", "TIME", "ACTIONS"};
+    vector<String> dataprocessing_elements_types_ = {"INTEGER" ,"TEXT" ,"TEXT" ,"TEXT" ,"TEXT" , "TEXT"};
 
-    std::vector<String> feat_bounding_box_elements = {"REF_ID", "MIN_MZ", "MIN_RT", "MAX_MZ", "MAX_RT", "BB_IDX"};
-    std::vector<String> feat_bounding_box_elements_types = {"INTEGER" ,"REAL" ,"REAL" ,"REAL" , "REAL", "INTEGER"};
+    vector<String> feat_bounding_box_elements_ = {"REF_ID", "min_MZ", "min_RT", "max_MZ", "max_RT", "BB_IDX"};
+    vector<String> feat_bounding_box_elements_types_ = {"INTEGER" ,"REAL" ,"REAL" ,"REAL" , "REAL", "INTEGER"};
 
-    std::vector<String> sub_bounding_box_elements = {"ID", "REF_ID", "MIN_MZ", "MIN_RT", "MAX_MZ", "MAX_RT", "BB_IDX"};
-    std::vector<String> sub_bounding_box_elements_types = {"INTEGER" ,"INTEGER" ,"REAL" ,"REAL" ,"REAL" , "REAL", "INTEGER"};
+    vector<String> sub_bounding_box_elements_ = {"ID", "REF_ID", "min_MZ", "min_RT", "max_MZ", "max_RT", "BB_IDX"};
+    vector<String> sub_bounding_box_elements_types_ = {"INTEGER" ,"INTEGER" ,"REAL" ,"REAL" ,"REAL" , "REAL", "INTEGER"};
 
     // get used tables
-    auto tables = getTables(feature_map);
-    bool features_switch = std::get<0>(tables);
-    bool subordinates_switch = std::get<1>(tables);
-    bool dataprocessing_switch = std::get<2>(tables);
-    bool features_bbox_switch = std::get<3>(tables);
-    bool subordinates_bbox_switch = std::get<4>(tables);
+    auto tables_ = getTables_(feature_map);
+    bool features_switch_ = get<0>(tables_);
+    bool subordinates_switch_ = get<1>(tables_);
+    bool dataprocessing_switch_ = get<2>(tables_);
+    bool features_bbox_switch_ = get<3>(tables_);
+    bool subordinates_bbox_switch_ = get<4>(tables_);
 
-    std::cout << features_switch << "\t" << subordinates_switch << "\t" <<  dataprocessing_switch << "\t" << features_bbox_switch << "\t" << subordinates_bbox_switch << std::endl; 
+    //DEBUG
+    //cout << "table declaration of switches to see which tables are in or out" << endl;
+    //cout << features_switch_ << subordinates_switch_ << dataprocessing_switch_ << features_bbox_switch_ << subordinates_bbox_switch_ << endl;
+    //cout << "table declaration of switches to see which tables are in or out" << endl;
 
     // read feature_map userparameter values and store as key value map
     // pass all CommonMetaKeys by setting frequency to 0.0 to a set 
-    std::set<String> common_keys = MetaInfoInterfaceUtils::findCommonMetaKeys<FeatureMap, std::set<String> >(feature_map.begin(), feature_map.end(), 0.0);
-    std::map<String, DataValue::DataType> map_key2type;
+    set<String> common_keys_ = MetaInfoInterfaceUtils::findCommonMetaKeys<FeatureMap, set<String> >(feature_map.begin(), feature_map.end(), 0.0);
+    map<String, DataValue::DataType> map_key2type_;
 
     for (auto feature : feature_map)
     {
-      for (const String& key : common_keys)
+      for (const String& key : common_keys_)
       {
         if (feature.metaValueExists(key))
         {
           const DataValue::DataType& dt = feature.getMetaValue(key).valueType();
-          map_key2type[key] = dt;
+          map_key2type_[key] = dt;
         }
       }
     }
 
-    std::vector<String> dataproc_keys;
-    const std::vector<DataProcessing> dataprocessing_userparams = feature_map.getDataProcessing();
-    std::map<String, DataValue::DataType> dataproc_map_key2type;
-
-    for (auto datap : dataprocessing_userparams)
+    // generate vector dataproc_keys_
+    // fill vector with dataprocessing_userparameters
+    // define map with corresponding datatype, dataproc_map_key2type_
+    // define String vector sequenc_keys, storing succession of userparameters keys in feature_map
+    vector<String> dataproc_keys_;
+    const vector<DataProcessing> dataprocessing_userparams = feature_map.getDataProcessing();
+    map<String, DataValue::DataType> dataproc_map_key2type_;
+    vector<String> sequence_keys_;
+    // traverse each dataprocessing entry in dataprocessing_userparams
+    for (auto dataproc_userparam : dataprocessing_userparams)
     {
-      datap.getKeys(dataproc_keys);
-      for (auto key : dataproc_keys)
+      // get key of current dataproc_userparam entry
+      dataproc_userparam.getKeys(dataproc_keys_);
+      for (auto key : dataproc_keys_)
       {
-        const DataValue::DataType& dt = datap.getMetaValue(key).valueType(); 
-        dataproc_map_key2type[key] = dt;
-
-        /*
-        const DataValue::DataType& dt = datap.getMetaValue(key).valueType(); 
-        if ((dt == DataValue::STRING_VALUE) || (dt == DataValue::STRING_LIST))
-        {
-          dataproc_map_key2type[key] = dataproc_map_key2type["\"" + key + "\""];
-        }
-        dataproc_map_key2type.erase(key);
-        */
-
+        const DataValue::DataType& dt = dataproc_userparam.getMetaValue(key).valueType();  // get DataType of current key
+        dataproc_map_key2type_[key] = dt; // save key, datatype pair
+        sequence_keys_.push_back(key); // store sequence of dataprocessing keys for reuse in table generation
       }
     }
 
+    // get number  of user parameters to derive explicit NULL value entries for empty features 
+    int user_param_null_entries_ = common_keys_.size();
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// build feature header for sql table                                                                                                  //
-    /// build subordinate header as sql table                                                                                               //
-    /// build dataprocessing header as sql table                                                                                            //
-    /// build boundingbox header as sql table                                                                                               //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //DEBUG
+    //cout << "\n\n\n\n#####################################################################" << endl;
+    //cout << "user_param_null_entries_ = " << user_param_null_entries_ << endl;
+    //cout << "#####################################################################" << endl;
+
+
+    vector<String> null_entries_(user_param_null_entries_, "NULL");
+    String null_entry_line_ = ListUtils::concatenate(null_entries_, ",");
+    //cout << null_entry_line_ << endl;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    /// build feature header for sql table                                                            //                                      //
+    /// build subordinate header as sql table                                                         //                                      //
+    /// build dataprocessing header as sql table                                                      //                                      //
+    /// build boundingbox header as sql table                                                         //                                      //
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    
     // prepare feature header, add (dynamic) part of user_parameter labels to header and header type vector 
-    for (const String& key : common_keys)
+
+    for (const String& key : common_keys_)
     {
-      // feature_elements vector with strings prefix (_TYPE_, _S_, _IL_, ...) and key  
-      feature_elements.push_back(enumToPrefix(map_key2type[key]).prefix + key);
-      // feature_elements vector with SQL TYPES 
-      feature_elements_types.push_back(enumToPrefix(map_key2type[key]).sqltype);
+      // feature_elements_ vector with strings prefix (_TYPE_, _S_, _IL_, ...) and key  
+      feature_elements_.push_back(enumToPrefix_(map_key2type_[key]).prefix + key);
+      // feature_elements_ vector with SQL TYPES 
+      feature_elements_types_.push_back(enumToPrefix_(map_key2type_[key]).sqltype);
     }
+
+
+
+
 
     // prepare subordinate header
-    std::map<String, DataValue::DataType> subordinate_key2type;
+    map<String, DataValue::DataType> subordinate_key2type_;
     for (FeatureMap::const_iterator feature_it = feature_map.begin(); feature_it != feature_map.end(); ++feature_it)
     {
-      for (std::vector<Feature>::const_iterator sub_it = feature_it->getSubordinates().begin(); sub_it != feature_it->getSubordinates().end(); ++sub_it)
+      for (vector<Feature>::const_iterator subord_it = feature_it->getSubordinates().begin(); subord_it != feature_it->getSubordinates().end(); ++subord_it)
       { 
-        std::vector<String> keys;
-        sub_it->getKeys(keys);
+        vector<String> keys;
+        subord_it->getKeys(keys);
         for (const String& key : keys)
         {
-          subordinate_key2type[key] = sub_it->getMetaValue(key).valueType();
+          subordinate_key2type_[key] = subord_it->getMetaValue(key).valueType();
         }
       }
     }
-    for (const auto& key2type : subordinate_key2type)
+
+    for (const auto& key2type : subordinate_key2type_)
     {
-      // subordinate_elements vector with strings prefix (_TYPE_, _S_, _IL_, ...) and key  
-      subordinate_elements.push_back(enumToPrefix(subordinate_key2type[key2type.first]).prefix + key2type.first);
+      // subordinate_elements_ vector with strings prefix (_TYPE_, _S_, _IL_, ...) and key  
+      subordinate_elements_.push_back(enumToPrefix_(subordinate_key2type_[key2type.first]).prefix + key2type.first);
       // subordinate_elements_type vector with SQL TYPES 
-      subordinate_elements_types.push_back(enumToPrefix(subordinate_key2type[key2type.second]).sqltype);
+      subordinate_elements_types_.push_back(enumToPrefix_(subordinate_key2type_[key2type.second]).sqltype);
     }
+
 
     // prepare dataprocessing header
-    for (const auto& key2type : dataproc_map_key2type)
-    {
-      // dataprocessing vector with strings prefix (_TYPE_, _S_, _IL_, ...) and key  
-      dataprocessing_elements.push_back(enumToPrefix(dataproc_map_key2type[key2type.first]).prefix + key2type.first);
-      // dataprocessing_elements_type vector with SQL TYPES 
-      dataprocessing_elements_types.push_back(enumToPrefix(key2type.second).sqltype);
+    for (auto & key : dataproc_keys_)
+    { 
+      //DEBUG
+      //cout << "\"" << enumToPrefix_(dataproc_map_key2type_[key]).prefix << key << "\"" << endl;
+      //cout << enumToPrefix_(dataproc_map_key2type_[key]).prefix << endl;
+      //cout << key << endl;
+      
+      // version without " to keep illegal entrie catch
+      String dataproc_element = enumToPrefix_(dataproc_map_key2type_[key]).prefix + key;
+      // all in one version with "
+      //String dataproc_element = "\"" + enumToPrefix_(dataproc_map_key2type_[key]).prefix + key + "\"";
+      //cout << dataproc_element << endl;
+      dataprocessing_elements_.push_back(dataproc_element);
+      String dataproc_element_type = enumToPrefix_(dataproc_map_key2type_[key]).sqltype;
+      //cout << dataproc_element_type << endl;
+      dataprocessing_elements_types_.push_back(dataproc_element_type);
+      //cout << "\"" << enumToPrefix_(dataproc_map_key2type_[key]).prefix << key << "\" " << enumToPrefix_(dataproc_map_key2type_[key]).sqltype << endl;      
     }
-    // test for illegal entries
-    // catch :
-    const std::vector<String> bad_sym = {"+", "_", "-", "?", "!", "*", "@", "%", "^", "&", "#", "=", "/", "\\", ":", "\"", "\'"};
 
-    for (std::size_t idx = 0; idx != dataprocessing_elements.size(); ++idx)
+
+    // test for illegal entries in dataprocessing_header
+    // catch :
+    const vector<String> bad_sym_ = {"+", "_", "-", "?", "!", "*", "@", "%", "^", "&", "#", "=", "/", "\\", ":", "\"", "\'"};
+
+    for (size_t idx = 0; idx != dataprocessing_elements_.size(); ++idx)
     {
-      // test for illegal SQL entries in dataprocessing_elements, if found replace
-      for (const String& sym : bad_sym)
+      // test for illegal SQL entries in dataprocessing_elements_, if found replace
+      for (const String& sym : bad_sym_)
       {
-        if (dataprocessing_elements[idx].hasSubstring(sym))
+        if (dataprocessing_elements_[idx].hasSubstring(sym))
         // use String::quote
         {
-          dataprocessing_elements[idx] = dataprocessing_elements[idx].quote();
+          dataprocessing_elements_[idx] = dataprocessing_elements_[idx].quote();
           break;
         }
       }
@@ -466,307 +447,428 @@ namespace OpenMS
     // preparation of boundingbox header atm needs no implementation
 
 
-
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                     create database with empty tables                                                //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // create database with empty tables                                                //
     // construct SQL_labels for feature, subordinate, dataprocessing and boundingbox tables
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
     // create empty
     // 1. features table
     // vector sql_labels, concatenate element and respective SQL type
-    std::vector<String> sql_labels_features = {};
-    for (std::size_t idx = 0; idx != feature_elements.size(); ++idx)
+    vector<String> sql_labels_features_ = {};
+    for (size_t idx = 0; idx != feature_elements_.size(); ++idx)
     {
-      sql_labels_features.push_back(feature_elements[idx] + " " + feature_elements_types[idx]);
+      sql_labels_features_.push_back(feature_elements_[idx] + " " + feature_elements_types_[idx]);
     }
     // add PRIMARY KEY to first entry, assuming 1st column contains primary key
-    sql_labels_features[0].append(" PRIMARY KEY");
+    sql_labels_features_[0].append(" PRIMARY KEY");
     // add "NOT NULL" to all entries
-    std::for_each(sql_labels_features.begin(), sql_labels_features.end(), [] (String &s) {s.append(" NOT NULL");});
+    //for_each(sql_labels_features_.begin(), sql_labels_features_.end(), [] (String &s) {s.append(" NULL");});
     // create single string with delimiter ',' as TABLE header template
-    String sql_stmt_features = ListUtils::concatenate(sql_labels_features, ",");
-
+    String sql_stmt_features_ = ListUtils::concatenate(sql_labels_features_, ",");
 
     // 2. subordinates table
     // vector sql_labels, concatenate element and respective SQL type
-    std::vector<String> sql_labels_subordinates = {};
-    for (std::size_t idx = 0; idx != subordinate_elements.size(); ++idx)
+    vector<String> sql_labels_subordinates_ = {};
+    for (size_t idx = 0; idx != subordinate_elements_.size(); ++idx)
     {
-      sql_labels_subordinates.push_back(subordinate_elements[idx] + " " + subordinate_elements_types[idx]);
+      sql_labels_subordinates_.push_back(subordinate_elements_[idx] + " " + subordinate_elements_types_[idx]);
     }
     // add PRIMARY KEY to first entry, assuming 1st column contains primary key
-    sql_labels_subordinates[0].append(" PRIMARY KEY");
+    sql_labels_subordinates_[0].append(" PRIMARY KEY");
     // add "NOT NULL" to all entries
-    std::for_each(sql_labels_subordinates.begin(), sql_labels_subordinates.end(), [] (String &s) {s.append(" NOT NULL");});
+    //for_each(sql_labels_subordinates_.begin(), sql_labels_subordinates_.end(), [] (String &s) {s.append(" NOT NULL");});
     // create single string with delimiter ',' as TABLE header template
-    String sql_stmt_subordinates = ListUtils::concatenate(sql_labels_subordinates, ",");
+    String sql_stmt_subordinates_ = ListUtils::concatenate(sql_labels_subordinates_, ",");
 
 
     // 3. dataprocessing table
-    std::vector<String> sql_labels_dataprocessing = {};
-    for (std::size_t idx = 0; idx != dataprocessing_elements.size(); ++idx)
-    {
-      sql_labels_dataprocessing.push_back(dataprocessing_elements[idx] + " " + dataprocessing_elements_types[idx]);
+    vector<String> sql_labels_dataprocessing_ = {};
+    for (size_t idx = 0; idx != dataprocessing_elements_.size(); ++idx)
+    { 
+      sql_labels_dataprocessing_.push_back(dataprocessing_elements_[idx] + " " + dataprocessing_elements_types_[idx]);
     }
+
+    //DEBUG
+    //String dataproc_keys_label_outputstring = ListUtils::concatenate(sql_labels_dataprocessing_, "\n");
+    //cout << "\n\n\n\n\n\n\n\n" << dataproc_keys_label_outputstring << endl;
+
+
     // add PRIMARY KEY to first entry, assuming 1st column contains primary key
-    sql_labels_dataprocessing[0].append(" PRIMARY KEY");
+    sql_labels_dataprocessing_[0].append(" PRIMARY KEY");
     // add "NOT NULL" to all entries
-    std::for_each(sql_labels_dataprocessing.begin(), sql_labels_dataprocessing.end(), [] (String &s) {s.append(" NOT NULL");});
+    //for_each(sql_labels_dataprocessing_.begin(), sql_labels_dataprocessing_.end(), [] (String &s) {s.append(" NOT NULL");});
     // create single string with delimiter ',' as TABLE header template
-    String sql_stmt_dataprocessing = ListUtils::concatenate(sql_labels_dataprocessing, ",");
+    String sql_stmt_dataprocessing_ = ListUtils::concatenate(sql_labels_dataprocessing_, ",");
 
 
     // 4. boundingbox table
     // 4.1 features
-    std::vector<String> sql_labels_boundingbox = {};
-    for (std::size_t idx = 0; idx != feat_bounding_box_elements.size(); ++idx)
+    vector<String> sql_labels_boundingbox_ = {};
+    for (size_t idx = 0; idx != feat_bounding_box_elements_.size(); ++idx)
     {
-      sql_labels_boundingbox.push_back(feat_bounding_box_elements[idx] + " " + feat_bounding_box_elements_types[idx]);
+      sql_labels_boundingbox_.push_back(feat_bounding_box_elements_[idx] + " " + feat_bounding_box_elements_types_[idx]);
     }
     // no PRIMARY KEY because of executeStatement's UNIQUE constraint for primary keys
     // add "NOT NULL" to all entries
-    std::for_each(sql_labels_boundingbox.begin(), sql_labels_boundingbox.end(), [] (String &s) {s.append(" NOT NULL");});
+    //for_each(sql_labels_boundingbox_.begin(), sql_labels_boundingbox_.end(), [] (String &s) {s.append(" NOT NULL");});
     // create single string with delimiter ',' as TABLE header template
-    String sql_stmt_feat_boundingbox = ListUtils::concatenate(sql_labels_boundingbox, ",");
+    String sql_stmt_feat_boundingbox = ListUtils::concatenate(sql_labels_boundingbox_, ",");
 
 
     // 4. boundingbox table
     // 4.2 subordinates
-    sql_labels_boundingbox = {};
-    for (std::size_t idx = 0; idx != sub_bounding_box_elements.size(); ++idx)
+    sql_labels_boundingbox_ = {};
+    for (size_t idx = 0; idx != sub_bounding_box_elements_.size(); ++idx)
     {
-      sql_labels_boundingbox.push_back(sub_bounding_box_elements[idx] + " " + sub_bounding_box_elements_types[idx]);
+      sql_labels_boundingbox_.push_back(sub_bounding_box_elements_[idx] + " " + sub_bounding_box_elements_types_[idx]);
     }
     // add PRIMARY KEY to first entry, assuming 1st column contains primary key
-    //sql_labels_boundingbox[0].append(" PRIMARY KEY");
+    //sql_labels_boundingbox_[0].append(" PRIMARY KEY");
     // add "NOT NULL" to all entries
-    std::for_each(sql_labels_boundingbox.begin(), sql_labels_boundingbox.end(), [] (String &s) {s.append(" NOT NULL");});
+    //for_each(sql_labels_boundingbox_.begin(), sql_labels_boundingbox_.end(), [] (String &s) {s.append(" NOT NULL");});
     // create single string with delimiter ',' as TABLE header template
-    String sql_stmt_sub_boundingbox = ListUtils::concatenate(sql_labels_boundingbox, ",");
+    String sql_stmt_sub_boundingbox_ = ListUtils::concatenate(sql_labels_boundingbox_, ",");
 
 
     // create empty SQL table stmt
-    String features_table_stmt, subordinates_table_stmt, dataprocessing_table_stmt, feature_boundingbox_table_stmt, subordinate_boundingbox_table_stmt;
+    String features_table_stmt_, subordinates_table_stmt_, dataprocessing_table_stmt_, feature_boundingbox_table_stmt_, subordinate_boundingbox_table_stmt_;
     // 1. features
-    if (features_switch == true)
+    if (features_switch_ == true)
     {
-      features_table_stmt = createTable("FEATURES_TABLE", sql_stmt_features);
+      features_table_stmt_ = createTable_("FEATURES_TABLE", sql_stmt_features_);
     } 
-    else if (features_switch == false)
+    else if (features_switch_ == false)
     {
-      features_table_stmt = "";
+      features_table_stmt_ = "";
     }
     // 2. subordinates
-    if (subordinates_switch == true)
+    if (subordinates_switch_ == true)
     {
-      subordinates_table_stmt = createTable("FEATURES_SUBORDINATES", sql_stmt_subordinates);
+      subordinates_table_stmt_ = createTable_("FEATURES_SUBORDINATES", sql_stmt_subordinates_);
     } 
-    else if (subordinates_switch == false)
+    else if (subordinates_switch_ == false)
     {
-      subordinates_table_stmt = "";
+      subordinates_table_stmt_ = "";
     }
     // 3. dataprocessing
-    if (dataprocessing_switch == true)
+    if (dataprocessing_switch_ == true)
     {
-      dataprocessing_table_stmt = createTable("FEATURES_DATAPROCESSING", sql_stmt_dataprocessing);
+      dataprocessing_table_stmt_ = createTable_("FEATURES_DATAPROCESSING", sql_stmt_dataprocessing_);
     } 
-    else if (dataprocessing_switch == false)
+    else if (dataprocessing_switch_ == false)
     {
-      dataprocessing_table_stmt = "";
+      dataprocessing_table_stmt_ = "";
     }
     // 4. boundingbox (features & subordinates)
     // features
-    if (features_bbox_switch == true)
+    if (features_bbox_switch_ == true)
     {
-      feature_boundingbox_table_stmt = createTable("FEATURES_TABLE_BOUNDINGBOX", sql_stmt_feat_boundingbox);
+      feature_boundingbox_table_stmt_ = createTable_("FEATURES_TABLE_BOUNDINGBOX", sql_stmt_feat_boundingbox);
     } 
-    else if (features_bbox_switch == false)
+    else if (features_bbox_switch_ == false)
     {
-      feature_boundingbox_table_stmt = "";
+      feature_boundingbox_table_stmt_ = "";
     }
     // subordinates
-    if (subordinates_bbox_switch)
+    if (subordinates_bbox_switch_)
     {
-      subordinate_boundingbox_table_stmt = createTable("SUBORDINATES_TABLE_BOUNDINGBOX", sql_stmt_sub_boundingbox);
+      subordinate_boundingbox_table_stmt_ = createTable_("SUBORDINATES_TABLE_BOUNDINGBOX", sql_stmt_sub_boundingbox_);
     } 
-    else if (subordinates_bbox_switch == false)
+    else if (subordinates_bbox_switch_ == false)
     {
-      subordinate_boundingbox_table_stmt = "";
+      subordinate_boundingbox_table_stmt_ = "";
     }
 
 
-    String create_sql = \
-      features_table_stmt + \
-      subordinates_table_stmt + \
-      dataprocessing_table_stmt + \
-      feature_boundingbox_table_stmt + \
-      subordinate_boundingbox_table_stmt \
+    String create_sql_ = \
+      features_table_stmt_ + \
+      subordinates_table_stmt_ + \
+      dataprocessing_table_stmt_ + \
+      feature_boundingbox_table_stmt_ + \
+      subordinate_boundingbox_table_stmt_ \
       ;    
 
     // catch SQL contingencies
-    //create_sql = create_sql.substitute("'", "\:"); // SQL escape single quote in strings  
+    //create_sql_ = create_sql_.substitute("'", "\:"); // SQL escape single quote in strings  
     // create SQL database, create empty SQL tables  see (https://github.com/OpenMS/OpenMS/blob/develop/src/openms/source/FORMAT/OSWFile.cpp)
     // Open connection to database
-    SqliteConnector conn(filename);
-    conn.executeStatement(create_sql);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    SqliteConnector conn(filename_);
+    conn.executeStatement(create_sql_);
+    //db = conn.getDB();
 
 
 
     // break into functions?
     // turn into line feed function for SQL database input step statement
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                     store FeatureMap data in tables                                                  //
-    //                                                     1. features                                                                      //                                    
-    //                                                     2. subordinates                                                                  //
-    //                                                     3. dataprocessing                                                                //
-    //                                                     4. boundingboxes features & subordinates                                         //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // store FeatureMap data in tables                                                                //
+    // 1. features                                                                                    //                                    
+    // 2. feature boundingboxes                                                                       //                                    
+    // 3. subordinates                                                                                //
+    // 4. subordinate boundingboxes                                                                   //
+    // 5. dataprocessing                                                                              //
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
     /// 1. insert data of features table
-    const String feature_elements_sql_stmt = ListUtils::concatenate(feature_elements, ","); 
-    const String feat_bbox_elements_sql_stmt = ListUtils::concatenate(feat_bounding_box_elements, ","); 
+    const String feature_elements_sql_stmt_ = ListUtils::concatenate(feature_elements_, ","); 
 
-    if (features_switch)
+    const String feat_bbox_elements_sql_stmt_ = ListUtils::concatenate(feat_bounding_box_elements_, ","); 
+
+    // 1.
+    if (features_switch_)
+    // TODO Error handling for empty features?
     {
+      conn.executeStatement("BEGIN TRANSACTION");
+      //sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
       for (const Feature& feature : feature_map)
       {
         String line_stmt_features_table;
-        std::vector<String> line;
+        vector<String> line;
 
         int64_t id = static_cast<int64_t>(feature.getUniqueId() & ~(1ULL << 63));
+        //int64_t id = feature.getUniqueId();
+
         line.push_back(id);
         line.push_back(feature.getRT());
         line.push_back(feature.getMZ());
         line.push_back(feature.getIntensity());
         line.push_back(feature.getCharge());
         line.push_back(feature.getOverallQuality());
-        for (const String& key : common_keys)
+        
+        // catch features without user params
+        if (feature.isMetaEmpty())
         {
-          String s = feature.getMetaValue(key);
-          if (map_key2type[key] == DataValue::STRING_VALUE
-          || map_key2type[key] == DataValue::STRING_LIST)
-          {
-            s = s.substitute("'", "''"); // SQL escape single quote in strings  
-          }
+          //cout << "has no userparams" << endl;
 
-          if (map_key2type[key] == DataValue::STRING_VALUE
-          || map_key2type[key] == DataValue::STRING_LIST
-          || map_key2type[key] == DataValue::INT_LIST
-          || map_key2type[key] == DataValue::DOUBLE_LIST)
+          line_stmt_features_table =  "INSERT INTO FEATURES_TABLE (" + feature_elements_sql_stmt_ + ") VALUES (";
+          line_stmt_features_table += ListUtils::concatenate(line, ",");
+          // check if userparameters are empty
+          if (user_param_null_entries_ != 0)
           {
-            s = "'" + s + "'"; // quote around SQL strings (and list types)
+            line_stmt_features_table += ",";
+            line_stmt_features_table += null_entry_line_;
           }
-          line.push_back(s);
+          line_stmt_features_table += ");";
+          //store in features table
+          conn.executeStatement(line_stmt_features_table);
+
+          continue;
         }
-        line_stmt_features_table =  "INSERT INTO FEATURES_TABLE (" + feature_elements_sql_stmt + ") VALUES (";
-        line_stmt_features_table += ListUtils::concatenate(line, ",");
-        line_stmt_features_table += ");";
-        //store in features table
-        conn.executeStatement(line_stmt_features_table);
-      }
-    }
+        else if (!feature.isMetaEmpty())
+        {
+          //cout << "has userparams" << endl;
 
-    if (features_bbox_switch)
+          for (const String& key : common_keys_)
+          {
+            String s = feature.getMetaValue(key);
+
+            if (s.length() == 0)
+            {
+              s = "NULL";
+            }
+
+            if (map_key2type_[key] == DataValue::STRING_VALUE
+              || map_key2type_[key] == DataValue::STRING_LIST)
+            {
+              s = s.substitute("'", "''"); // SQL escape single quote in strings  
+            }
+
+            if (map_key2type_[key] == DataValue::STRING_VALUE
+              || map_key2type_[key] == DataValue::STRING_LIST
+              || map_key2type_[key] == DataValue::INT_LIST
+              || map_key2type_[key] == DataValue::DOUBLE_LIST)
+            {
+              s = "'" + s + "'"; // quote around SQL strings (and list types)
+            }
+            line.push_back(s);
+          }
+          line_stmt_features_table =  "INSERT INTO FEATURES_TABLE (" + feature_elements_sql_stmt_ + ") VALUES (";
+          line_stmt_features_table += ListUtils::concatenate(line, ",");
+          line_stmt_features_table += ");";
+          //store in features table
+          conn.executeStatement(line_stmt_features_table);
+
+          continue;
+        }
+      }
+      //sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
+      conn.executeStatement("END TRANSACTION");
+    }
+    /*
+    cout << "\n\n\n\n\n TEST OUTPUT \n\n\n\n" << endl;
+    // 1*. efficient insert version 
+    if (features_switch_)
+    // TODO Error handling for empty features?
     {
+      //line_stmt_features_table =  "INSERT INTO FEATURES_TABLE (" + feature_elements_sql_stmt_ + ") VALUES (";
+      // combined feature property lines 
+      String line_stmt_features_table =  "INSERT INTO FEATURES_TABLE VALUES ";
+      vector<String> lines;
+
+      for (const Feature& feature : feature_map)
+      {
+        // current line of feature
+        String current_line = "(";
+
+        // container  of feature parameters 
+        vector<String> line;
+
+        int64_t id = static_cast<int64_t>(feature.getUniqueId() & ~(1ULL << 63));        //int64_t id = feature.getUniqueId();
+
+        // push parameters into container 
+        line.push_back(id);
+        line.push_back(feature.getRT());
+        line.push_back(feature.getMZ());
+        line.push_back(feature.getIntensity());
+        line.push_back(feature.getCharge());
+        line.push_back(feature.getOverallQuality());
+        
+        // catch features without user params
+        if (feature.isMetaEmpty())
+        {
+          current_line += ListUtils::concatenate(line, ",");
+          if (user_param_null_entries_ != 0)
+          {
+            current_line += ",";
+            current_line += null_entry_line_;
+          }
+        }
+        else if (!feature.isMetaEmpty())
+        {
+          for (const String& key : common_keys_)
+          {
+            String s = feature.getMetaValue(key);
+
+            if (s.length() == 0)
+            {
+              s = "NULL";
+            }
+            else if (map_key2type_[key] == DataValue::STRING_VALUE 
+                  || map_key2type_[key] == DataValue::STRING_LIST)
+            {
+              s = s.substitute("'", "''"); // SQL escape single quote in strings  
+            }
+            else if (map_key2type_[key] == DataValue::STRING_VALUE
+                  || map_key2type_[key] == DataValue::STRING_LIST
+                  || map_key2type_[key] == DataValue::INT_LIST
+                  || map_key2type_[key] == DataValue::DOUBLE_LIST)
+            {
+              s = "'" + s + "'"; // quote around SQL strings (and list types)
+            }
+            line.push_back(s);
+          }
+          current_line += ListUtils::concatenate(line, ",");
+          cout << "In here" << endl;
+        }
+        current_line += ")";
+        lines.push_back(current_line);
+      }
+
+      // check lines size to fit postfix
+      if (lines.size() >= 2)
+      {
+        cout << ListUtils::concatenate(lines, ",") << endl;
+        line_stmt_features_table += ListUtils::concatenate(lines, ",");
+        cout << "\n\n\n\n " << endl;
+        cout << line_stmt_features_table << endl;
+      } 
+      else if (lines.size() < 2)
+      {
+        line_stmt_features_table += lines[0];
+      }
+      line_stmt_features_table += ";";
+
+      cout << line_stmt_features_table << endl;
+
+      // output: INSERT INTO features_table VALUES (),(),..,();   // dataset
+      conn.executeStatement(line_stmt_features_table);
+      //sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
+
+    }
+  */
+
+    // 2.
+    if (features_bbox_switch_)
+    {
+      conn.executeStatement("BEGIN TRANSACTION");
+
+      double min_MZ;
+      double min_RT;
+      double max_MZ;
+      double max_RT;
+
       // fetch convexhull of feature for bounding box data
       for (const Feature& feature : feature_map)
       {
         /// insert boundingbox data to table FEATURES_TABLE_BOUNDINGBOX
-        std::vector<String> feat_bbox_line;
-
-        double min_MZ;
-        double min_RT;
-        double max_MZ;
-        double max_RT;
+        vector<String> feat_bbox_line;
 
         int bbox_idx = 0;
+
         int64_t id = static_cast<int64_t>(feature.getUniqueId() & ~(1ULL << 63));
+        //int64_t id = feature.getUniqueId();
 
-        // add bbox entries of current convexhull
-        for (Size b = 0; b < feature.getConvexHulls().size(); ++b)
+        // add bbox entries of current convexhull until all cvhulls are visited
+        for (Size b_size_ = 0; b_size_ < feature.getConvexHulls().size(); ++b_size_)
         {
-          //it->getConvexHulls()[i].expandToBoundingBox();
-
           //clear vector line for current bbox
           feat_bbox_line.clear();
-          String line_stmt_features_table_boundingbox =  "INSERT INTO FEATURES_TABLE_BOUNDINGBOX (" + feat_bbox_elements_sql_stmt + ") VALUES (";
-          bbox_idx = b;
+          String line_stmt_features_table_boundingbox_ =  "INSERT INTO FEATURES_TABLE_BOUNDINGBOX (" + feat_bbox_elements_sql_stmt_ + ") VALUES (";
+          bbox_idx = b_size_;
 
-          min_MZ = feature.getConvexHulls()[b].getBoundingBox().minX();
-          min_RT = feature.getConvexHulls()[b].getBoundingBox().minY();
-          max_MZ = feature.getConvexHulls()[b].getBoundingBox().maxX();
-          max_RT = feature.getConvexHulls()[b].getBoundingBox().maxY();
+          min_MZ = feature.getConvexHulls()[b_size_].getBoundingBox().minX();
+          min_RT = feature.getConvexHulls()[b_size_].getBoundingBox().minY();
+          max_MZ = feature.getConvexHulls()[b_size_].getBoundingBox().maxX();
+          max_RT = feature.getConvexHulls()[b_size_].getBoundingBox().maxY();
+
+          //cout << "All boundingbox value for all current feature" << b_size_  << min_MZ << "\t" << min_RT << "\t" << max_MZ << "\t" << max_RT << endl;
 
           feat_bbox_line.push_back(id);
           feat_bbox_line.insert(feat_bbox_line.end(), {min_MZ,min_RT,max_MZ,max_RT});
           feat_bbox_line.push_back(bbox_idx);
 
-          line_stmt_features_table_boundingbox += ListUtils::concatenate(feat_bbox_line, ",");
+          line_stmt_features_table_boundingbox_ += ListUtils::concatenate(feat_bbox_line, ",");
           //store String in FEATURES_TABLE_BOUNDINGBOX
-          line_stmt_features_table_boundingbox += ");";
-          conn.executeStatement(line_stmt_features_table_boundingbox);
+          line_stmt_features_table_boundingbox_ += ");";
+          conn.executeStatement(line_stmt_features_table_boundingbox_);
         }
       }
+      conn.executeStatement("END TRANSACTION");
     }
 
-    if (subordinates_switch)
+    // 3.
+    if (subordinates_switch_)
     {
+      conn.executeStatement("BEGIN TRANSACTION");
+
       /// 2. insert data of subordinates table
-      String line_stmt;
-      const String subordinate_elements_sql_stmt = ListUtils::concatenate(subordinate_elements, ","); 
+      String line_stmt_;
+      const String subordinate_elements_sql_stmt = ListUtils::concatenate(subordinate_elements_, ","); 
       //for (auto feature : feature_map)
       for (const Feature& feature : feature_map)
       {
         int sub_idx = 0;
-        std::vector<String> line;
+        vector<String> line;
         for (const Feature& sub : feature.getSubordinates())
-        {          
+        {       
+
           line.push_back(static_cast<int64_t>(sub.getUniqueId() & ~(1ULL << 63)));
+          //int64_t id = sub.getUniqueId();
+          //line.push_back(id);
+
           // additional index value to preserve order of subordinates
           line.push_back(sub_idx);
           ++sub_idx;
-          line.push_back(static_cast<int64_t>(feature.getUniqueId() & ~(1ULL << 63)));
+
+          //line.push_back(static_cast<int64_t>(feature.getUniqueId() & ~(1ULL << 63)));
+          line.push_back(feature.getUniqueId());
+
+
           line.push_back(sub.getRT());
           line.push_back(sub.getMZ());
           line.push_back(sub.getIntensity());
           line.push_back(sub.getCharge());
           line.push_back(sub.getOverallQuality());
-          for (const std::pair<String, DataValue::DataType> k2t : subordinate_key2type)
+          for (const pair<String, DataValue::DataType> k2t : subordinate_key2type_)
           {
             const String& key = k2t.first;
             if (sub.metaValueExists(key))
@@ -788,31 +890,40 @@ namespace OpenMS
               line.push_back(s);
             }
           }
-          line_stmt =  "INSERT INTO FEATURES_SUBORDINATES (" + subordinate_elements_sql_stmt + ") VALUES (";
-          line_stmt += ListUtils::concatenate(line, ",");
-          line_stmt += ");";
+          line_stmt_ =  "INSERT INTO FEATURES_SUBORDINATES (" + subordinate_elements_sql_stmt + ") VALUES (";
+          line_stmt_ += ListUtils::concatenate(line, ",");
+          line_stmt_ += ");";
           //store in subordinates table
-          conn.executeStatement(line_stmt);
+          conn.executeStatement(line_stmt_);
           //clear vector line
           line.clear();
         }
       }
+
+      conn.executeStatement("END TRANSACTION");
     }
 
-    if (subordinates_bbox_switch)
+    // 4.
+    if (subordinates_bbox_switch_)
     {
+      conn.executeStatement("BEGIN TRANSACTION");
+
+
       // fetch bounding box data of subordinate convexhull
-      const String sub_bbox_elements_sql_stmt = ListUtils::concatenate(sub_bounding_box_elements, ","); 
+      const String sub_bbox_elements_sql_stmt = ListUtils::concatenate(sub_bounding_box_elements_, ","); 
       for (const Feature& feature : feature_map)
       {
         int64_t ref_id = static_cast<int64_t>(feature.getUniqueId() & ~(1ULL << 63));
+        //int64_t ref_id = feature.getUniqueId();
+
 
         for (const Feature& sub : feature.getSubordinates())
         {
           int64_t id = static_cast<int64_t>(sub.getUniqueId() & ~(1ULL << 63));
+          //int64_t id = sub.getUniqueId();
 
           /// insert boundingbox data to table SUBORDINATES_TABLE_BOUNDINGBOX
-          std::vector<String> bbox_line;
+          vector<String> bbox_line;
 
           double min_MZ;
           double min_RT;
@@ -822,17 +933,17 @@ namespace OpenMS
           int bbox_idx = 0;
 
           // add bbox entries of current convexhull
-          for (Size b = 0; b < sub.getConvexHulls().size(); ++b)
+          for (Size b_size_ = 0; b_size_ < sub.getConvexHulls().size(); ++b_size_)
           {
             //clear vector line for current bbox
             bbox_line.clear();
             String line_stmt_subordinates_table_boundingbox =  "INSERT INTO SUBORDINATES_TABLE_BOUNDINGBOX (" + sub_bbox_elements_sql_stmt + ") VALUES (";
-            bbox_idx = b;
+            bbox_idx = b_size_;
 
-            min_MZ = sub.getConvexHulls()[b].getBoundingBox().minX();
-            min_RT = sub.getConvexHulls()[b].getBoundingBox().minY();
-            max_MZ = sub.getConvexHulls()[b].getBoundingBox().maxX();
-            max_RT = sub.getConvexHulls()[b].getBoundingBox().maxY();
+            min_MZ = sub.getConvexHulls()[b_size_].getBoundingBox().minX();
+            min_RT = sub.getConvexHulls()[b_size_].getBoundingBox().minY();
+            max_MZ = sub.getConvexHulls()[b_size_].getBoundingBox().maxX();
+            max_RT = sub.getConvexHulls()[b_size_].getBoundingBox().maxY();
 
             bbox_line.push_back(id);
             bbox_line.push_back(ref_id);
@@ -845,118 +956,186 @@ namespace OpenMS
           }
         }
       }
+      conn.executeStatement("END TRANSACTION");
     }
 
-    if (dataprocessing_switch)
+    // 5.
+    if (dataprocessing_switch_)
     {
-      /// 3. insert data of dataprocessing table
-      const String dataprocessing_elements_sql_stmt = ListUtils::concatenate(dataprocessing_elements, ","); 
-      std::vector<String> dataproc_elems = {};
-      std::vector<String> processing_action_names;
-      
+      conn.executeStatement("BEGIN TRANSACTION");
 
-      std::cout << "################################################" << std::endl;
-      std::cout << "\n" << static_cast<int64_t>(feature_map.getUniqueId() & ~(1ULL << 63)) << std::endl;
-      std::cout << "\n" << feature_map.getUniqueId() << std::endl;
-      std::cout << "################################################" << std::endl;
+      /// 3. insert labels of sql_stmt (INSERT INTO FEATURE_DATAPROCESSING (...))
+      const String dataprocessing_elements_sql_stmt = ListUtils::concatenate(dataprocessing_elements_, ",");
+
+      vector<String> dataproc_elems = {};
       
-      dataproc_elems.push_back(static_cast<int64_t>(feature_map.getUniqueId() & ~(1ULL << 63)));
-      //dataproc_elems.push_back(feature_map.getUniqueId());
-      
-      const std::vector<DataProcessing> dataprocessing = feature_map.getDataProcessing();
+      //DEBUG
+      // get feature_map ID
+      //size_t dp_id = feature_map.getUniqueId();
+      //cout << "\n" << "This is correct dp_id ? " <<  dp_id << endl;
+      //size_t dp_id63 = static_cast<size_t>(feature_map.getUniqueId() & ~(1ULL << 63));
+      //cout << "\n" << "This is correct dp_id63 ? " <<  dp_id63 << endl;
     
-      for (auto datap : dataprocessing)
+      // add featureMap object ID to dataproc_elems as database primary key
+      dataproc_elems.push_back(static_cast<int64_t>(feature_map.getUniqueId() & ~(1ULL << 63)));
+      
+      // dataprocessing vector with meta information about experimental setup and meta-information of measurement
+     
+      //const vector<DataProcessing> dataprocessing = feature_map.getDataProcessing();
+      vector<DataProcessing> dataprocessing = feature_map.getDataProcessing();
+    
+    
+      for (auto dataproc_userparam : dataprocessing)
       {
-        dataproc_elems.push_back(datap.getSoftware().getName());
-        dataproc_elems.push_back(datap.getSoftware().getVersion());
-        dataproc_elems.push_back(datap.getCompletionTime().getDate());
-        dataproc_elems.push_back(datap.getCompletionTime().getTime());
+ 
+        // add default values of dataprocessing entry
+        dataproc_elems.push_back(dataproc_userparam.getSoftware().getName());
+        dataproc_elems.push_back(dataproc_userparam.getSoftware().getVersion());
+        dataproc_elems.push_back(dataproc_userparam.getCompletionTime().getDate());
+        dataproc_elems.push_back(dataproc_userparam.getCompletionTime().getTime());
 
-        const std::set<DataProcessing::ProcessingAction>& proc_ac = datap.getProcessingActions();
+        cout << "###########################################################################" << endl;
+        cout << "#######################  Dataprocessing write #############################" << endl;
+        cout << "###########################################################################" << endl;
 
+
+        // get processingAction entries
+        //const set<DataProcessing::ProcessingAction>& proc_ac = dataproc_userparam.getProcessingActions();
+        const set<DataProcessing::ProcessingAction>& proc_ac = dataproc_userparam.getProcessingActions();
+        
+        //vector<String> processing_actions;
+        vector<String> processing_actions;
+        
         for (const DataProcessing::ProcessingAction& a : proc_ac)
         {
-          const String& action = DataProcessing::NamesOfProcessingAction[int(a)];
-          processing_action_names.push_back(action);
+          cout << "Process Action Enum is: " << a << endl;
+
+          int enum_proc = a;
+          cout << "Process Action to Int is: " << enum_proc << endl;
+          
+          String action = DataProcessing::NamesOfProcessingAction[a];
+
+          cout << "Process action enum label is: " << action << endl;
+
+          processing_actions.push_back((String) a);
+          //processing_actions.push_back(action);
+          //cout << typeid(a).name()  << endl;
         }
-        if (processing_action_names.size() >= 1)
+
+        cout << processing_actions.size() << endl;
+        cout << ListUtils::concatenate(processing_actions, ",")  << endl;
+
+        if (processing_actions.size() > 1)
         {
-          dataproc_elems.push_back(ListUtils::concatenate(processing_action_names, ",")); 
+          dataproc_elems.push_back(ListUtils::concatenate(processing_actions, ","));
         } else
         {
-          dataproc_elems.push_back(processing_action_names[0]);
+          dataproc_elems.push_back(processing_actions[0]);
         }
+
+        conn.executeStatement("END TRANSACTION");
+
+      /*
+        vector<String> proc_act_test;
+        for (int i = 0; i < 19; ++i)
+        {
+          cout << "Process Action Enum number is: " << i << endl;
+          String action = DataProcessing::NamesOfProcessingAction[i];
+          cout << "Process action enum label is: " << action << endl;
+          processing_actions.push_back(action);
+        }
+        cout << "Test output of first 10 enums " << ListUtils::concatenate(processing_actions, ",") << endl;
+        cout << "Test output end" << endl;
+      */
       }
     
+      
       // userparam entries
-      // dynamic type resolution 
-      for (auto datap : dataprocessing_userparams)
+      for (auto dataproc_userparam : dataprocessing_userparams)
       {
-        datap.getKeys(dataproc_keys);
-        for (auto key : dataproc_keys)
+        dataproc_userparam.getKeys(dataproc_keys_);
+        for (auto& key : dataproc_keys_)
         {
-          dataproc_elems.push_back(datap.getMetaValue(key));
+          //cout << "key : " << key << "\t with value " << dataproc_userparam.getMetaValue(key) << endl;
+          dataproc_elems.push_back(dataproc_userparam.getMetaValue(key));
         }
       }
 
       // non-userparam entries
-      // resolve SQL type from dataprocessing_elements_types
-      for (std::size_t idx = 0; idx != dataprocessing_elements.size(); ++idx)
+      // resolve SQL type from dataprocessing_elements_types_
+      for (size_t idx = 0; idx != dataprocessing_elements_.size(); ++idx)
       {
-        if (dataprocessing_elements_types[idx] == "TEXT")
+        if (dataprocessing_elements_types_[idx] == "TEXT")
         {
           dataproc_elems[idx] = "'" + dataproc_elems[idx] + "'"; 
         }
       }
-      String line_stmt =  "INSERT INTO FEATURES_DATAPROCESSING (" + dataprocessing_elements_sql_stmt + ") VALUES (";
-      line_stmt += ListUtils::concatenate(dataproc_elems, ",");
-      line_stmt += ");";
+      String line_stmt_ =  "INSERT INTO FEATURES_DATAPROCESSING (" + dataprocessing_elements_sql_stmt + ") VALUES (";
+      line_stmt_ += ListUtils::concatenate(dataproc_elems, ",");
+      line_stmt_ += ");";
+
       //store in dataprocessing table
-      conn.executeStatement(line_stmt);
+      conn.executeStatement(line_stmt_);
     }
+  
 
   } // end of FeatureSQLFile::write
 
 
-  // read functions
-<<<<<<< HEAD
 
-  ConvexHull2D readBBox_(sqlite3_stmt * stmt, int  column_nr)
-=======
-  ConvexHull2D readBBox_(sqlite3_stmt * stmt, int column_nr)
->>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  // read functions                                                                                 //
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+  // read BBox values of convex hull entries for feature, subordinate table
+  ConvexHull2D readBBox_(sqlite3_stmt* stmt, int column_nr)
   {
-    std::cout << "\n column_nr = " << column_nr << std::endl;
-
-    double min_mz = 0.0;
-    Sql::extractValue<double>(&min_mz, stmt, (column_nr + 1));
-    double min_rt = 0.0;
-    Sql::extractValue<double>(&min_rt, stmt, (column_nr + 2));
-    double max_mz = 0.0;
-    Sql::extractValue<double>(&max_mz, stmt, (column_nr + 3));
-    double max_rt = 0.0;
-    Sql::extractValue<double>(&max_rt, stmt, (column_nr + 4));
+      
+    double min_MZ = 0.0;
+    Sql::extractValue<double>(&min_MZ, stmt, (column_nr + 1));
+    double min_RT = 0.0;
+    Sql::extractValue<double>(&min_RT, stmt, (column_nr + 2));
+    double max_MZ = 0.0;
+    Sql::extractValue<double>(&max_MZ, stmt, (column_nr + 3));
+    double max_RT = 0.0;
+    Sql::extractValue<double>(&max_RT, stmt, (column_nr + 4));
 
     ConvexHull2D hull;
-    hull.addPoint({min_mz, min_rt});
-    hull.addPoint({max_mz, max_rt});
+    hull.addPoint({min_MZ, min_RT});
+    hull.addPoint({max_MZ, max_RT});
     return hull;
   }
 
-  // 
-  Feature readSubordinate_(sqlite3_stmt * stmt, int column_nr, int cols_features, int cols_subordinates)
+
+  // get values of subordinate, user parameter entries of subordinate table
+  Feature readSubordinate_(sqlite3_stmt * stmt, int column_nr, int cols_features, int cols_subordinates, bool has_bbox)
   {
     Feature subordinate;
 
     String id_string;
     Sql::extractValue<String>(&id_string, stmt, cols_features);
-    std::istringstream iss(id_string);
+    istringstream iss(id_string);
     int64_t id_sub = 0;
     iss >> id_sub;
-<<<<<<< HEAD
 
-=======
->>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
+    //cout << "  col_sub is : " << cols_features << endl;
+    //cout << "  col_sub is : " << cols_features << endl;
+    //cout << "  col_sub value is : " << id_sub << endl;
 
     double rt = 0.0;
     Sql::extractValue<double>(&rt, stmt, column_nr + 1);
@@ -968,11 +1147,7 @@ namespace OpenMS
     Sql::extractValue<int>(&charge, stmt, column_nr + 4);
     double quality = 0.0;
     Sql::extractValue<double>(&quality, stmt, column_nr + 5);
-<<<<<<< HEAD
-    subordinate.setUniqueId(id_sub  );
-=======
     subordinate.setUniqueId(id_sub);
->>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
     subordinate.setRT(rt);
     subordinate.setMZ(mz);
     subordinate.setIntensity(intensity);
@@ -980,14 +1155,18 @@ namespace OpenMS
     subordinate.setOverallQuality(quality);
 
     // userparams
-    column_nr = cols_features + 5;  // +5 = subordinate params
+    column_nr = cols_features + 5;  // + 5 = subordinate params
+
     for (int i = column_nr; i < cols_features + cols_subordinates  ; ++i) // subordinate userparams - 1 = index of last element in cols_subordinates
     {
       String column_name = sqlite3_column_name(stmt, i);
-      int column_type = getColumnDatatype(column_name);
+      int column_type = getColumnDatatype_(column_name);
 
-
-      if (column_type == DataValue::STRING_VALUE)
+      if (sqlite3_column_type(stmt,i) == SQLITE_NULL)
+      {
+        break;
+      }
+      else if (column_type == DataValue::STRING_VALUE)
       {
         column_name = column_name.substr(3);
         String value;
@@ -1032,7 +1211,7 @@ namespace OpenMS
         Sql::extractValue<String>(&value, stmt, i); //IntList
         value = value.chop(1);
         value = value.substr(1);
-        std::vector<String> value_list;
+        vector<String> value_list;
         IntList il = ListUtils::create<int>(value, ',');
         subordinate.setMetaValue(column_name, il);
         continue;
@@ -1056,109 +1235,29 @@ namespace OpenMS
       }
     }
 
+    if (has_bbox)
+    {
+      // current_subordinate add bbox
+      column_nr = cols_features + cols_subordinates + 1; //+ 1 = REF_ID
+      ConvexHull2D hull = readBBox_(stmt, column_nr);
+      subordinate.getConvexHulls().push_back(hull);
+    }
 
-    // current_subordinate add bbox
-    column_nr = cols_features + cols_subordinates + 1; //+ 1 = REF_ID
-    ConvexHull2D hull = readBBox_(stmt, column_nr);
-    subordinate.getConvexHulls().push_back(hull);
-
-<<<<<<< HEAD
-    std::cout << "subordinate id " << id_sub  << std::endl;
-=======
-    std::cout << "subordinate id " << id_sub << std::endl;
->>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
+    //cout << "subordinate id " << id_sub << endl;
   
     return subordinate;
   }
 
-/*
-  // 
-  std::pair<String, DataValue::DataType> getDataProcessing(sqlite3_stmt * stmt, int i)
+
+  int getColumnCount_(sqlite3 *db, sqlite3_stmt *stmt, const String sql)
   {
-    String column_name = sqlite3_column_name(stmt, i);
-    column_type = getColumnDatatype(column_name);
+    SqliteConnector::prepareStatement(db, &stmt, sql);
+    sqlite3_step(stmt);
+    int column_count = sqlite3_column_count(stmt);
+    sqlite3_finalize(stmt);
 
-    if (column_type == DataValue::STRING_VALUE)
-    {
-      String value;
-      column_name = column_name.substr(3);
-      Sql::extractValue<String>(&value, stmt, i);
-      std::make_pair(column_name, value); 
-    } 
-    else if (column_type == DataValue::INT_VALUE)
-    {
-      int value = 0;
-      column_name = column_name.substr(3);
-      Sql::extractValue<int>(&value, stmt, i);
-      std::make_pair(column_name, value); 
-    }
-    else if (column_type == DataValue::DOUBLE_VALUE)
-    {
-      double value = 0.0;
-      column_name = column_name.substr(3);
-      Sql::extractValue<double>(&value, stmt, i);          
-      std::make_pair(column_name, value); 
-    }
-    else if (column_type == DataValue::STRING_LIST)
-    {
-      String value; 
-      Sql::extractValue<String>(&value, stmt, i);
-      column_name = column_name.substr(4);
-      StringList sl;
-      // cut off "[" and "]""
-      value = value.chop(1);
-      value = value.substr(1);
-      value.split(", ", sl);
-      std::make_pair(column_name, value); 
-    }
-    else if (column_type == DataValue::INT_LIST)
-    {
-      String value; //IntList value;
-      Sql::extractValue<String>(&value, stmt, i); //IntList
-      column_name = column_name.substr(4);
-      value = value.chop(1);
-      value = value.substr(1);
-      std::vector<String> value_list;
-      IntList il = ListUtils::create<int>(value, ',');
-      std::make_pair(column_name, value); 
-    }
-    else if (column_type == DataValue::DOUBLE_LIST)
-    {
-      String value; //DoubleList value;
-      Sql::extractValue<String>(&value, stmt, i); //DoubleList
-      column_name = column_name.substr(4);
-      value = value.chop(1);
-      value = value.substr(1);          
-      DoubleList dl = ListUtils::create<double>(value, ',');
-      std::make_pair(column_name, value); 
-    }
-    else if (column_type == DataValue::EMPTY_VALUE)
-    {
-      String value;
-      column_name = column_name.substr(3);
-      Sql::extractValue<String>(&value, stmt, i);
-      std::make_pair(column_name, value); 
-    }
+    return column_count;
   }
-*/
-
-
-
-
-// alternate version with table join 
-/*
-    // access of features and boundingboxes
-    SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_TABLE_BOUNDINGBOX ON FEATURES_TABLE.id = FEATURES_TABLE_BOUNDINGBOX.ref_id
-    // access of features, subordinates and boundingboxes
-    SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_SUBORDINATES ON FEATURES_TABLE.id = FEATURES_SUBORDINATES.ref_id LEFT JOIN SUBORDINATES_TABLE_BOUNDINGBOX ON FEATURES_SUBORDINATES.id = SUBORDINATES_TABLE_BOUNDINGBOX.id
-
-  // working modell
-  read number of columns for all tables except dataprocessing
-  combine access to joined tables via compound index
-  one big loop with two different statements
-  1. for features access
-  2. for subordinate access
-*/
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //                                                   read FeatureMap as SQL database                                                    //
@@ -1167,101 +1266,187 @@ namespace OpenMS
   // fitted snippet of FeatureXMLFile::load
   // based on TransitionPQPFile::readPQPInput
 
-  FeatureMap FeatureSQLFile::read(const std::string& filename) const
+  FeatureMap FeatureSQLFile::read(const string& filename_) const
   {
-    //create empty FeatureMap object
-    FeatureMap feature_map;
+    FeatureMap feature_map; // FeatureMap object as feature container
 
     sqlite3 *db;
     sqlite3_stmt * stmt;
-    std::string select_sql;
+    string select_sql;
 
-    // Open database
-    SqliteConnector conn(filename);
+    SqliteConnector conn(filename_); // Open database
     db = conn.getDB();
 
     // set switches to access only existent tables
-    bool features_switch = SqliteConnector::tableExists(db, "FEATURES_TABLE");
-    bool subordinates_switch = SqliteConnector::tableExists(db, "FEATURES_SUBORDINATES");
-    bool dataprocessing_switch = SqliteConnector::tableExists(db, "FEATURES_DATAPROCESSING");
-    //bool features_bbox_switch = SqliteConnector::tableExists(db, "FEATURES_TABLE_BOUNDINGBOX");
-    //bool subordinates_bbox_switch = SqliteConnector::tableExists(db, "SUBORDINATES_TABLE_BOUNDINGBOX");
+    bool features_switch_ = SqliteConnector::tableExists(db, "FEATURES_TABLE");
+    bool subordinates_switch_ = SqliteConnector::tableExists(db, "FEATURES_SUBORDINATES");
+    bool dataprocessing_switch_ = SqliteConnector::tableExists(db, "FEATURES_DATAPROCESSING");
+    bool features_bbox_switch_ = SqliteConnector::tableExists(db, "FEATURES_TABLE_BOUNDINGBOX");
+    bool subordinates_bbox_switch_ = SqliteConnector::tableExists(db, "SUBORDINATES_TABLE_BOUNDINGBOX");
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                     store sqlite3 database as FeatureMap                                             //
-    //                                                     1. features                                                                      //                                    
-    //                                                     2. subordinates                                                                  //
-    //                                                     3. boundingbox                                                                   //
-    //                                                     4. dataprocessing                                                                //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // store sqlite3 database as FeatureMap                                                 //
+    // 1. features                                                                          //                                    
+    // 2. subordinates                                                                      //
+    // 3. boundingbox                                                                       //
+    // 4. dataprocessing                                                                    //
+    //////////////////////////////////////////////////////////////////////////////////////////
     
     String sql;
+    String features_sql;
+    String subordinates_sql;
 
+    int cols_features = 0;
+    int cols_subordinates = 0;
+    int cols_features_bbox = 0;
+    int cols_subordinates_bbox = 0;
+
+    // check existence of tables in database
+    // fit queries according to present tables
     // get number of columns for each table except dataprocessing
+
+    //DEBUG
+    cout << "\n############################ here is read ####################  \n\n\n" << endl;
+    //////////////////////////////////////////////////////////////////////////////////////////
     // 1. features
-    sql = "SELECT * FROM FEATURES_TABLE;";
-    SqliteConnector::prepareStatement(db, &stmt, sql);
-    //SqliteConnector::executePreparedStatement(db, &stmt, sql);
-    sqlite3_step(stmt);
-    int cols_features = sqlite3_column_count(stmt);
-    std::cout << "\n" << "Number of columns = " << cols_features << std::endl;
-    sqlite3_finalize(stmt);
+    //////////////////////////////////////////////////////////////////////////////////////////
+    if (features_switch_)
+    {
+      sql = "SELECT * FROM FEATURES_TABLE;";
+      cols_features = getColumnCount_(db, stmt, sql);
+      //cout << "Number of columns for cols_features = " << cols_features << endl;
+    }
+    else if (!features_switch_)
+    {
+      //cout << "NO FEATURES" << endl;
+    }
 
+    //////////////////////////////////////////////////////////////////////////////////////////
     // 2. subordinates
-    sql = "SELECT * FROM FEATURES_SUBORDINATES;";
-    SqliteConnector::prepareStatement(db, &stmt, sql);
-    //SqliteConnector::executePreparedStatement(db, &stmt, sql);
-    sqlite3_step(stmt);
-    int cols_subordinates = sqlite3_column_count(stmt);
-    std::cout << "Number of columns = " << cols_subordinates << std::endl;
-    sqlite3_finalize(stmt);
-
+    //////////////////////////////////////////////////////////////////////////////////////////
+    if (subordinates_switch_)
+    {
+      sql = "SELECT * FROM FEATURES_SUBORDINATES;";
+      cols_subordinates = getColumnCount_(db, stmt, sql);
+      //cout << "Number of columns for cols_subordinates = " << cols_subordinates<< endl;
+    }
+    else if (!subordinates_switch_)
+    {
+      //cout << "NO SUBORDINATES" << endl;
+    }
+  
+    //////////////////////////////////////////////////////////////////////////////////////////
     // 3. features bbox
-    sql = "SELECT * FROM FEATURES_TABLE_BOUNDINGBOX;";
-    SqliteConnector::prepareStatement(db, &stmt, sql);
-    //SqliteConnector::executePreparedStatement(db, &stmt, sql);
-    sqlite3_step(stmt);
-    int cols_features_bbox = sqlite3_column_count(stmt);
-    std::cout << "Number of columns = " << cols_features_bbox << std::endl;
-    sqlite3_finalize(stmt);
+    //////////////////////////////////////////////////////////////////////////////////////////
+    if (features_bbox_switch_)
+    {
+      sql = "SELECT * FROM FEATURES_TABLE_BOUNDINGBOX;";
+      cols_features_bbox = getColumnCount_(db, stmt, sql);
+      //cout << "Number of columns for cols_feature_bbox = " << cols_features_bbox << endl;
+    }
+    else if (!features_bbox_switch_)
+    {
+      //cout << "NO BBOXES OF FEATURES" << endl;
+    }
 
-    // 4. subordinate bbox
-    sql = "SELECT * FROM SUBORDINATES_TABLE_BOUNDINGBOX;";
-    SqliteConnector::prepareStatement(db, &stmt, sql);
-    //SqliteConnector::executePreparedStatement(db, &stmt, sql);
-    sqlite3_step(stmt);
-    int cols_subordinates_bbox = sqlite3_column_count(stmt);
-    std::cout << "Number of columns = " << cols_subordinates_bbox << std::endl;
-    sqlite3_finalize(stmt);
 
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // 4. subordinates bbox
+    //////////////////////////////////////////////////////////////////////////////////////////
+    if (subordinates_bbox_switch_)
+    {
+      sql = "SELECT * FROM SUBORDINATES_TABLE_BOUNDINGBOX;";
+      cols_subordinates_bbox = getColumnCount_(db, stmt, sql);
+      //cout << "Number of columns for cols_subodinate_bbox = " << cols_subordinates_bbox << endl;
+    }
+    else if (!subordinates_bbox_switch_)
+    {
+      //cout << "NO BBOXES OF SUBORDINATES" << endl;
+    }
+    
+  /*  
+    //////////////////////////////////////////////////////////////////////////////////////////
     // 5. concatenation features bbox
-    sql = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_TABLE_BOUNDINGBOX ON FEATURES_TABLE.id = FEATURES_TABLE_BOUNDINGBOX.ref_id;";
-    SqliteConnector::prepareStatement(db, &stmt, sql);
-    //SqliteConnector::executePreparedStatement(db, &stmt, sql);
-    sqlite3_step(stmt);
-    int cols_features_join_bbox = sqlite3_column_count(stmt);
-    std::cout << "Number of columns = (features+bbox) " << cols_features_join_bbox << std::endl;
-    sqlite3_finalize(stmt);
+    //////////////////////////////////////////////////////////////////////////////////////////
+    String features_sql = "SELECT * FROM  FEATURES_TABLE \
+                            LEFT JOIN FEATURES_TABLE_BOUNDINGBOX ON FEATURES_TABLE.id = FEATURES_TABLE_BOUNDINGBOX.ref_id \
+                            ORDER BY FEATURES_TABLE.ID, FEATURES_TABLE_BOUNDINGBOX.BB_IDX;";
+    int cols_features_join_bbox = getColumnCount_(db, stmt, sql);
+    cout << "Number of columns of feature join bbox = " << cols_features_join_bbox << endl;
 
     // 6. concatenation features subordinates bbox 
-    sql = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_SUBORDINATES ON FEATURES_TABLE.id = FEATURES_SUBORDINATES.ref_id LEFT JOIN SUBORDINATES_TABLE_BOUNDINGBOX ON FEATURES_SUBORDINATES.id = SUBORDINATES_TABLE_BOUNDINGBOX.id ORDER BY FEATURES_TABLE.ID;";
-    SqliteConnector::prepareStatement(db, &stmt, sql);
-    //SqliteConnector::executePreparedStatement(db, &stmt, sql);
-    sqlite3_step(stmt);
-    int cols_features_join_subordinates_join_bbox = sqlite3_column_count(stmt);
-    std::cout << "Number of columns = (Features + Subordinates + bbox) " << cols_features_join_subordinates_join_bbox << std::endl;
-    sqlite3_finalize(stmt);
+    //sql = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_SUBORDINATES ON FEATURES_TABLE.id = FEATURES_SUBORDINATES.ref_id LEFT JOIN SUBORDINATES_TABLE_BOUNDINGBOX ON FEATURES_SUBORDINATES.id = SUBORDINATES_TABLE_BOUNDINGBOX.id ORDER BY FEATURES_TABLE.ID;";
+    
+    String subordinates_sql = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_SUBORDINATES ON FEATURES_TABLE.id = FEATURES_SUBORDINATES.ref_id \
+                                LEFT JOIN SUBORDINATES_TABLE_BOUNDINGBOX ON FEATURES_SUBORDINATES.id = SUBORDINATES_TABLE_BOUNDINGBOX.id \
+                                ORDER BY FEATURES_TABLE.ID, FEATURES_SUBORDINATES.sub_idx,SUBORDINATES_TABLE_BOUNDINGBOX.bb_idx;";
+    int cols_features_join_subordinates_join_bbox = getColumnCount_(db, stmt, sql);
+    cout << "Number of columns of subordinate join bbox = " << cols_features_join_subordinates_join_bbox << endl;
+  */
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // check cases of database content
+    // 1. only features
+    // 2. features and subordinates but no bboxes
+    // 3. features and subordinates with feature boundingbox
+    // 4. features and subordinates with feature and subordinate boundingbox
+    //////////////////////////////////////////////////////////////////////////////////////////
+    
+    // 1.
+    if (features_switch_ && !subordinates_switch_)  
+    {
+      cout << "###########################  case 1  ##################################### "  << endl; 
+      features_sql = "SELECT * FROM  FEATURES_TABLE";
+    } 
+    // 2.
+    else if (features_switch_ && subordinates_switch_ && !features_bbox_switch_) // features have subordinates but no bbox
+    {
+      cout << "############################   case 2  #################################### "  << endl; 
+      features_sql = "SELECT * FROM  FEATURES_TABLE";
+      subordinates_sql = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_SUBORDINATES ON FEATURES_TABLE.id = FEATURES_SUBORDINATES.ref_id \
+                                ORDER BY FEATURES_TABLE.ID, FEATURES_SUBORDINATES.sub_idx;";
+    }
+    // 3.
+    else if (features_switch_ && subordinates_switch_ && features_bbox_switch_ && !subordinates_bbox_switch_) // 
+    {
+      cout << "############################    case 3  #################################### "  << endl; 
+
+      features_sql = "SELECT * FROM  FEATURES_TABLE \
+                            LEFT JOIN FEATURES_TABLE_BOUNDINGBOX ON FEATURES_TABLE.id = FEATURES_TABLE_BOUNDINGBOX.ref_id \
+                            ORDER BY FEATURES_TABLE.ID, FEATURES_TABLE_BOUNDINGBOX.BB_IDX;";
+    
+      subordinates_sql = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_SUBORDINATES ON FEATURES_TABLE.id = FEATURES_SUBORDINATES.ref_id \
+                                ORDER BY FEATURES_TABLE.ID, FEATURES_SUBORDINATES.sub_idx;";
+    }
+    // 4.
+    else if (features_switch_ && subordinates_switch_ && features_bbox_switch_ && subordinates_bbox_switch_) // features have subordinates and bboxes
+    {
+
+
+      cout << "###############################    case 4   ################################# "  << endl; 
+      features_sql = "SELECT * FROM  FEATURES_TABLE \
+                            LEFT JOIN FEATURES_TABLE_BOUNDINGBOX ON FEATURES_TABLE.id = FEATURES_TABLE_BOUNDINGBOX.ref_id \
+                            ORDER BY FEATURES_TABLE.ID, FEATURES_TABLE_BOUNDINGBOX.BB_IDX;";
+    
+      subordinates_sql = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_SUBORDINATES ON FEATURES_TABLE.id = FEATURES_SUBORDINATES.ref_id \
+                                LEFT JOIN SUBORDINATES_TABLE_BOUNDINGBOX ON FEATURES_SUBORDINATES.id = SUBORDINATES_TABLE_BOUNDINGBOX.id \
+                                ORDER BY FEATURES_TABLE.ID, FEATURES_SUBORDINATES.sub_idx,SUBORDINATES_TABLE_BOUNDINGBOX.bb_idx;";
+    }
+  
+
+    cout << "sql = \t " << sql  << endl; 
+    cout << "features_sql = \t" << features_sql << endl; 
+    cout << "subordinates_sql = \t" << subordinates_sql << endl; 
+
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                     store sqlite3 database as FeatureMap                                             //
-    // traverse queries                                                                                                                     //
-    // set all parameters: features, subordinates, boundingboxes                                                                            //
+    //                                                  sqlite3 database readout into FeatureMap                                            //
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    // add dataprocessing entries
-    if (dataprocessing_switch)
+    
+    // access table entries and insert into FeatureMap feature_map 
+    // begin dataprocessing #####################################
+    if (dataprocessing_switch_)
     {
       /// 1. get feature data from database
       String sql = "SELECT * FROM  FEATURES_DATAPROCESSING;";
@@ -1278,11 +1463,14 @@ namespace OpenMS
 
         // extract as String TODO
         Sql::extractValue<String>(&id_s, stmt, 0);
-        std::istringstream iss(id_s);
+        istringstream iss(id_s);
         iss >> id;
 
-
-
+        // String id_s;
+        // int64_t id = 0;
+        // Sql::extractValue<String>(&id_s, stmt, 0);
+        // istringstream iss(id_s);
+        // iss >> id;
 
 
         String software;
@@ -1293,8 +1481,8 @@ namespace OpenMS
         Sql::extractValue<String>(&data, stmt, 3);
         String time;
         Sql::extractValue<String>(&time, stmt, 4);
-        String action;
-        Sql::extractValue<String>(&action, stmt, 5);
+        String actions;
+        Sql::extractValue<String>(&actions, stmt, 5);
 
         // get values
         // id, RT, MZ, Intensity, Charge, Quality
@@ -1311,16 +1499,51 @@ namespace OpenMS
         date_time.set(data + " " + time);
         dp.setCompletionTime(date_time);
 
-        //actions
-        std::set<DataProcessing::ProcessingAction> proc_actions;
-
-        for (int i = 0; i < DataProcessing::SIZE_OF_PROCESSINGACTION; ++i)
+        // split into String vector
+        // split into Integer vector
+        StringList proc_acts;
+        
+        if (actions.hasSubstring(","))
         {
-          if (action == DataProcessing::NamesOfProcessingAction[i])
-          {
-            proc_actions.insert((DataProcessing::ProcessingAction) i);
-          }
+          cout << "Test output for MetaboIdent_1" << endl;
+          //cout << "Actions: " << actions << endl;
+          actions.split(",", proc_acts);
+          //cout << proc_acts[0];
+          //cout << "StringList size for MetaboIdent_1 xml is: " << proc_acts.size() << endl;
+          //cout << "all actions concatenated: " <<  ListUtils::concatenate(proc_acts, ",")  << endl;
         }
+        else
+        {
+          proc_acts[0] = actions;
+        }
+ 
+        cout << "Test output for MetaboIdent_1" << proc_acts[0] << endl;
+        cout << "all actions concatenated: " <<  ListUtils::concatenate(proc_acts, ",")  << endl;
+        cout << "Test output for MetaboIdent_1" <<  proc_acts[0].toInt() << endl;
+        
+
+        // iterate across vector and add to set
+        //actions
+        set<DataProcessing::ProcessingAction> proc_actions;
+
+        for (auto action : proc_acts)
+        {
+          proc_actions.insert((DataProcessing::ProcessingAction)action.toInt());
+        }
+ 
+        /*
+          for (int i = 0; i < DataProcessing::SIZE_OF_PROCESSINGACTION; ++i)
+          {
+            //String test = setText(QString::fromStdString(DataProcessing::NamesOfProcessingAction[i]));
+            //cout << "String version of enum at position: " << i << " = " << test << "\n"; 
+            if (actions == DataProcessing::NamesOfProcessingAction[i])
+            {
+              proc_actions.insert((DataProcessing::ProcessingAction)i);
+            }
+          }
+        */
+     
+        // set processing actions
         dp.setProcessingActions(proc_actions);
 
         // access number of columns and infer DataType
@@ -1332,9 +1555,13 @@ namespace OpenMS
         for (int i = 5; i < cols ; ++i)
         {
           String column_name = sqlite3_column_name(stmt, i);
-          column_type = getColumnDatatype(column_name);
+          column_type = getColumnDatatype_(column_name);
 
-          if (column_type == DataValue::STRING_VALUE)
+          if (sqlite3_column_type(stmt,i) == SQLITE_NULL)
+          {
+            break;
+          }
+          else if (column_type == DataValue::STRING_VALUE)
           {
             String value;
             column_name = column_name.substr(3);
@@ -1378,7 +1605,7 @@ namespace OpenMS
             column_name = column_name.substr(4);
             value = value.chop(1);
             value = value.substr(1);
-            std::vector<String> value_list;
+            vector<String> value_list;
             IntList il = ListUtils::create<int>(value, ',');
             dp.setMetaValue(column_name, value); 
             continue;            
@@ -1411,79 +1638,114 @@ namespace OpenMS
 
       sqlite3_finalize(stmt);
 
-    } //dataprocessing_switch
+    } 
+    // end of dataprocessing ####################################
+
+    
+    
+    cout << "\n\nTest output after dataprocessing to correct for lacking entries" << endl; 
 
 
+    map<int64_t, size_t> map_fid_to_index; // map feature ids as indices in map 
 
 
+  ///* dataprocessing commenting 
 
-
-
-
-    std::map<int64_t, size_t> map_fid_to_index; 
-  
-    // add feature entries
-    if (features_switch)
+    // begin features #############################################
+    if (features_switch_)
     {
       /// 1. get feature data from database
-      String sql = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_TABLE_BOUNDINGBOX ON FEATURES_TABLE.id = FEATURES_TABLE_BOUNDINGBOX.ref_id;";
-      SqliteConnector::prepareStatement(db, &stmt, sql);
-      //SqliteConnector::executePreparedStatement(db, &stmt, sql);
+      SqliteConnector::prepareStatement(db, &stmt, features_sql);
       sqlite3_step(stmt);
       
       Feature* feature = nullptr;
+      bool has_bbox = false;
+
+      // set f_id_prev to 0 to ensure that if an id is read 
+      // a new entry in the feature_map can be generated
+      int64_t f_id_prev = 0;            
+      int counter = 0;
 
       while (sqlite3_column_type( stmt, 0 ) != SQLITE_NULL)
       {
-        int bbox_col = cols_features + 1 + 4; //56 in features + 1 offset id + 4 position of bbox_idx column
-        int bbox_idx = 0;
-        Sql::extractValue<int>(&bbox_idx, stmt, bbox_col);
+        int64_t f_id = 0;
+        String id_str;
+        // return value of feature ID in column #0
+        Sql::extractValue<String>(&id_str, stmt, 0);    
+        istringstream iss(id_str);
+        iss >> f_id;
 
-        if (bbox_idx == 0)
+        int64_t ref_id = 0;
+        String ref_id_str;
+        // return position of REF_ID to check for bbox entries
+        Sql::extractValue<String>(&ref_id_str, stmt, cols_features);
+        istringstream issref(ref_id_str);
+        issref >> ref_id;
+
+        int bbox_idx = 0;
+        if (ref_id == 0)
+        {
+          has_bbox = false; // no bbox, ref_id is 0
+        } 
+        else if (ref_id != 0)
+        {
+          has_bbox = true;
+          // return position of last entry in query
+          Sql::extractValue<int>(&bbox_idx, stmt, (cols_features + cols_features_bbox - 1));          
+        }
+
+        if (f_id != f_id_prev)
         {
           feature_map.push_back(Feature());
-          feature = &feature_map[feature_map.size() - 1];
+          f_id_prev = f_id; // set previous feature id 
+        }
 
-          // set feature parameters
-          String id_s;
-          int64_t id = 0;
+        // push back if f_id != f_id_prev
 
-          // extract as String TODO
-          Sql::extractValue<String>(&id_s, stmt, 0);
-          std::istringstream iss(id_s);
-          iss >> id;
+        feature = &feature_map[feature_map.size() - 1];
 
-          double rt = 0.0;
-          Sql::extractValue<double>(&rt, stmt, 1);
-          double mz = 0.0;
-          Sql::extractValue<double>(&mz, stmt, 2);
-          double intensity = 0.0;
-          Sql::extractValue<double>(&intensity, stmt, 3);
-          int charge = 0;
-          Sql::extractValue<int>(&charge, stmt, 4);
-          double quality = 0.0;
-          Sql::extractValue<double>(&quality, stmt, 5);
+        // get values id, RT, MZ, Intensity, Charge, Quality
 
-          // get values id, RT, MZ, Intensity, Charge, Quality
-          // save SQL column elements as feature
-          feature->setUniqueId(id);
-          feature->setRT(rt);
-          feature->setMZ(mz);
-          feature->setIntensity(intensity);
-          feature->setCharge(charge);
-          feature->setOverallQuality(quality);
 
-          // index to account for offsets in joined tables
-          int col_nr = 6;
-          // save userparam columns
-          for (int i = col_nr; i < cols_features ; ++i)
+        //DEBUG
+        //cout << counter << "nth feature with id: " << f_id << endl;
+        //int ref_id = 0;
+        //Sql::extractValue<int>(&ref_id, stmt, 56);
+        ++counter;
+
+        double rt = 0.0;
+        Sql::extractValue<double>(&rt, stmt, 1);
+        double mz = 0.0;
+        Sql::extractValue<double>(&mz, stmt, 2);
+        double intensity = 0.0;
+        Sql::extractValue<double>(&intensity, stmt, 3);
+        int charge = 0;
+        Sql::extractValue<int>(&charge, stmt, 4);
+        double quality = 0.0;
+        Sql::extractValue<double>(&quality, stmt, 5);
+
+        feature->setUniqueId(f_id);
+        feature->setRT(rt);
+        feature->setMZ(mz);
+        feature->setIntensity(intensity);
+        feature->setCharge(charge);
+        feature->setOverallQuality(quality);
+
+        int col_nr = 6; // index to account for offsets in joined tables
+
+        if (cols_features != col_nr)
+        {
+          for (int i = col_nr; i < cols_features ; ++i)  // save userparam columns
           {
             String column_name = sqlite3_column_name(stmt, i);
-            int column_type = getColumnDatatype(column_name);
-
-            //std::cout << "\n" << column_name << std::endl;
-
-            if (column_type == DataValue::STRING_VALUE)
+            int column_type = getColumnDatatype_(column_name);
+            
+            // test if database column value is NULL
+            if (sqlite3_column_type(stmt,i) == SQLITE_NULL)
+            {
+              break;
+            }
+            else if (column_type == DataValue::STRING_VALUE)
             {
               column_name = column_name.substr(3);
               String value;
@@ -1528,7 +1790,7 @@ namespace OpenMS
               Sql::extractValue<String>(&value, stmt, i); //IntList
               value = value.chop(1);
               value = value.substr(1);
-              std::vector<String> value_list;
+              vector<String> value_list;
               IntList il = ListUtils::create<int>(value, ',');
               feature->setMetaValue(column_name, il);
               continue;
@@ -1546,114 +1808,198 @@ namespace OpenMS
             } 
             else if (column_type == DataValue::EMPTY_VALUE)
             {
-              String value;
-              Sql::extractValue<String>(&value, stmt, i);
-              continue;
+              //cout << " else if (column_type == DataValue::EMPTY_VALUE " << column_type << endl;
+              break;
+              //String value;
+              //Sql::extractValue<String>(&value, stmt, i);
+              //continue;
             }
           }
-        
-          int column_nr = cols_features;
-          ConvexHull2D hull = readBBox_(stmt, column_nr);
-          feature->getConvexHulls().push_back(hull);
-
-          // map feature id to index in feature map (needed to map subordinates to features)
-          cout << "Adding feature ID with map index: " << feature->getUniqueId() << "\t" << feature_map.size() - 1 << endl;
-          map_fid_to_index[feature->getUniqueId()] = feature_map.size() - 1; 
-        } 
-        else if (bbox_idx > 0) // add new bb to existing feature
-        {
-          std::cout << "\n bbox_idx = " << bbox_idx << std::endl;
-
-          int column_nr = cols_features;
-          ConvexHull2D hull = readBBox_(stmt, column_nr);
-          feature->getConvexHulls().push_back(hull);
         }
-        sqlite3_step(stmt);
-<<<<<<< HEAD
-
-=======
->>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
+        
+        if (has_bbox == false) // add  bbox to feature if present
+        {
+          map_fid_to_index[feature->getUniqueId()] = feature_map.size() - 1; 
+        }
+        else if (has_bbox == true)
+        {
+          if (bbox_idx == 0)
+          {
+            ConvexHull2D hull = readBBox_(stmt, cols_features);
+            feature->getConvexHulls().push_back(hull);
+            map_fid_to_index[feature->getUniqueId()] = feature_map.size() - 1; 
+          }
+          else if (bbox_idx > 0) // add new bb to existing feature
+          {
+            ConvexHull2D hull = readBBox_(stmt, cols_features);
+            feature->getConvexHulls().push_back(hull);
+          }
+        }
+      
+        sqlite3_step(stmt);  
       }
       sqlite3_finalize(stmt);
-    }
+    } 
+    // end of features ##########################################
 
-<<<<<<< HEAD
-    // add subordinate entries
-=======
-    // subordinates
->>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
-    if (subordinates_switch)
+
+  //*/
+
+  /*
+    for (map<int64_t, size_t>::iterator it = map_fid_to_index.begin(); it != map_fid_to_index.end(); ++it)
     {
-      // join features with subordinates + subordinate bounding boxes
-      sql = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_SUBORDINATES ON FEATURES_TABLE.id = FEATURES_SUBORDINATES.ref_id LEFT JOIN SUBORDINATES_TABLE_BOUNDINGBOX ON FEATURES_SUBORDINATES.id = SUBORDINATES_TABLE_BOUNDINGBOX.id ORDER BY FEATURES_TABLE.ID;";
-      SqliteConnector::prepareStatement(db, &stmt, sql);
+      cout << "Value at " <<  it->first << " is " << it->second << endl;
+    }
+  */
+
+    // get subordinate entries #########################################
+    if (subordinates_switch_)
+    {
+
+      SqliteConnector::prepareStatement(db, &stmt, subordinates_sql);
       sqlite3_step(stmt);
-
       int column_nr = 0;
-<<<<<<< HEAD
       int64_t f_id_prev = 0;
-=======
-      size_t f_id_prev = 0;
->>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
+      int64_t sub_id_prev = 0;
+      bool has_bbox = false;
+      int bbox_idx = 0;
 
-      while (sqlite3_column_type( stmt, 0 ) != SQLITE_NULL)
+      int64_t f_id = 0; // get feature id entries for feature- and userparameters
+      String f_id_string;
+
+      int64_t sub_id = 0; // get subordinate id entries for feature- and userparameters
+      String sub_id_string;
+
+      int64_t cvhull_id = 0; // get bbox id entries of convex hulls by subordinate-> boundingboxes
+      String cvhull_id_string;
+
+      while (sqlite3_column_type( stmt, 0 ) != SQLITE_NULL)       // while joined table still has entries continue 
       {
-        // get feature ID
-        int64_t f_id = 0;
-        String f_id_string;
         Sql::extractValue<String>(&f_id_string, stmt, 0);
-        std::istringstream iss(f_id_string);
-        iss >> f_id;
+        istringstream issf(f_id_string);
+        issf >> f_id;
 
-        // get boundingbox index
-        int bbox_col = cols_features_join_subordinates_join_bbox - 1; // - 1 to address last column
-        int bbox_idx = 0; // set start idx of boundingbox
-        Sql::extractValue<int>(&bbox_idx, stmt, bbox_col);
+        // case of features with subordinates with and without boundingboxes (due to changes in column number)
+        
 
-
-        Feature* feature = &feature_map[map_fid_to_index[f_id]];
-<<<<<<< HEAD
-
-        std::vector<Feature>* subordinates = &feature->getSubordinates();
-
-=======
-        std::vector<Feature>* subordinates = &feature->getSubordinates();
->>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
-
-        if (f_id != f_id_prev) // new feature
+        if (subordinates_switch_)  // features have subordinates but no boundingbox
         {
-          f_id_prev = f_id;
-          column_nr = cols_features + 1 + 1;// size features + column SUB_IDX + column REF_ID
-          subordinates->push_back(readSubordinate_(stmt, column_nr, cols_features, cols_subordinates)); // add subordinate and first bounding box (if present)
-<<<<<<< HEAD
+          // extract sub_id
+          Sql::extractValue<String>(&sub_id_string, stmt, (cols_features));
+          istringstream issub(sub_id_string);
+          issub >> sub_id;
+          //cout << "sub_id " << sub_id << endl;
+
+        } 
+        else if (subordinates_bbox_switch_)
+        {
+          // extract sub_id
+          Sql::extractValue<String>(&sub_id_string, stmt, (cols_features + cols_subordinates));
+          istringstream issub(sub_id_string);
+          issub >> sub_id;
+          //cout << "sub_id " << sub_id << endl;
+
+          // extract REF_ID
+          Sql::extractValue<String>(&cvhull_id_string, stmt, (cols_features + cols_subordinates));
+          istringstream issref(cvhull_id_string);
+          issref >> cvhull_id;
+          //cout << "cvhull_id " << cvhull_id << endl;
+        }
+
+      /*  OLD Code that worked for the feature + subordinate + feature_bbox + subordinate_bbox
+        // extract sub_id
+        Sql::extractValue<String>(&sub_id_string, stmt, (cols_features + cols_subordinates));
+        istringstream issub(sub_id_string);
+        issub >> sub_id;
+        cout << "sub_id " << sub_id << endl;
+
+        // extract REF_ID
+        Sql::extractValue<String>(&cvhull_id_string, stmt, (cols_features + cols_subordinates));
+        istringstream issref(cvhull_id_string);
+        issref >> cvhull_id;
+        cout << "cvhull_id " << cvhull_id << endl;
+
+      */
+
+
+        // test presence of convex hulls 
+        if (cvhull_id == 0)  // 0 as impossible value for UniqueIdinterface, cast NULL to 0 via extractValue()
+        {
+          has_bbox = false; // no bbox, cvhull_id is 0
+          //cout << "\ncvhull_id is " << cvhull_id << endl;
+        } 
+        else if (cvhull_id != 0) // value of cvhull_id is not NULL and fits the UniqueIdInterface
+        {
+          has_bbox = true;  // bbox is present
+          Sql::extractValue<int>(&bbox_idx, stmt, (cols_features + cols_subordinates + cols_subordinates_bbox - 1)); // last column with subordinate bbox_idx of joined table          
+          //cout << "\ncvhull_id " << cvhull_id << " has bbox_idx with " << bbox_idx << " as value." << endl;
+        }
+
+
+        Feature* feature = &feature_map[map_fid_to_index[f_id]];  // get index of feature vector subordinates at index of id
+        vector<Feature>* subordinates = &feature->getSubordinates(); 
+
+
+
+        //cout << "\nsub_id: " << sub_id << endl; // show subordinate id
+        //cout << "cvhull_id: " << cvhull_id << endl; // show subordinate id
+
+        // break current query if subordinate entry is 0, case is possible        
+        if (sub_id == 0)
+        {
+          //cout << "no subordinate" << endl;
           sqlite3_step(stmt);
           continue;
-=======
->>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
-        }
-        else // same feature, different subordinate or bounding box
-        {
+        } 
 
-          if (bbox_idx == 0) 
+        if (f_id != f_id_prev) // new feature -> presumes new cvhull_id has bbox with bbox_idx being 0
+        {
+          //cout << "f_id != f_id_prev; f_id: " << f_id << " f_id_prev: " << f_id_prev << endl;
+          //cout << "new feature and new subordinate id " << sub_id << endl;
+          f_id_prev = f_id; // set previous to current feature for subordinate storage
+          sub_id_prev = sub_id;
+      
+          column_nr = cols_features + 1 + 1;  // size of features column + column SUB_IDX + column REF_ID
+          if (cvhull_id == 0)
           {
-            column_nr = cols_features + 1 + 1;// size features + column SUB_IDX + column REF_ID
-            subordinates->push_back(readSubordinate_(stmt, column_nr, cols_features, cols_subordinates)); // read subordinate + first bounding box
+            //cout << "... but no convexhull" << endl;
+            subordinates->push_back(readSubordinate_(stmt, column_nr, cols_features, cols_subordinates, has_bbox)); // read subordinate w/o bbox
           }
-          else // add new bounding box to current subordinate
+          else if (cvhull_id != 0)
           {
-            column_nr = cols_features + cols_subordinates + 1; //+ 1 = REF_ID
+            //cout << "...  and convexhull" << endl;
+            subordinates->push_back(readSubordinate_(stmt, column_nr, cols_features, cols_subordinates, has_bbox)); // read subordinate with first bounding box
+          }
+
+        }
+        else // same feature
+        {   
+          //cout << "f_id == f_id_prev; f_id: " << f_id << " f_id_prev: " << f_id_prev << endl;
+          //cout << "same feature with f_id  " << f_id << ", sub_id " << sub_id << " and sub_id_prev " << sub_id_prev  << endl;
+          
+          //  test if subordinate is equal to previous subordinate
+            
+          
+          if (sub_id_prev == sub_id)
+          {
+            //cout << " same subordinate, add bbox to its convexhull " << sub_id << endl;
             (*subordinates)[subordinates->size()-1].getConvexHulls().push_back(readBBox_(stmt, column_nr));
           }
-<<<<<<< HEAD
-          sqlite3_step(stmt);       
-          continue;
-=======
->>>>>>> 1ea84ab1ac4adad0108185a099238e3fe621a0c5
+          else if (sub_id_prev != sub_id)
+          {
+            //cout << " different subordinate, push back to subordinates " << sub_id << endl;
+            subordinates->push_back(readSubordinate_(stmt, column_nr, cols_features, cols_subordinates, has_bbox)); // read subordinate with first bounding box
+
+          }
+
         }
+
         sqlite3_step(stmt);
-      } // while
+      } // end of while of subordinate entries
       sqlite3_finalize(stmt);
-    }  // subordinate switch
+    }
+    // end of subordinates ############################################
+  
 
     return feature_map;
   }  // end of FeatureSQLFile::read
@@ -1661,307 +2007,7 @@ namespace OpenMS
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                                     store sqlite3 database as FeatureMap                                             //
-    /// alterantive version where 2 statements are used to access the joined tables
-    // and traversed  once
-    // read features and bounding boxes
-    // read subordinates and bounding boxes
-    // link features + bbox and subordiates + bbox
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // pseudo code box 
-    /*
-      feature
-        iterate over identical features and subordinates
-        {
-          if f_id == f_id_prev
-          {
-            if s_id == s_id_prev 
-            {
-              if s_bbox_idx == s_bbox_idx_prev
-              {
-                push back bbox to current subordinate
-              }
-              else 
-              {
-                f_id same, s_id same, bbox same -> must be same entry -> is impossible bc table conflict
-                use as catch case for NULL s_bbox entries 
-              }
-            }
-            else if (s_id != s_id_prev)
-            {
-              push back subordinate to subordinates
-              clear bbox vector since new subordinate = new convexhulls
-              
-              if ((s_bbox_idx == s_bbox_idx_prev) && (s_bbox_idx != 0))
-              {
-                use as catch case for NULL s_bbox entries
-              }
-              else ((s_bbox_idx != s_bbox_idx_prev) || (s_bbox_idx == 0))
-              {
-                push_back s_bbox to bbox vector
-              }            
-            }  
-          }
-          else if (f_id != f_id_prev)
-          {
-            push back feature entries to feature_map
-            feature = Feature();
-
-            get bbox since test for subordinates is superfluous, new f_id -> new subordinate
-            0. clear feature, clear subordinate, clear subordinates vector, clear bbox vector
-            // feature = Feature();
-            // subordinate = Feature();
-            // subordinates.clear();
-            // bbox_vector.clear(); ? subordinates and bbox one object?
-            1. get f_bbox
-            2. get subordinate + f_bbox 
-            3. set f_id_prev = f_id, s_id_prev = s_id 
-
-            save to featuremap
-
-          }
-
-          step f_line
-          step s_line
-        }
-    */
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
 /*
-
-    if (features_switch)
-    {
-      sqlite3 *db;
-      sqlite3_stmt * stmt_features;
-      sqlite3_stmt * stmt_subordinates;
-      
-      // Open database
-      SqliteConnector conn(filename);
-      db = conn.getDB();
-
-      /// 1. get feature data from database
-      // unordered
-      //String sql_feats = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_TABLE_BOUNDINGBOX ON FEATURES_TABLE.id = FEATURES_TABLE_BOUNDINGBOX.ref_id;";
-      String sql_feats = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_TABLE_BOUNDINGBOX ON FEATURES_TABLE.id = FEATURES_TABLE_BOUNDINGBOX.ref_id ORDER BY FEATURES_TABLE.id;";
-      String sql_subs = "SELECT * FROM  FEATURES_TABLE LEFT JOIN FEATURES_SUBORDINATES ON FEATURES_TABLE.id = FEATURES_SUBORDINATES.ref_id LEFT JOIN SUBORDINATES_TABLE_BOUNDINGBOX ON FEATURES_SUBORDINATES.id = SUBORDINATES_TABLE_BOUNDINGBOX.id ORDER BY FEATURES_TABLE.ID;";
-
-      SqliteConnector::prepareStatement(db, &stmt_features, sql_feats);
-      SqliteConnector::prepareStatement(db, &stmt_subordinates, sql_subs);
-     
-      sqlite3_step(stmt_features);
-      sqlite3_step(stmt_subordinates);
-
-      // initialization block
-      // feature and subordinate stmts used to push_back columns of both tables
-      // set starting values
-      Feature feature;
-      Feature subordinate;
-      std::vector<Feature> subordinates;
-      // ids
-      long f_id_prev = 0;
-      long s_id_prev = 0;
-      // subordinate index
-      int sub_idx_prev = 0;
-      // bboxes
-      int f_bbox_idx_prev = 0;
-      int s_bbox_idx_prev = 0;
-
-      // first iteration variable to catch enter loop case
-      // use loop_switch
-      // set to false (= not entered) on start
-      // and to false if last line is reached
-      bool first_feat_switch = false;
-
-      // TODO set last_feature_switch ? ###########################
-
-      // provisional code
-      // test counter to access only first 2 lines in joined tables
-      int test_counter = 1;
-
-      // get features + bboxes, subordinates + bboxes in a single loop
-      for (int i = 0; i <= test_counter; ++i)
-      {
-        std::cout << "\n" << i << std::endl;
-
-      
-
-        /// get data starts here
-        // ##################################################
-        // get data for features and bbox
-        // get feature id
-        String feat_id;
-        long f_id = 0;
-        Sql::extractValue<String>(&feat_id, stmt_features, 0);
-        f_id = stol(feat_id);
-
-        // get feature bbox_idx
-        int f_bbox_col = cols_features + 1 + 4; //56 in features + 1 offset id + 4 position of bbox_idx column
-        int f_bbox_idx = 0;
-        Sql::extractValue<int>(&f_bbox_idx, stmt_features, f_bbox_col);
-
-        // ##################################################
-        // get data for subordinates and bbox
-        // get subordinate ID
-        String sub_id;
-        long s_id = 0;
-        Sql::extractValue<String>(&sub_id, stmt_subordinates, cols_features);
-        s_id = stol(sub_id);        
-
-        // return sub_idx (n-th subordinate)
-        int sub_idx = 0;
-        Sql::extractValue<int>(&sub_idx, stmt_subordinates, 57);
-
-        // get subordinate bbox_idx (n-th bbox)
-        int s_bbox_col = cols_features_join_subordinates_join_bbox - 1; // - 1 to address last column
-        int s_bbox_idx = 0; // set start idx of boundingbox
-        Sql::extractValue<int>(&s_bbox_idx, stmt_subordinates, s_bbox_col);
-
-        // ##################################################
-        // first run case
-        if (first_feat_switch == false)
-          {
-            first_feat_switch = true;
-            f_id_prev = f_id;
-            s_id_prev = s_id;
-
-            sub_idx_prev = sub_idx;
-
-            f_bbox_idx_prev = f_bbox_idx;
-            s_bbox_idx_prev = s_bbox_idx;
-          }
-
-        // ##################################################
-        // iterate over identical features and subordinates
-        // ##################################################
-
-        std::cout << "f_id, f_id_prev, s_id, s_id_prev " << f_id << "\t" << f_id_prev << "\t" << s_id << "\t" << s_id_prev << std::endl;
-
-        if (f_id == f_id_prev) 
-        {
-          std::cout << "f_id == f_id_prev" << std::endl;
-
-
-          if (s_id == s_id_prev)
-          {
-            std::cout << "s_id == s_id_prev" << std::endl;
-            if (s_bbox_idx == s_bbox_idx_prev)
-            {
-              //push back bbox to current subordinate
-              std::cout << "s_bbox_idx == s_bbox_idx_prev" << std::endl;
-            }
-            else if (s_bbox_idx != s_bbox_idx_prev) 
-            {
-              std::cout << "f_id same, s_id same, bbox same -> must be same entry -> is impossible bc table conflict" << std::endl;
-            }
-          }
-          else if (s_id != s_id_prev)
-          {
-            std::cout << "s_id != s_id_prev" << std::endl;
-            // push back subordinate to subordinates
-            subordinates.push_back(subordinate);
-            // clear bbox vector since new subordinate = new convexhulls
-            subordinates.clear();
-            
-            if ((s_bbox_idx == s_bbox_idx_prev) && (s_bbox_idx != 0))
-            {
-              // use as catch case for NULL s_bbox entries
-              std::cout << "if ((s_bbox_idx == s_bbox_idx_prev) && (s_bbox_idx != 0)) " << std::endl;
-            }
-            else if ((s_bbox_idx != s_bbox_idx_prev) || (s_bbox_idx == 0))
-            {
-              // push_back s_bbox to bbox vector
-              std::cout << "subordinate.getConvexHulls().push_back(hull);" << std::endl;
-            }            
-          }  
-        }
-        else if (f_id != f_id_prev)
-        {
-          std::cout << "f_id != f_id_prev" << std::endl;
-        
-          // push back feature entries to feature_map
-          // feature = Feature();
-
-          // get bbox since test for subordinates is superfluous, new f_id -> new subordinate
-          // 0. clear feature, clear subordinate, clear subordinates vector, clear bbox vector
-          // // feature = Feature();
-          // // subordinate = Feature();
-          // // subordinates.clear();
-          // // bbox_vector.clear(); ? subordinates and bbox one object?
-          // 1. get f_bbox
-          // 2. get subordinate + f_bbox 
-          // 3. set f_id_prev = f_id, s_id_prev = s_id 
-
-          // save to featuremap
-        
-        }
-
-        f_id_prev = f_id;
-        s_id_prev = s_id;
-
-        sub_idx_prev = sub_idx;
-
-        f_bbox_idx_prev = f_bbox_idx;
-        s_bbox_idx_prev = s_bbox_idx;
-
-        //step f_line
-        sqlite3_step(stmt_features);
-        //step s_line
-        sqlite3_step(stmt_subordinates);
-
-      } // close loop
-
-      // closing statements for features and subordinates query
-      sqlite3_finalize(stmt_features);
-      sqlite3_finalize(stmt_subordinates);
-
-    } // close features_switch
-
-    return feature_map;
-
-  } // end of FeatureSQLFile::read
-
-} // namespace OpenMS
-
-
+REGEX for code convention review
+([A-Z])\w*\_
 */
-

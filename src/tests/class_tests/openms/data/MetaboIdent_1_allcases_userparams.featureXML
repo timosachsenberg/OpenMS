@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<featureMap version="1.9" id="fm_10000000" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/OpenMS/OpenMS/develop/share/OpenMS/SCHEMAS/FeatureXML_1_9.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<dataProcessing completion_time="1999-12-31T23:59:59">
+		<software name="FeatureFinderMetaboIdent" version="version_string" />
+		<processingAction name="Quantitation" />
+		<UserParam type="string" name="parameter: mode" value="test_mode"/>
+		<UserParam type="string" name="parameter: log" value=""/>
+		<UserParam type="int" name="parameter: debug" value="0"/>
+		<UserParam type="int" name="parameter: threads" value="1"/>
+		<UserParam type="string" name="parameter: no_progress" value="false"/>
+		<UserParam type="string" name="parameter: force" value="false"/>
+		<UserParam type="string" name="parameter: test" value="false"/>
+		<UserParam type="float" name="parameter: algorithm:common:noise_threshold_int" value="10"/>
+		<UserParam type="float" name="parameter: algorithm:common:chrom_peak_snr" value="3"/>
+		<UserParam type="float" name="parameter: algorithm:common:chrom_fwhm" value="5"/>
+		<UserParam type="float" name="parameter: algorithm:mtd:mass_error_ppm" value="20"/>
+	</dataProcessing>
+	<featureList count="1">
+		<feature id="f_3333444">
+			<position dim="0">219.501584391761</position>
+			<position dim="1">268.104031881471</position>
+			<intensity>3.98494e+08</intensity>
+			<quality dim="0">0</quality>
+			<quality dim="1">0</quality>
+			<overallquality>3.93443</overallquality>
+			<charge>1</charge>
+			<convexhull nr="0">
+				<pt x="265.393371582031" y="272.087033662186" />
+				<pt x="275.377624511719" y="272.087033662186" />
+				<pt x="275.377624511719" y="272.088394100756" />
+				<pt x="265.393371582031" y="272.088394100756" />
+			</convexhull>
+			<convexhull nr="1">
+				<pt x="265.393371582031" y="273.090385991599" />
+				<pt x="275.377624511719" y="273.090385991599" />
+				<pt x="275.377624511719" y="273.091751446943" />
+				<pt x="265.393371582031" y="273.091751446943" />
+			</convexhull>
+			<subordinate>
+				<feature id="f_3333444_98765432133892">
+					<position dim="0">219.501584391761</position>
+					<position dim="1">268.104031881471</position>
+					<intensity>1.35664e+09</intensity>
+					<quality dim="0">0</quality>
+					<quality dim="1">0</quality>
+					<overallquality>0</overallquality>
+					<charge>0</charge>
+					<UserParam type="float" name="MZ" value="268.104031881471"/>
+					<UserParam type="float" name="peak_apex_position" value="219.412944"/>
+					<UserParam type="string" name="native_id" value="adenosine_m267.097_z1_rt220.8_i0"/>
+					<UserParam type="float" name="peak_apex_int" value="93413368"/>
+					<UserParam type="float" name="total_xic" value="1373035208.83276"/>
+					<UserParam type="float" name="width_at_50" value="3.94125600000001"/>
+					<UserParam type="float" name="logSN" value="3.99059140564998"/>
+					<UserParam type="float" name="isotope_probability" value="0.885234534740448"/>
+				</feature>
+			</subordinate>
+			<UserParam type="string" name="label" value="adenosine"/>
+			<UserParam type="float" name="expected_rt" value="220.8"/>
+			<UserParam type="float" name="total_xic" value="1438124074.62646"/>
+			<UserParam type="string" name="model_status" value="0 (valid)"/>
+			<UserParam type="float" name="raw_intensity" value="1420467328"/>
+		</feature>
+	</featureList>
+</featureMap>

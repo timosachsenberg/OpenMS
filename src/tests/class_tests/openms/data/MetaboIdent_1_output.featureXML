@@ -2,7 +2,9 @@
 <featureMap version="1.9" id="fm_14811341817612382122" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/OpenMS/OpenMS/develop/share/OpenMS/SCHEMAS/FeatureXML_1_9.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<dataProcessing completion_time="1999-12-31T23:59:59">
 		<software name="FeatureFinderMetaboIdent" version="version_string" />
-		<processingAction name="Quantitation" />
+		<processingAction name="Quantitation"/>
+		<processingAction name="Deisotoping"/>
+		<processingAction name="Smoothing"/>
 		<UserParam type="string" name="parameter: mode" value="test_mode"/>
 	</dataProcessing>
 	<featureList count="6">
@@ -197,6 +199,7 @@
 			<UserParam type="string" name="model_status" value="0 (valid)"/>
 			<UserParam type="float" name="raw_intensity" value="404901568"/>
 		</feature>
+
 		<feature id="f_7804704400743266335">
 			<position dim="0">269.932559521199</position>
 			<position dim="1">272.087713881471</position>
@@ -1146,5 +1149,6 @@
 			<UserParam type="string" name="model_status" value="0 (valid)"/>
 			<UserParam type="float" name="raw_intensity" value="93303880"/>
 		</feature>
+
 	</featureList>
 </featureMap>

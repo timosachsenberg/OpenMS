@@ -28,8 +28,8 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // --------------------------------------------------------------------------
-// $Maintainer: Chris Bielow $
-// $Authors: Marc Sturm, Chris Bielow, Clemens Groepl $
+// $Maintainer: Timo Sachsenberg $
+// $Authors: Matthias Fuchs $
 // --------------------------------------------------------------------------
 
 
@@ -145,25 +145,55 @@ START_SECTION((void write(std::string& out_fm, FeatureMap& feature_map)))
   map1.getDataProcessing().resize(1);
 
   FeatureMap e2;
-  //dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("FeatureXMLFile_1.featureXML"), e2);
-  dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_output.featureXML"), e2); //ExperimentalDesign_input_6.featureXML", e2); //FeatureXMLFile_1.featureXML"), e2);
 
+  //############################################################################################################
+  // default test case ####################################
+  //dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_allcases.featureXML"), e2);
+  //dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_allcases_userparams.featureXML"), e2);
+  //dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_output.featureXML"), e2);
+
+  // metabolomics 1.
+  //dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("metabolomics_short.featureXML"), e2);
+  //dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("metabolomics.featureXML"), e2);
+  dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("proteomics.featureXML"), e2);
+
+  
+  //############################################################################################################
+
+  // save as sql database
   FeatureSQLFile fsf;
-  fsf.write("MetaboIdent_1_outputSQL", e2);
+
+  // default test case ####################################
+  //fsf.write("MetaboIdent_1_allcases_outputSQL", e2);
+  //fsf.write("MetaboIdent_1_allcases_userparams_outputSQL", e2);
+  //fsf.write("MetaboIdent_1_output_outputSQL", e2);
+  
+  // metabolomics 1.
+  //fsf.write("metabolomics_outputSQL", e2);
+  fsf.write("proteomics_outputSQL", e2);
+  //############################################################################################################
 
 }
 END_SECTION
 
+
+
 START_SECTION((FeatureMap read(std::string& in_featureSQL)))
 {
-
-  //dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("FeatureXMLFile_1.featureXML"), e2);
-  //ExperimentalDesign_input_6.featureXML", e2); //FeatureXMLFile_1.featureXML"), e2);
-
   FeatureMap output;
   FeatureSQLFile fsf;
 
-  output = fsf.read(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_outputSQL"));
+  //############################################################################################################
+  // default test case ####################################
+  //output = fsf.read(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_allcases_outputSQL"));
+  //output = fsf.read(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_allcases_userparams_outputSQL"));
+  //output = fsf.read(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_output_outputSQL"));
+  
+  // metabolomics 1.
+  //output = fsf.read(OPENMS_GET_TEST_DATA_PATH("metabolomics_short_outputSQL"));  
+  //output = fsf.read(OPENMS_GET_TEST_DATA_PATH("metabolomics_outputSQL"));  
+  output = fsf.read(OPENMS_GET_TEST_DATA_PATH("proteomics_outputSQL"));  
+  //############################################################################################################
 
   FeatureXMLFile f;
 
@@ -171,11 +201,34 @@ START_SECTION((FeatureMap read(std::string& in_featureSQL)))
   NEW_TMP_FILE(tmp_filename);
   f.store(tmp_filename, output);
   WHITELIST("?xml-stylesheet")
-  TEST_FILE_SIMILAR(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_output.featureXML"), tmp_filename)  
+
+  //############################################################################################################
+  // test against input featureXML file
+  // default test case ####################################
+  //TEST_FILE_SIMILAR(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_allcases.featureXML"), tmp_filename)  
+  //TEST_FILE_SIMILAR(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_allcases_userparams.featureXML"), tmp_filename)  
+  //TEST_FILE_SIMILAR(OPENMS_GET_TEST_DATA_PATH("MetaboIdent_1_output.featureXML"), tmp_filename)  
+  // metabolomics 1.
+  //TEST_FILE_SIMILAR(OPENMS_GET_TEST_DATA_PATH("metabolomics_short.featureXML"), tmp_filename)  
+  //TEST_FILE_SIMILAR(OPENMS_GET_TEST_DATA_PATH("metabolomics.featureXML"), tmp_filename)  
+  TEST_FILE_SIMILAR(OPENMS_GET_TEST_DATA_PATH("proteomics.featureXML"), tmp_filename)  
+  //############################################################################################################
+
 
 }
 END_SECTION
 
-/////////////////////////////////////////////////////////////
+
+
 /////////////////////////////////////////////////////////////
 END_TEST
+
+
+
+
+
+
+
+
+
+
