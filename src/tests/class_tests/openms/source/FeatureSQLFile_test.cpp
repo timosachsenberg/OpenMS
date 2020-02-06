@@ -155,7 +155,9 @@ START_SECTION((void write(std::string& out_fm, FeatureMap& feature_map)))
   // metabolomics 1.
   //dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("metabolomics_short.featureXML"), e2);
   //dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("metabolomics.featureXML"), e2);
+  cout << "\nFeature load start" << endl;
   dfmap_file.load(OPENMS_GET_TEST_DATA_PATH("proteomics.featureXML"), e2);
+  cout << "\nFeature load end" << endl;
 
   
   //############################################################################################################
@@ -170,8 +172,10 @@ START_SECTION((void write(std::string& out_fm, FeatureMap& feature_map)))
   
   // metabolomics 1.
   //fsf.write("metabolomics_outputSQL", e2);
-  fsf.write("proteomics_outputSQL", e2);
+  cout << "\nSQLite write start" << endl;
+  fsf.write(OPENMS_GET_TEST_DATA_PATH("proteomics_outputSQL"), e2);
   //############################################################################################################
+  cout << "\nSQLite write end" << endl;
 
 }
 END_SECTION
@@ -192,7 +196,9 @@ START_SECTION((FeatureMap read(std::string& in_featureSQL)))
   // metabolomics 1.
   //output = fsf.read(OPENMS_GET_TEST_DATA_PATH("metabolomics_short_outputSQL"));  
   //output = fsf.read(OPENMS_GET_TEST_DATA_PATH("metabolomics_outputSQL"));  
+  cout << "\nSQLite read start" << endl;
   output = fsf.read(OPENMS_GET_TEST_DATA_PATH("proteomics_outputSQL"));  
+  cout << "\nSQLite read end" << endl;
   //############################################################################################################
 
   FeatureXMLFile f;

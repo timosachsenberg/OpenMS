@@ -585,8 +585,8 @@ namespace OpenMS
     // create SQL database, create empty SQL tables  see (https://github.com/OpenMS/OpenMS/blob/develop/src/openms/source/FORMAT/OSWFile.cpp)
     // Open connection to database
     SqliteConnector conn(filename_);
-    conn.executeStatement("PRAGMA synchronous = OFF");
-    conn.executeStatement("PRAGMA journal_mode = OFF");
+//    conn.executeStatement("PRAGMA synchronous = OFF");
+//    conn.executeStatement("PRAGMA journal_mode = OFF");
     conn.executeStatement(create_sql_);
 
     conn.executeStatement("BEGIN TRANSACTION");
