@@ -265,11 +265,8 @@ namespace OpenMS
   //write FeatureMap as SQL database                                                      //
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // fitted snippet of FeatureXMLFile::load
-  void FeatureSQLFile::write(const string& out_fm, const FeatureMap& feature_map) const
+  void FeatureSQLFile::write(const string& filename_, const FeatureMap& feature_map) const
   {
-    String path_="/home/mkf/Development/OpenMS/src/tests/class_tests/openms/data/";
-    String filename_ = path_.append(out_fm);
-    
     // delete file if present
     File::remove(filename_);
 
@@ -311,7 +308,7 @@ namespace OpenMS
     set<String> common_keys_ = MetaInfoInterfaceUtils::findCommonMetaKeys<FeatureMap, set<String> >(feature_map.begin(), feature_map.end(), 0.0);
     map<String, DataValue::DataType> map_key2type_;
 
-    for (auto feature : feature_map)
+    for (const Feature& feature : feature_map)
     {
       for (const String& key : common_keys_)
       {
@@ -328,15 +325,15 @@ namespace OpenMS
     // define map with corresponding datatype, dataproc_map_key2type_
     // define String vector sequenc_keys, storing succession of userparameters keys in feature_map
     vector<String> dataproc_keys_;
-    const vector<DataProcessing> dataprocessing_userparams = feature_map.getDataProcessing();
+    const vector<DataProcessing>& dataprocessing_userparams = feature_map.getDataProcessing();
     map<String, DataValue::DataType> dataproc_map_key2type_;
     vector<String> sequence_keys_;
     // traverse each dataprocessing entry in dataprocessing_userparams
-    for (auto dataproc_userparam : dataprocessing_userparams)
+    for (const auto& dataproc_userparam : dataprocessing_userparams)
     {
       // get key of current dataproc_userparam entry
       dataproc_userparam.getKeys(dataproc_keys_);
-      for (auto key : dataproc_keys_)
+      for (const auto& key : dataproc_keys_)
       {
         const DataValue::DataType& dt = dataproc_userparam.getMetaValue(key).valueType();  // get DataType of current key
         dataproc_map_key2type_[key] = dt; // save key, datatype pair
@@ -375,10 +372,6 @@ namespace OpenMS
       feature_elements_types_.push_back(enumToPrefix_(map_key2type_[key]).sqltype);
     }
 
-
-
-
-
     // prepare subordinate header
     map<String, DataValue::DataType> subordinate_key2type_;
     for (FeatureMap::const_iterator feature_it = feature_map.begin(); feature_it != feature_map.end(); ++feature_it)
@@ -404,7 +397,7 @@ namespace OpenMS
 
 
     // prepare dataprocessing header
-    for (auto & key : dataproc_keys_)
+    for (const auto & key : dataproc_keys_)
     { 
       //DEBUG
       //cout << "\"" << enumToPrefix_(dataproc_map_key2type_[key]).prefix << key << "\"" << endl;
@@ -412,7 +405,7 @@ namespace OpenMS
       //cout << key << endl;
       
       // version without " to keep illegal entrie catch
-      String dataproc_element = enumToPrefix_(dataproc_map_key2type_[key]).prefix + key;
+      const String& dataproc_element = enumToPrefix_(dataproc_map_key2type_[key]).prefix + key;
       // all in one version with "
       //String dataproc_element = "\"" + enumToPrefix_(dataproc_map_key2type_[key]).prefix + key + "\"";
       //cout << dataproc_element << endl;
@@ -529,7 +522,6 @@ namespace OpenMS
     // create single string with delimiter ',' as TABLE header template
     String sql_stmt_sub_boundingbox_ = ListUtils::concatenate(sql_labels_boundingbox_, ",");
 
-
     // create empty SQL table stmt
     String features_table_stmt_, subordinates_table_stmt_, dataprocessing_table_stmt_, feature_boundingbox_table_stmt_, subordinate_boundingbox_table_stmt_;
     // 1. features
@@ -593,7 +585,12 @@ namespace OpenMS
     // create SQL database, create empty SQL tables  see (https://github.com/OpenMS/OpenMS/blob/develop/src/openms/source/FORMAT/OSWFile.cpp)
     // Open connection to database
     SqliteConnector conn(filename_);
+    conn.executeStatement("PRAGMA synchronous = OFF");
+    conn.executeStatement("PRAGMA journal_mode = OFF");
     conn.executeStatement(create_sql_);
+
+    conn.executeStatement("BEGIN TRANSACTION");
+
     //db = conn.getDB();
 
 
@@ -617,7 +614,6 @@ namespace OpenMS
     if (features_switch_)
     // TODO Error handling for empty features?
     {
-      conn.executeStatement("BEGIN TRANSACTION");
       //sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
       for (const Feature& feature : feature_map)
       {
@@ -691,7 +687,6 @@ namespace OpenMS
         }
       }
       //sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
-      conn.executeStatement("END TRANSACTION");
     }
     /*
     cout << "\n\n\n\n\n TEST OUTPUT \n\n\n\n" << endl;
@@ -789,7 +784,6 @@ namespace OpenMS
     // 2.
     if (features_bbox_switch_)
     {
-      conn.executeStatement("BEGIN TRANSACTION");
 
       double min_MZ;
       double min_RT;
@@ -832,13 +826,11 @@ namespace OpenMS
           conn.executeStatement(line_stmt_features_table_boundingbox_);
         }
       }
-      conn.executeStatement("END TRANSACTION");
     }
 
     // 3.
     if (subordinates_switch_)
     {
-      conn.executeStatement("BEGIN TRANSACTION");
 
       /// 2. insert data of subordinates table
       String line_stmt_;
@@ -899,16 +891,11 @@ namespace OpenMS
           line.clear();
         }
       }
-
-      conn.executeStatement("END TRANSACTION");
     }
 
     // 4.
     if (subordinates_bbox_switch_)
     {
-      conn.executeStatement("BEGIN TRANSACTION");
-
-
       // fetch bounding box data of subordinate convexhull
       const String sub_bbox_elements_sql_stmt = ListUtils::concatenate(sub_bounding_box_elements_, ","); 
       for (const Feature& feature : feature_map)
@@ -956,13 +943,11 @@ namespace OpenMS
           }
         }
       }
-      conn.executeStatement("END TRANSACTION");
     }
 
     // 5.
     if (dataprocessing_switch_)
     {
-      conn.executeStatement("BEGIN TRANSACTION");
 
       /// 3. insert labels of sql_stmt (INSERT INTO FEATURE_DATAPROCESSING (...))
       const String dataprocessing_elements_sql_stmt = ListUtils::concatenate(dataprocessing_elements_, ",");
@@ -982,10 +967,9 @@ namespace OpenMS
       // dataprocessing vector with meta information about experimental setup and meta-information of measurement
      
       //const vector<DataProcessing> dataprocessing = feature_map.getDataProcessing();
-      vector<DataProcessing> dataprocessing = feature_map.getDataProcessing();
+      const vector<DataProcessing>& dataprocessing = feature_map.getDataProcessing();
     
-    
-      for (auto dataproc_userparam : dataprocessing)
+      for (const DataProcessing& dataproc_userparam : dataprocessing)
       {
  
         // add default values of dataprocessing entry
@@ -993,11 +977,6 @@ namespace OpenMS
         dataproc_elems.push_back(dataproc_userparam.getSoftware().getVersion());
         dataproc_elems.push_back(dataproc_userparam.getCompletionTime().getDate());
         dataproc_elems.push_back(dataproc_userparam.getCompletionTime().getTime());
-
-        cout << "###########################################################################" << endl;
-        cout << "#######################  Dataprocessing write #############################" << endl;
-        cout << "###########################################################################" << endl;
-
 
         // get processingAction entries
         //const set<DataProcessing::ProcessingAction>& proc_ac = dataproc_userparam.getProcessingActions();
@@ -1033,8 +1012,6 @@ namespace OpenMS
           dataproc_elems.push_back(processing_actions[0]);
         }
 
-        conn.executeStatement("END TRANSACTION");
-
       /*
         vector<String> proc_act_test;
         for (int i = 0; i < 19; ++i)
@@ -1051,10 +1028,10 @@ namespace OpenMS
     
       
       // userparam entries
-      for (auto dataproc_userparam : dataprocessing_userparams)
+      for (const auto& dataproc_userparam : dataprocessing_userparams)
       {
         dataproc_userparam.getKeys(dataproc_keys_);
-        for (auto& key : dataproc_keys_)
+        for (const auto& key : dataproc_keys_)
         {
           //cout << "key : " << key << "\t with value " << dataproc_userparam.getMetaValue(key) << endl;
           dataproc_elems.push_back(dataproc_userparam.getMetaValue(key));
@@ -1078,24 +1055,9 @@ namespace OpenMS
       conn.executeStatement(line_stmt_);
     }
   
+    conn.executeStatement("END TRANSACTION");
 
   } // end of FeatureSQLFile::write
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // read functions                                                                                 //
@@ -1105,7 +1067,6 @@ namespace OpenMS
   // read BBox values of convex hull entries for feature, subordinate table
   ConvexHull2D readBBox_(sqlite3_stmt* stmt, int column_nr)
   {
-      
     double min_MZ = 0.0;
     Sql::extractValue<double>(&min_MZ, stmt, (column_nr + 1));
     double min_RT = 0.0;
@@ -1526,7 +1487,7 @@ namespace OpenMS
         //actions
         set<DataProcessing::ProcessingAction> proc_actions;
 
-        for (auto action : proc_acts)
+        for (const auto& action : proc_acts)
         {
           proc_actions.insert((DataProcessing::ProcessingAction)action.toInt());
         }
