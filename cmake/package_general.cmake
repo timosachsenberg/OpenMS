@@ -1,8 +1,8 @@
 # --------------------------------------------------------------------------
 #                   OpenMS -- Open-Source Mass Spectrometry
 # --------------------------------------------------------------------------
-# Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-# ETH Zurich, and Freie Universitaet Berlin 2002-2021.
+# Copyright OpenMS Inc. -- Eberhard Karls University Tuebingen,
+# ETH Zurich, and Freie Universitaet Berlin 2002-present.
 #
 # This software is released under a three-clause BSD license:
 #  * Redistributions of source code must retain the above copyright
@@ -49,29 +49,74 @@ set(CPACK_RESOURCE_FILE_WELCOME ${PROJECT_SOURCE_DIR}/cmake/OpenMSPackageResourc
 set(CPACK_RESOURCE_FILE_README ${PROJECT_SOURCE_DIR}/cmake/OpenMSPackageResourceReadme.txt)
 set(CPACK_STRIP_FILES TRUE) # to save some space in the installers
 
+set(OPENMS_LOGO_NAME openms_logo_large_transparent.png) ## The filename of the logo to be used for the OpenMS folder e.g. on the DMG
+set(OPENMS_LOGO ${PROJECT_SOURCE_DIR}/cmake/MacOSX/${OPENMS_LOGO_NAME}) ## The logo to be used for the OpenMS folder e.g. on the DMG
+
+set(OPENMS_LOGOSMALL_NAME openms_logo_corner_transparent.png) ## The filename of the logo to be used for the OpenMS folder e.g. on the PKG
+set(OPENMS_LOGOSMALL ${PROJECT_SOURCE_DIR}/cmake/MacOSX/${OPENMS_LOGOSMALL_NAME}) ## The logo to be used for the OpenMS folder e.g. on the PKG
+
 ########################################################### Fixing dynamic dependencies
-# Done on Windows via copying external and internal dlls to the install/bin/ folder
-# Done on Mac via fixup_bundle for the GUI apps (TOPPView, TOPPAS) and via fix_mac_dependencies for the TOPP tools
-# which recursively gathers dylds, copies them to install/lib/ and sets the install_name of the binaries to @executable_path/../lib
-# Not done on Linux. Either install systemwide (omit CMAKE_INSTALL_PREFIX or set it to /usr/) or install and add the
-# install/lib/ folder to the LD_LIBRARY_PATH
+## Qt Plugins needed for the CL tools should have been installed before (such as QSqliteDriverPlugin)
+## This currently works because our libs and TOPP tools include all dependencies. For macOS,
+##  the app bundles need to have a different RUNTIME_DEPENDENCY_SET (TOPPView_DEPS, ...) due
+##  to CMake assuming you want standalone bundles. But we want to share libs between them.
 
-## If you want to do it, try it like this:
-#install(CODE "
-#  include(BundleUtilities)
-#  GET_BUNDLE_ALL_EXECUTABLES(\${CMAKE_INSTALL_PREFIX}/${INSTALL_BIN_DIR} EXECS)
-#  fixup_bundle(\"${EXECS}\" \"${QT_PLUGINS}\" \"\${CMAKE_INSTALL_PREFIX}/${INSTALL_LIB_DIR}\")
-#  " COMPONENT applications)
+# This would be to look in the Contrib and other cmake_prefix_paths for dependencies.
+#list(TRANSFORM CMAKE_PREFIX_PATH APPEND "/bin" OUTPUT_VARIABLE DEP_BIN_DIRS)
+#list(TRANSFORM CMAKE_PREFIX_PATH APPEND "/lib" OUTPUT_VARIABLE DEP_LIB_DIRS)
+# But since we copy them in the build stage to our runtime directory (bin), we can add this one.
 
-if(APPLE OR WIN32) ## On Linux we require Qt to be installed from the package manager system-wide (e.g. via dependencies)
-  if (OpenMS_GUI_QT_FOUND_COMPONENTS_OPT)
-    set(PACKAGE_QT_COMPONENTS "${OpenMS_QT_COMPONENTS};${OpenMS_GUI_QT_COMPONENTS};${OpenMS_GUI_QT_FOUND_COMPONENTS_OPT}")
-  else()
-    set(PACKAGE_QT_COMPONENTS "${OpenMS_QT_COMPONENTS};${OpenMS_GUI_QT_COMPONENTS}")
-  endif()
-  find_package(Qt5 COMPONENTS ${PACKAGE_QT_COMPONENTS}) ## we have to find again so the target variables are reloaded
-  install_qt5_libs("${PACKAGE_QT_COMPONENTS}" ${INSTALL_LIB_DIR} "QTLibs")
+
+## Info on excluding dependencies:
+# PRE_EXCLUDE_REGEXES: Excludes dependencies at the beginning of the dependency analysis. 
+#                      This means that any dependency matching these patterns will be excluded before 
+#                      CMake traverses its own dependencies. This can prevent CMake from spending 
+#                      time analyzing entire dependency chains that you know you want to exclude.
+# POST_EXCLUDE_REGEXES: Excludes dependencies after the complete dependency analysis is done. 
+#                       This is applied to the final list of all found dependencies.
+
+# On Windows we need to tell CMake where to look for.
+# We also do not need API sets. So exclude them.
+
+
+if(WIN32)
+  # exclude dll's which are system dll's and should not be shipped (bloats installer and leads to incompatibilities)
+  set(PRE_EXCLUDE 
+                  ## these two are direct systems deps of TOPPView etc. Exclude to save time
+                  "api-ms" "ext-ms" 
+                  ## "HvsiFileTrust" "PdmUtilities" are detected as a dependency by CMake which cannot be resolved (and would lead to errors), so ignore it
+                  "hvsi" "pdmutilities"  ## make all lower case, since this is what CMake extracts from the targets and the regex is case sensitive
+                  )
+  ## exclude every Dll from c:\Windows\System32
+  ## Note: CMake extracts Dll names and will have a list like
+  ##-- Resolved runtime dependencies:
+  ##--   C:/WINDOWS/system32/aclui.dll
+  ##--   C:/WINDOWS/system32/activeds.dll
+  ## ,i.e. folder names have weird cases (and the CMake regex engine is case sensitive)
+  set(POST_EXCLUDE ".*[\\/][Ss][Yy][Ss][Tt][Ee][Mm]32[\\/].*")  # skip system32 DLLs completely (no matter how CMake names the path, could be 'System32', 'system32', 'SYSTEM32' etc)
+elseif(APPLE)
+  set(PRE_EXCLUDE "/usr/lib" "/System/")
+  set(POST_EXCLUDE "")
+else()
+  set(PRE_EXCLUDE "")
+  set(POST_EXCLUDE ".*/ld-linux-.*" ".*/linux-vdso.*" ".*/libm\\..*" ".*/libc\\..*" ".*/libpthread\\..*" ".*/libdl\\..*" ".*/libQt6.*")
 endif()
+
+# TODO check if we can reduce the permissions
+install(RUNTIME_DEPENDENCY_SET OPENMS_DEPS
+        DESTINATION ${INSTALL_LIB_DIR}
+        PERMISSIONS
+          OWNER_READ OWNER_WRITE OWNER_EXECUTE
+          GROUP_READ GROUP_WRITE GROUP_EXECUTE
+          WORLD_READ WORLD_WRITE WORLD_EXECUTE
+        COMPONENT Dependencies
+        PRE_EXCLUDE_REGEXES ${PRE_EXCLUDE}
+        POST_EXCLUDE_REGEXES ${POST_EXCLUDE}
+        DIRECTORIES $<TARGET_FILE_DIR:OpenMS>)
+
+#install(RUNTIME_DEPENDENCY_SET TOPPView_DEPS) # I think without giving DESTINATION and COMPONENT it will be inferred
+#install(RUNTIME_DEPENDENCY_SET TOPPAS_DEPS)
+#...
 
 ########################################################### SEARCHENGINES
 set(THIRDPARTY_COMPONENT_GROUP)
@@ -80,16 +125,11 @@ if(EXISTS ${SEARCH_ENGINES_DIRECTORY})
   ## TODO we could think about just recursing over subfolders
   install_thirdparty_folder("pwiz-bin")
   install_thirdparty_folder("Comet")
-  install_thirdparty_folder("Fido")
   install_thirdparty_folder("MSGFPlus")
-  install_thirdparty_folder("OMSSA")
-  install_thirdparty_folder("XTandem")
   install_thirdparty_folder("LuciPHOr2")
-  install_thirdparty_folder("MyriMatch")
   install_thirdparty_folder("SpectraST")
   install_thirdparty_folder("Sirius")
   install_thirdparty_folder("Percolator")
   install_thirdparty_folder("MaRaCluster")
-  install_thirdparty_folder("crux")
   install_thirdparty_folder("ThermoRawFileParser")
 endif()

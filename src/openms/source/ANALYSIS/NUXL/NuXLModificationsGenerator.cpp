@@ -1,31 +1,5 @@
-// --------------------------------------------------------------------------
-//                   OpenMS -- Open-Source Mass Spectrometry
-// --------------------------------------------------------------------------
-// Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2021.
-//
-// This software is released under a three-clause BSD license:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of any author or any participating institution
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-// For a full list of authors, refer to the file AUTHORS.
-// --------------------------------------------------------------------------
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL ANY OF THE AUTHORS OR THE CONTRIBUTING
-// INSTITUTIONS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2002-2023, The OpenMS Team -- EKU Tuebingen, ETH Zurich, and FU Berlin
+// SPDX-License-Identifier: BSD-3-Clause
 //
 // --------------------------------------------------------------------------
 // $Maintainer: Timo Sachsenberg $
@@ -47,7 +21,7 @@ namespace OpenMS
 {
 
 //static
-bool NuXLModificationsGenerator::notInSeq(String res_seq, String query)
+bool NuXLModificationsGenerator::notInSeq(const String& res_seq, const String& query)
 {
   // special case: empty query is in every seq -> false
   if (query.empty()) { return false; }
@@ -67,11 +41,11 @@ bool NuXLModificationsGenerator::notInSeq(String res_seq, String query)
 }
 
 //static
-NuXLModificationMassesResult NuXLModificationsGenerator::initModificationMassesNA(StringList target_nucleotides,
-                                                                                     StringList nt_groups,
-                                                                                     std::set<char> can_xl,
-                                                                                     StringList mappings,
-                                                                                     StringList modifications,
+NuXLModificationMassesResult NuXLModificationsGenerator::initModificationMassesNA(const StringList& target_nucleotides,
+                                                                                     const StringList& nt_groups,
+                                                                                     const std::set<char>& can_xl,
+                                                                                     const StringList& mappings,
+                                                                                     const StringList& modifications,
                                                                                      String sequence_restriction,
                                                                                      bool cysteine_adduct,
                                                                                      Int max_length)
@@ -118,8 +92,8 @@ NuXLModificationMassesResult NuXLModificationsGenerator::initModificationMassesN
     // add single source nucleotides to all_combinations
     for (Size i = 0; i != source_nucleotides.size(); ++i)
     {
-      all_combinations.push_back(String(source_nucleotides[i]));
-      actual_combinations.push_back(String(source_nucleotides[i]));
+      all_combinations.emplace_back(source_nucleotides[i]);
+      actual_combinations.emplace_back(source_nucleotides[i]);
     }
 
     for (Int i = 1; i <= max_length - 1; ++i)
@@ -130,8 +104,8 @@ NuXLModificationMassesResult NuXLModificationsGenerator::initModificationMassesN
         // grow actual_combinations/ all_combinations by one nucleotide
         for (Size c = 0; c != actual_combinations.size(); ++c)
         {
-          new_combinations.push_back(source_nucleotides[n] + actual_combinations[c]);
-          all_combinations.push_back(source_nucleotides[n] + actual_combinations[c]);
+          new_combinations.emplace_back(source_nucleotides[n] + actual_combinations[c]);
+          all_combinations.emplace_back(source_nucleotides[n] + actual_combinations[c]);
         }
       }
       actual_combinations = new_combinations;

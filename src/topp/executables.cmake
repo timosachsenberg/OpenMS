@@ -3,38 +3,49 @@ set(directory source/APPLICATIONS/TOPP)
 
 ### list all filenames of the directory here
 set(TOPP_executables
+AccurateMassSearch
+AssayGeneratorMetabo
+AssayGeneratorMetaboSirius
 BaselineFilter
+ClusterMassTraces
+ClusterMassTracesByPrecursor
 CometAdapter
-CompNovo
-CompNovoCID
 ConsensusID
 ConsensusMapNormalizer
-CruxAdapter
+CVInspector
+DatabaseFilter
 DatabaseSuitability
+DecoyDatabase
 Decharger
+DeMeanderize
+Digestor
+DigestorMotif
 DTAExtractor
 EICExtractor
+Epifany
 ExternalCalibration
 FalseDiscoveryRate
 FeatureFinderCentroided
 FeatureFinderIdentification
-FeatureFinderIsotopeWavelet
 FeatureFinderMetabo
-FeatureFinderMRM
+FeatureFinderMetaboIdent
 FeatureFinderMultiplex
 FeatureLinkerLabeled
 FeatureLinkerUnlabeled
 FeatureLinkerUnlabeledKD
 FeatureLinkerUnlabeledQT
-FidoAdapter
 FileConverter
 FileFilter
 FileInfo
 FileMerger
+FLASHDeconv
+FuzzyDiff
 GenericWrapper
 GNPSExport
 HighResPrecursorMassCorrector
 IDConflictResolver
+IDDecoyProbability
+IDExtractor
 IDFileConverter
 IDFilter
 IDMapper
@@ -42,28 +53,41 @@ IDMerger
 IDPosteriorErrorProbability
 IDRipper
 IDRTCalibration
-InclusionExclusionListCreator
+IDScoreSwitcher
+IDSplitter
 InternalCalibration
+IonMobilityBinning
 IsobaricAnalyzer
+JSONExporter
 LuciphorAdapter
 MapAlignerIdentification
 MapAlignerPoseClustering
-MapAlignerSpectrum
 MapAlignerTreeGuided
 MapNormalizer
 MapRTTransformer
 MapStatistics
 MaRaClusterAdapter
-MascotAdapter
 MascotAdapterOnline
+MassCalculator
 MassTraceExtractor
+MetaProSIP
+MetaboliteAdductDecharger
+MetaboliteSpectralMatcher
 MRMMapper
+MRMPairFinder
 MSGFPlusAdapter
-MyriMatchAdapter
+MSFraggerAdapter
+MSstatsConverter
+MultiplexResolver
+MzMLSplitter
 MzTabExporter
+NucleicAcidSearchEngine
 NoiseFilterGaussian
 NoiseFilterSGolay
-OMSSAAdapter
+NovorAdapter
+OpenMSDatabasesInfo
+OpenMSInfo
+OpenNuXL
 OpenPepXL
 OpenPepXLLF
 OpenSwathAnalyzer
@@ -74,43 +98,65 @@ OpenSwathDecoyGenerator
 OpenSwathFeatureXMLToTSV
 OpenSwathRTNormalizer
 PeakPickerHiRes
-PeakPickerWavelet
-PepNovoAdapter
+PeakPickerIterative
 PeptideIndexer
 PercolatorAdapter
 PhosphoScoring
-PrecursorIonSelector
-PrecursorMassCorrector
 ProteinInference
 ProteinQuantifier
-ProteinResolver
-PTModel
-PTPredict
+ProteomicsLFQ
+PSMFeatureExtractor
+QCCalculator
+QCEmbedder
+QCExporter
+QCExtractor
+QCImporter
+QCMerger
+QCShrinker
 QualityControl
-RTModel
-RTPredict
+RNADigestor
+RNAMassCalculator
+RNPxlXICFilter
+SageAdapter
 SeedListGenerator
-SpecLibSearcher
-SpectraFilterBernNorm
-SpectraFilterMarkerMower
+SemanticValidator
+SequenceCoverageCalculator
+SimpleSearchEngine
+SiriusExport
 SpectraFilterNLargest
 SpectraFilterNormalizer
-SpectraFilterParentPeakMower
-SpectraFilterScaler
-SpectraFilterSqrtMower
 SpectraFilterThresholdMower
 SpectraFilterWindowMower
+SpectraSTSearchAdapter
 SpectraMerger
+StaticModification
 TextExporter
-TOFCalibration
+TICCalculator
+TriqlerConverter
 XFDR
-XTandemAdapter
+XMLValidator
 )
+
+if(NOT DISABLE_OPENSWATH)
+  set(TOPP_executables
+    ${TOPP_executables}
+    TargetedFileConverter
+    OpenSwathDIAPreScoring
+    OpenSwathMzMLFileCacher
+    OpenSwathWorkflow
+    OpenSwathFileSplitter
+    OpenSwathRewriteToFeatureXML
+    MRMTransitionGroupPicker
+  )
+endif(NOT DISABLE_OPENSWATH)
 
 ## all targets requiring OpenMS_GUI
 set(TOPP_executables_with_GUIlib
 ExecutePipeline
 Resampler
+# util category
+ImageCreator
+INIUpdater
 )
 
 ### add filenames to Visual Studio solution tree

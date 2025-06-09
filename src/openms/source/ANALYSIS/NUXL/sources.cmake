@@ -3,18 +3,16 @@ set(directory source/ANALYSIS/NUXL)
 
 ### list all filenames of the directory here
 set(sources_list
-HyperScore.cpp
-MorpheusScore.cpp
-PScore.cpp
 NuXLAnnotateAndLocate.cpp
+NuXLDeisotoper.cpp
 NuXLFDR.cpp
-NuXLFeatureAugmentation.cpp
 NuXLFragmentAdductDefinition.cpp
 NuXLFragmentAnnotationHelper.cpp
 NuXLFragmentIonGenerator.cpp
 NuXLMarkerIonExtractor.cpp
 NuXLModificationsGenerator.cpp
 NuXLParameterParsing.cpp
+NuXLPresets.cpp
 NuXLReport.cpp
 )
 

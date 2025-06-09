@@ -1,31 +1,5 @@
-// --------------------------------------------------------------------------
-//                   OpenMS -- Open-Source Mass Spectrometry
-// --------------------------------------------------------------------------
-// Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2021.
-//
-// This software is released under a three-clause BSD license:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of any author or any participating institution
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-// For a full list of authors, refer to the file AUTHORS.
-// --------------------------------------------------------------------------
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL ANY OF THE AUTHORS OR THE CONTRIBUTING
-// INSTITUTIONS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
+// SPDX-License-Identifier: BSD-3-Clause
 //
 // --------------------------------------------------------------------------
 // $Maintainer: Timo Sachsenberg $
@@ -38,6 +12,7 @@
 #include <vector>
 
 #include <OpenMS/CONCEPT/Types.h>
+#include <OpenMS/CONCEPT/Constants.h>
 #include <OpenMS/DATASTRUCTURES/String.h>
 #include <OpenMS/METADATA/MetaInfoInterface.h>
 #include <OpenMS/CHEMISTRY/AASequence.h>
@@ -45,10 +20,28 @@
 
 namespace OpenMS
 {
-  /**
-    @brief Representation of a peptide hit
+  class PeptideHit;
+  using SpectrumMatch = PeptideHit; // better name that might become the default in future version
 
-    It contains the fields score, score_type, rank, and sequence.
+  /**
+    @brief Represents a single spectrum match (candidate) for a specific tandem mass spectrum (MS/MS).
+
+    Stores the primary information about a potential match, including:
+    - The sequence (potentially with modifications) using AASequence.
+    - The primary score assigned by the identification algorithm (e.g., search engine).
+    - The rank of this hit compared to other hits for the same spectrum (stored as a meta value with key "rank").
+    - The precursor charge state assumed for this match.
+    - Evidence linking the peptide sequence to specific protein sequences (PeptideEvidence).
+    - Optional annotations mapping fragment ions in the MS/MS spectrum to interpretations (PeakAnnotation).
+    - Optional secondary scores from post-processing tools (PepXMLAnalysisResult).
+
+    Objects are typically contained within a PeptideIdentification object, which represents
+    all hits found for a single spectrum. Inherits from MetaInfoInterface, allowing
+    arbitrary metadata (key-value pairs) to be attached.
+
+    @deprecated Use SpectrumMatch instead. PeptideHit may be removed in a future OpenMS version.
+
+    @see PeptideIdentification, AASequence, PeptideEvidence, PeakAnnotation, PepXMLAnalysisResult, MetaInfoInterface
 
     @ingroup Metadata
   */
@@ -56,7 +49,6 @@ namespace OpenMS
     public MetaInfoInterface
   {
 public:
-
     /**
    * @brief Contains annotations of a peak
 
@@ -176,8 +168,8 @@ public:
     {
 public:
       String score_type; /// e.g. peptideprophet / interprophet
-      bool higher_is_better; /// is higher score better ?
-      double main_score; /// posterior probability for example
+      bool higher_is_better{}; /// is higher score better ?
+      double main_score{}; /// posterior probability for example
       std::map<String, double> sub_scores; /// additional scores attached to the original, aggregated score
 
       bool operator==(const PepXMLAnalysisResult& rhs) const
@@ -226,8 +218,11 @@ public:
     /**	@name Accessors
     */
     //@{
-    /// returns the peptide sequence without trailing or following spaces
+    /// returns the peptide sequence
     const AASequence& getSequence() const;
+
+    /// returns the mutable peptide sequence
+    AASequence& getSequence();
 
     /// sets the peptide sequence
     void setSequence(const AASequence& sequence);
@@ -258,19 +253,19 @@ public:
     /// sets the PSM score
     void setScore(double score);
 
-    /// set information on (search engine) sub scores associated with this PSM
-    void setAnalysisResults(std::vector<PepXMLAnalysisResult> aresult);
+    /// set information on (search engine) sub scores associated with this PSM (only used by pepXML)
+    void setAnalysisResults(const std::vector<PepXMLAnalysisResult>& aresult);
 
-    /// add information on (search engine) sub scores associated with this PSM
-    void addAnalysisResults(PepXMLAnalysisResult aresult);
+    /// add information on (search engine) sub scores associated with this PSM (only used by pepXML)
+    void addAnalysisResults(const PepXMLAnalysisResult& aresult);
 
-    /// returns information on (search engine) sub scores associated with this PSM
-    const std::vector<PepXMLAnalysisResult>& getAnalysisResults() const;
+    /// returns information on (search engine) sub scores associated with this PSM (only used by pepXML)
+    std::vector<PepXMLAnalysisResult> getAnalysisResults() const;
 
     /// returns the PSM rank
     UInt getRank() const;
 
-    /// sets the PSM rank
+    /// sets the PSM rank (0 = top hit)
     void setRank(UInt newrank);
 
     /// returns the fragment annotations
@@ -290,22 +285,23 @@ protected:
     AASequence sequence_;
 
     /// the score of the peptide hit
-    double score_;
-
-    /// additional scores attached to the original, aggregated score
-    std::vector<PepXMLAnalysisResult>* analysis_results_;
-
-    /// the position(rank) where the hit appeared in the hit list
-    UInt rank_;
+    double score_{};
 
     /// the charge of the peptide
-    Int charge_;
+    Int charge_{};
 
     /// information on the potential peptides observed through this PSM.
     std::vector<PeptideEvidence> peptide_evidences_;
 
     /// annotations of fragments in the corresponding spectrum
     std::vector<PeptideHit::PeakAnnotation> fragment_annotations_;
+
+private:
+    /// Get the number of analysis results stored as meta values (only for pepXML results)
+    size_t getNumberOfAnalysisResultsFromMetaValues_() const;
+
+    /// Extract analysis results from meta values (only for pepXML results)
+    std::vector<PepXMLAnalysisResult> extractAnalysisResultsFromMetaValues_() const;
   };
 
   /// Stream operator

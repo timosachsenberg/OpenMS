@@ -1,31 +1,5 @@
-// --------------------------------------------------------------------------
-//                   OpenMS -- Open-Source Mass Spectrometry
-// --------------------------------------------------------------------------
-// Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2020.
-//
-// This software is released under a three-clause BSD license:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of any author or any participating institution
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-// For a full list of authors, refer to the file AUTHORS.
-// --------------------------------------------------------------------------
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL ANY OF THE AUTHORS OR THE CONTRIBUTING
-// INSTITUTIONS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2002-2023, The OpenMS Team -- EKU Tuebingen, ETH Zurich, and FU Berlin
+// SPDX-License-Identifier: BSD-3-Clause
 //
 // --------------------------------------------------------------------------
 // $Maintainer: Timo Sachsenberg $
@@ -34,7 +8,7 @@
 
 #include <OpenMS/KERNEL/StandardTypes.h>
 #include <OpenMS/ANALYSIS/NUXL/NuXLReport.h>
-#include <OpenMS/MATH/MISC/MathFunctions.h>
+#include <OpenMS/MATH/MathFunctions.h>
 #include <boost/range/adaptor/reversed.hpp>
 #include <OpenMS/ANALYSIS/ID/IDBoostGraph.h>
 
@@ -297,7 +271,7 @@ namespace OpenMS
 }
 
   // crosslink efficiency = frequency of the crosslinked amino acid / frequency of the amino acid in all crosslink spectrum matches
-  map<char, double> RNPxlProteinReport::getCrossLinkEfficiency(const vector<PeptideIdentification>& peps)
+  map<char, double> NuXLProteinReport::getCrossLinkEfficiency(const vector<PeptideIdentification>& peps)
   {
     map<char, double> aa_xl_freq;
     map<char, double> aa_freq;
@@ -337,7 +311,7 @@ namespace OpenMS
   }
 
   // returns map of adduct to counts
-  map<String, size_t> RNPxlProteinReport::countAdducts(const vector<PeptideIdentification>& peps)
+  map<String, size_t> NuXLProteinReport::countAdducts(const vector<PeptideIdentification>& peps)
   {
     map<String, size_t> adduct2count;
     for (const PeptideIdentification& pep : peps)
@@ -353,10 +327,10 @@ namespace OpenMS
 /*
 Output format:
 +----------------------+-----+--------+---------+------+--------------------------+---------------------+---------------------------+-----------------------+------------------------+------------------------------+------------------------------+-------------------------------+------------------------------+---------------------------+---------------------------+----------------------------------+----------------------------------+---------------+-------------------------+
-|      accession       |  AA |   pos. |   start |  end |  adducts (loc. + unique) |  NT (loc. + unique) |   charges (loc. + unique) |  CSMs (loc. + unique) |   CSMs (loc. + shared) |   precursors (loc. + unique) |   precursors (loc. + shared) |   adducts (\wo loc. + unique) |  charges (\wo loc. + unique) |  CSMs (\wo loc. + unique) |  CSMs (\wo loc. + shared) |   precursors (\wo loc. + unique) |   precursors (\wo loc. + shared) |   ambiguities |         peptide         |
+|      accession       |  AA |   pos. |   start |  end |  adducts (loc. + unique) |  NT (loc. + unique) |   charges (loc. + unique) |  CSMs (loc. + unique) |   CSMs (loc. + shared) |   precursors (loc. + unique) |   precursors (loc. + shared) |   adducts (\wo loc. + unique) |  charges (\wo loc. + unique) |  CSMs (\wo loc. + unique) |  CSMs (\wo loc. + shared) |   precursors (\wo loc. + unique) |   precursors (\wo loc. + shared) |   ambiguities |         peptide         | peptide-XL q-value
 +----------------------+-----+--------+---------+------+--------------------------+---------------------+---------------------------+-----------------------+------------------------+------------------------------+------------------------------+-------------------------------+------------------------------+---------------------------+---------------------------+----------------------------------+----------------------------------+---------------+-------------------------+
-| sp|P19338|NUCL_HUMAN |   P |    302 |     297 |  317 |  U                       |  U                  |                         3 |                     1 |                      0 |                            1 |                            0 |                               |                              |                         0 |                         0 |                                0 |                                0 |               |   VEGTEPTTAFNLFVGNLNFNK |
-| sp|P19338|NUCL_HUMAN |   F |    309 |     297 |  317 |  U,U-H2O1                |   U                 |                       2,3 |                     3 |                      0 |                            3 |                            0 |                               |                              |                         0 |                         0 |                                0 |                                0 |               |   VEGTEPTTAFNLFVGNLNFNK |
+| sp|P19338|NUCL_HUMAN |   P |    302 |     297 |  317 |  U                       |  U                  |                         3 |                     1 |                      0 |                            1 |                            0 |                               |                              |                         0 |                         0 |                                0 |                                0 |               |   VEGTEPTTAFNLFVGNLNFNK |  0.0
+| sp|P19338|NUCL_HUMAN |   F |    309 |     297 |  317 |  U,U-H2O1                |   U                 |                       2,3 |                     3 |                      0 |                            3 |                            0 |                               |                              |                         0 |                         0 |                                0 |                                0 |               |   VEGTEPTTAFNLFVGNLNFNK |  0.0
 +----------------------+-----+--------+---------+------+--------------------------+---------------------+---------------------------+-----------------------+------------------------+------------------------------+------------------------------+-------------------------------+------------------------------+---------------------------+---------------------------+----------------------------------+----------------------------------+---------------+-------------------------+
 */
   
@@ -375,7 +349,7 @@ Output format:
     std::map<std::string, vector<LocalizedXL>> peptide2XL; // observed peptide -> adduct,NA,charge tuples    
   };
 
-  struct  RegionLevelLocalization
+  struct RegionLevelLocalization
   {
     struct UnlocalizedXL
     {
@@ -394,11 +368,12 @@ Output format:
     size_t CSMs_of_shared_peptides = 0; // XL spectral count of shared peptides
     size_t CSMs_of_unique_peptides = 0; // XL spectral count of unique peptides
     map<size_t, AALevelLocalization> aa_level_localization; // position in protein to loc info
-    map<pair<size_t, size_t>, RegionLevelLocalization> region_level_localization;      
+    map<pair<size_t, size_t>, RegionLevelLocalization> region_level_localization;
   };
 
   // all proteins
   using ProteinsReport = map<std::string, ProteinReport>; //< protein accession to details
+  std::unordered_map<String, double> peptide_seq2XLFDR;
 
   ProteinsReport getProteinReportEntries(
 //    vector<ProteinIdentification>& prot_ids, 
@@ -422,16 +397,20 @@ Output format:
       const String& NT = ph.getMetaValue("NuXL:NT"); // XLed nucleotide
       const int charge = ph.getCharge();
       const AASequence& peptide_sequence = ph.getSequence();
-
+      
       // get mapping of peptide sequence to protein(s)
       const std::vector<PeptideEvidence>& ph_evidences = ph.getPeptideEvidences();
       const std::string peptide_sequence_string = peptide_sequence.toUnmodifiedString();
 
+      // the peptide-level FDR in the group of cross-linked peptides
+      double peptide_XL_level_qvalue = (double)ph.getMetaValue(Constants::UserParam::PEPTIDE_Q_VALUE, 0.0);
+      peptide_seq2XLFDR[peptide_sequence_string] = peptide_XL_level_qvalue;
+
       // loop over all target proteins the peptide maps to
-      const std::set<std::string>& proteins = peptide2proteins.at(peptide_sequence_string);
+      const std::set<std::string> proteins = peptide2proteins.at(peptide_sequence_string);
       const bool is_unique = proteins.size() == 1;
 
-      for (const String& acc : proteins)
+      for (const auto& acc : proteins)
       {
         // add basic protein information first time we encounter a protein accession
         int protein_length{};
@@ -477,7 +456,6 @@ Output format:
           xl.NT = NT;
           xl.charge = charge;          
           report[acc].aa_level_localization[xl_pos_in_protein].peptide2XL[peptide_sequence_string].push_back(xl);
-
         }
         else
         { // not localized? annotate region
@@ -605,8 +583,9 @@ Output format:
       ambiguities.erase(accession);
       l += ListUtils::concatenate(ambiguities, ",") + "\t";
 
-      // add peptide sequence
-      l += peptide;
+      // add peptide sequence and sequence level FDR (in the group of XLs)
+      l += peptide + "\t";
+      l += peptide_seq2XLFDR[peptide];
       tsv_file.addLine(l);
     }
     return printed_peptides;
@@ -672,15 +651,15 @@ Output format:
       auto ambiguities = peptide2proteins[peptide];
       protein2proteins[accession].insert(ambiguities.begin(), ambiguities.end()); // note: add same protein to group as well
       ambiguities.erase(accession);
-      l += ListUtils::concatenate(ambiguities, ",") + "\t";
-      // add peptide sequence
-      l += peptide;
+      l += ListUtils::concatenate(ambiguities, ",") + "\t";      
+      l += peptide + "\t"; // add peptide sequence
+      l += peptide_seq2XLFDR[peptide];
       tsv_file.addLine(l);
     }
   }
 
   // static 
-  void  RNPxlProteinReport::mapAccessionToTDProteins(ProteinIdentification& prot_id, std::map<String, ProteinHit*>& acc2protein_targets, std::map<String, ProteinHit*>& acc2protein_decoys)
+  void  NuXLProteinReport::mapAccessionToTDProteins(ProteinIdentification& prot_id, std::map<String, ProteinHit*>& acc2protein_targets, std::map<String, ProteinHit*>& acc2protein_decoys)
   {
     std::vector<ProteinHit>& proteins = prot_id.getHits();
     for (ProteinHit& protein : proteins)
@@ -733,7 +712,7 @@ Output format:
   }
   */
 
-  void RNPxlProteinReport::annotateProteinModificationForTopHits(
+  void NuXLProteinReport::annotateProteinModificationForTopHits(
     vector<ProteinIdentification>& prot_ids, 
     const vector<PeptideIdentification>& peps, 
     TextFile& tsv_file)
@@ -745,7 +724,7 @@ Output format:
 
     // create lookup accession -> protein
     map<String, ProteinHit*> acc2protein_targets, acc2protein_decoys;
-    RNPxlProteinReport::mapAccessionToTDProteins(prot_id, acc2protein_targets, acc2protein_decoys);
+    NuXLProteinReport::mapAccessionToTDProteins(prot_id, acc2protein_targets, acc2protein_decoys);
 
     size_t CSMs_sum{}; // total number of XLed spectra
 
@@ -798,7 +777,7 @@ Output format:
                      "CSMs (loc. + unique)\tCSMs (loc. + shared)\tprecursors (loc. + unique)\tprecursors (loc. + shared)\t" +
                      "adducts (\\wo loc. + unique)\tcharges (\\wo loc. + unique)\t" + 
                      "CSMs (\\wo loc. + unique)\tCSMs (\\wo loc. + shared)\tprecursors (\\wo loc. + unique)\tprecursors (\\wo loc. + shared)\t" +
-                     "ambiguities\tpeptide"
+                     "ambiguities\tpeptide\tq-value (peptide seq. level)"
       );
 
     map<string, set<string>> protein2proteins;

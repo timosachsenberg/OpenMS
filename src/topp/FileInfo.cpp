@@ -1,31 +1,5 @@
-// --------------------------------------------------------------------------
-//                   OpenMS -- Open-Source Mass Spectrometry
-// --------------------------------------------------------------------------
-// Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2021.
-//
-// This software is released under a three-clause BSD license:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of any author or any participating institution
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-// For a full list of authors, refer to the file AUTHORS.
-// --------------------------------------------------------------------------
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL ANY OF THE AUTHORS OR THE CONTRIBUTING
-// INSTITUTIONS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
+// SPDX-License-Identifier: BSD-3-Clause
 //
 // --------------------------------------------------------------------------
 // $Maintainer: Lars Nilse $
@@ -34,34 +8,36 @@
 
 #include <boost/iostreams/device/null.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
-
 #include <OpenMS/config.h>
 
-#include <OpenMS/APPLICATIONS/TOPPBase.h>
-
-#include <OpenMS/ANALYSIS/OPENSWATH/TransitionTSVFile.h>
 #include <OpenMS/ANALYSIS/OPENSWATH/TransitionPQPFile.h>
+#include <OpenMS/APPLICATIONS/TOPPBase.h>
+#include <OpenMS/DATASTRUCTURES/ListUtilsIO.h> // for operator<< on StringList
 #include <OpenMS/DATASTRUCTURES/StringListUtils.h>
 #include <OpenMS/FORMAT/ConsensusXMLFile.h>
 #include <OpenMS/FORMAT/FASTAFile.h>
 #include <OpenMS/FORMAT/FeatureXMLFile.h>
 #include <OpenMS/FORMAT/FileHandler.h>
 #include <OpenMS/FORMAT/FileTypes.h>
-#include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/HANDLERS/IndexedMzMLHandler.h>
+#include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/MzDataFile.h>
 #include <OpenMS/FORMAT/MzIdentMLFile.h>
 #include <OpenMS/FORMAT/MzMLFile.h>
+#include <OpenMS/FORMAT/MzTabFile.h>
 #include <OpenMS/FORMAT/MzXMLFile.h>
 #include <OpenMS/FORMAT/PeakTypeEstimator.h>
 #include <OpenMS/FORMAT/PepXMLFile.h>
 #include <OpenMS/FORMAT/TransformationXMLFile.h>
-#include <OpenMS/KERNEL/FeatureMap.h>
+#include <OpenMS/IONMOBILITY/FAIMSHelper.h>
 #include <OpenMS/KERNEL/Feature.h>
-#include <OpenMS/MATH/MISC/MathFunctions.h>
-#include <OpenMS/MATH/STATISTICS/StatisticFunctions.h>
+#include <OpenMS/KERNEL/FeatureMap.h>
+#include <OpenMS/KERNEL/MSExperiment.h>
+#include <OpenMS/MATH/MathFunctions.h>
+#include <OpenMS/MATH/StatisticFunctions.h>
 #include <OpenMS/SYSTEM/SysInfo.h>
-#include <QtCore/QString>
+
+
 
 #include <unordered_map>
 #include <iomanip>
@@ -75,36 +51,36 @@ using namespace std;
 //-------------------------------------------------------------
 
 /**
-  @page TOPP_FileInfo FileInfo
-  @brief Shows basic information about the data in an %OpenMS readable file.
+@page TOPP_FileInfo FileInfo
+@brief Shows basic information about the data in an %OpenMS readable file.
 
-  <CENTER>
-  <table>
-  <tr>
-  <td ALIGN = "center" BGCOLOR="#EBEBEB"> pot. predecessor tools </td>
-  <td VALIGN="middle" ROWSPAN=2> \f$ \longrightarrow \f$ FileInfo \f$ \longrightarrow \f$</td>
-  <td ALIGN = "center" BGCOLOR="#EBEBEB"> pot. successor tools </td>
-  </tr>
-  <tr>
-  <td VALIGN="middle" ALIGN = "center" ROWSPAN=1> any tool operating on MS peak data @n (in mzML format) </td>
-  <td VALIGN="middle" ALIGN = "center" ROWSPAN=1> none ; console or text file</td>
-  </tr>
-  </table>
-  </CENTER>
+<CENTER>
+<table>
+<tr>
+<th ALIGN = "center"> pot. predecessor tools </td>
+<td VALIGN="middle" ROWSPAN=2> &rarr; FileInfo &rarr;</td>
+<th ALIGN = "center"> pot. successor tools </td>
+</tr>
+<tr>
+<td VALIGN="middle" ALIGN = "center" ROWSPAN=1> any tool operating on MS peak data @n (in mzML format) </td>
+<td VALIGN="middle" ALIGN = "center" ROWSPAN=1> none ; console or text file</td>
+</tr>
+</table>
+</CENTER>
 
-  This tool can show basic information about the data in different file types, such as raw peak, featureXML and consensusXML files. It can
-  - show information about the data range of a file (m/z, RT, intensity)
-  - show a statistical summary for intensities, qualities, feature widths, precursor charges, activation methods
-  - show an overview of the metadata
-  - validate several XML formats against their XML schema
-  - check for corrupt data in a file (e.g., duplicate spectra)
+This tool can show basic information about the data in different file types, such as raw peak, featureXML and consensusXML files. It can
+- show information about the data range of a file (m/z, RT, ion mobility, intensity)
+- show a statistical summary for intensities, qualities, feature widths, precursor charges, activation methods
+- show an overview of the metadata
+- validate several XML formats against their XML schema
+- check for corrupt data in a file (e.g., duplicate spectra)
 
-  <B>The command line parameters of this tool are:</B>
-  @verbinclude TOPP_FileInfo.cli
-  <B>INI file documentation of this tool:</B>
-  @htmlinclude TOPP_FileInfo.html
+<B>The command line parameters of this tool are:</B>
+@verbinclude TOPP_FileInfo.cli
+<B>INI file documentation of this tool:</B>
+@htmlinclude TOPP_FileInfo.html
 
-  In order to enrich the resulting data of your analysis pipeline or to quickly compare different outcomes of your pipeline you can invoke the aforementioned information of your input data and (intermediary) results.
+In order to enrich the resulting data of your analysis pipeline or to quickly compare different outcomes of your pipeline you can invoke the aforementioned information of your input data and (intermediary) results.
 */
 
 // We do not want this class to show up in the docu:
@@ -172,7 +148,7 @@ public:
 protected:
   void registerOptionsAndFlags_() override
   {
-    StringList in_types = { "mzData", "mzXML", "mzML", "sqMass", "dta", "dta2d", "mgf", "featureXML", "consensusXML", "idXML", "pepXML", "fid", "mzid", "trafoXML", "fasta", "pqp" };
+    StringList in_types = { "mzData", "mzXML", "mzML", "sqMass", "dta", "dta2d", "mgf", "featureXML", "consensusXML", "idXML", "pepXML", "mzTab", "fid", "mzid", "trafoXML", "fasta", "pqp" };
     registerInputFile_("in", "<file>", "", "input file");
     setValidFormats_("in", in_types);
     registerStringOption_("in_type", "<type>", "", "input file type -- default: determined from file extension or content", false);
@@ -180,7 +156,7 @@ protected:
     registerOutputFile_("out", "<file>", "", "Optional output file. If left out, the output is written to the command line.", false);
     setValidFormats_("out", {"txt"});
     registerOutputFile_("out_tsv", "<file>", "", "Second optional output file. Tab separated flat text file.", false, true);
-    setValidFormats_("out_tsv", {"csv"});
+    setValidFormats_("out_tsv", {"tsv"});
     registerFlag_("m", "Show meta information about the whole experiment");
     registerFlag_("p", "Shows data processing information");
     registerFlag_("s", "Computes a five-number statistics of intensities, qualities, and widths");
@@ -190,32 +166,459 @@ protected:
     registerFlag_("i", "Check whether a given mzML file contains valid indices (conforming to the indexedmzML standard)");
   }
 
+  // Forward declare the specialized version for MSExperiment to avoid compiler errors
+ // template <>
+ // void writeRangesHumanReadable_<MSExperiment>(const MSExperiment& map, ostream &os);
+  
   template <class Map>
   void writeRangesHumanReadable_(const Map& map, ostream &os)
   {
-    os << "Ranges:"
-       << '\n'
-       << "  retention time: " << String::number(map.getMinRT(), 2) << " .. " << String::number(map.getMaxRT(), 2) << " sec (" << String::number((map.getMaxRT() - map.getMinRT()) / 60, 1) << " min)\n"
-       << "  mass-to-charge: " << String::number(map.getMinMZ(), 2) << " .. " << String::number(map.getMaxMZ(), 2) << '\n'
-       << "  intensity:      " << String::number(map.getMinIntensity(), 2) << " .. " << String::number(map.getMaxIntensity(), 2) << '\n'
-       << '\n';
+    if (map.RangeRT::isEmpty())
+    {
+      os << "Ranges:'\n'  retention time: <none> .. <none> sec (<none> min)\n";
+    }
+    else
+    {
+      os << "Ranges:" << '\n'
+        << "  retention time: " << String::number(map.getMinRT(), 2) << " .. " << String::number(map.getMaxRT(), 2) << " sec ("
+        << String::number((map.getMaxRT() - map.getMinRT()) / 60, 1) << " min)\n";
+    }
+
+    if (map.RangeMZ::isEmpty())
+    {
+      os << "  mass-to-charge: <none> .. <none>\n";
+    }
+    else
+    {
+      os << "  mass-to-charge: " << String::number(map.getMinMZ(), 2) << " .. " << String::number(map.getMaxMZ(), 2) << '\n';
+    }
+    
+
+    if constexpr (std::is_base_of < RangeMobility, Map>())
+    {
+      if (map.RangeMobility::isEmpty())
+      {
+        os << "  ion mobility: <none> .. <none>\n";
+      }
+      else
+      {
+        os << "  ion mobility: " << String::number(map.getMinMobility(), 2) << " .. " << String::number(map.getMaxMobility(), 2) << '\n';
+      }
+    }
+
+    if (map.RangeIntensity::isEmpty())
+    {
+      os << "  intensity: <none> .. <none>\n\n";
+    }
+    else
+    {
+      os << "  intensity: " << String::number(map.getMinIntensity(), 2) << " .. " << String::number(map.getMaxIntensity(), 2) << "\n\n";
+    }
+  }
+
+  void writeRangesHumanReadable_(const MSExperiment& exp, ostream &os)
+  {
+    // 1. Display Combined Ranges (same format as before for backward compatibility)
+    os << "Combined Ranges (spectra + chromatograms):" << '\n';
+    // Use the combinedRanges() accessor
+    if (exp.combinedRanges().RangeRT::isEmpty())
+    {
+      os << "  retention time: <none> .. <none> sec (<none> min)\n";
+    }
+    else
+    {
+      os << "  retention time: " << String::number(exp.combinedRanges().getMinRT(), 2) << " .. "
+         << String::number(exp.combinedRanges().getMaxRT(), 2) << " sec ("
+         << String::number((exp.combinedRanges().getMaxRT() - exp.combinedRanges().getMinRT()) / 60, 1) << " min)\n";
+    }
+    
+    // Display m/z range
+    if (exp.combinedRanges().RangeMZ::isEmpty())
+    {
+      os << "  mass-to-charge: <none> .. <none>\n";
+    }
+    else
+    {
+      os << "  mass-to-charge: " << String::number(exp.combinedRanges().getMinMZ(), 2) << " .. "
+         << String::number(exp.combinedRanges().getMaxMZ(), 2) << '\n';
+    }
+    
+    // Display mobility range if present
+    if (exp.combinedRanges().RangeMobility::isEmpty())
+    {
+      os << "  ion mobility: <none> .. <none>\n";
+    }
+    else
+    {
+      os << "  ion mobility: " << String::number(exp.combinedRanges().getMinMobility(), 2) << " .. "
+         << String::number(exp.combinedRanges().getMaxMobility(), 2) << '\n';
+    }
+
+    // Display intensity range
+    if (exp.combinedRanges().RangeIntensity::isEmpty())
+    {
+      os << "  intensity: <none> .. <none>\n\n";
+    }
+    else
+    {
+      os << "  intensity: " << String::number(exp.combinedRanges().getMinIntensity(), 2) << " .. "
+         << String::number(exp.combinedRanges().getMaxIntensity(), 2) << "\n\n";
+    }
+    
+    // 2. Display Spectrum Ranges (overall)
+    os << "Spectrum Ranges:" << '\n';
+    // Use the spectrumRanges() accessor with MS level 0 for overall ranges
+    const auto& spec_ranges = exp.spectrumRanges();
+    
+    if (spec_ranges.RangeRT::isEmpty())
+    {
+      os << "  retention time: <none> .. <none> sec (<none> min)\n";
+    }
+    else
+    {
+      os << "  retention time: " << String::number(spec_ranges.getMinRT(), 2) << " .. "
+         << String::number(spec_ranges.getMaxRT(), 2) << " sec ("
+         << String::number((spec_ranges.getMaxRT() - spec_ranges.getMinRT()) / 60, 1) << " min)\n";
+    }
+    
+    // Display m/z range
+    if (spec_ranges.RangeMZ::isEmpty())
+    {
+      os << "  mass-to-charge: <none> .. <none>\n";
+    }
+    else
+    {
+      os << "  mass-to-charge: " << String::number(spec_ranges.getMinMZ(), 2) << " .. "
+         << String::number(spec_ranges.getMaxMZ(), 2) << '\n';
+    }
+    
+    // Display mobility range if present
+    if (spec_ranges.RangeMobility::isEmpty())
+    {
+      os << "  ion mobility: <none> .. <none>\n";
+    }
+    else
+    {
+      os << "  ion mobility: " << String::number(spec_ranges.getMinMobility(), 2) << " .. "
+         << String::number(spec_ranges.getMaxMobility(), 2) << '\n';
+    }
+
+    // Display intensity range
+    if (spec_ranges.RangeIntensity::isEmpty())
+    {
+      os << "  intensity: <none> .. <none>\n\n";
+    }
+    else
+    {
+      os << "  intensity: " << String::number(spec_ranges.getMinIntensity(), 2) << " .. "
+         << String::number(spec_ranges.getMaxIntensity(), 2) << "\n\n";
+    }
+    
+    // 3. Display Spectrum Ranges per MS Level
+    std::set<UInt> ms_levels = exp.spectrumRanges().getMSLevels();
+    for (UInt ms_level : ms_levels)
+    {
+      os << "MS Level " << ms_level << " Ranges:" << '\n';
+      const auto& level_ranges = exp.spectrumRanges().byMSLevel(ms_level);
+
+      // Output RT range for this MS level
+      if (level_ranges.RangeRT::isEmpty())
+      {
+        os << "  retention time: <none> .. <none> sec (<none> min)\n";
+      }
+      else
+      {
+        os << "  retention time: " << String::number(level_ranges.getMinRT(), 2) << " .. "
+           << String::number(level_ranges.getMaxRT(), 2) << " sec ("
+           << String::number((level_ranges.getMaxRT() - level_ranges.getMinRT()) / 60, 1) << " min)\n";
+      }
+      
+      // Display m/z range for this MS level
+      if (level_ranges.RangeMZ::isEmpty())
+      {
+        os << "  mass-to-charge: <none> .. <none>\n";
+      }
+      else
+      {
+        os << "  mass-to-charge: " << String::number(level_ranges.getMinMZ(), 2) << " .. "
+           << String::number(level_ranges.getMaxMZ(), 2) << '\n';
+      }
+      
+      // Display mobility range for this MS level if present
+      if (level_ranges.RangeMobility::isEmpty())
+      {
+        os << "  ion mobility: <none> .. <none>\n";
+      }
+      else
+      {
+        os << "  ion mobility: " << String::number(level_ranges.getMinMobility(), 2) << " .. "
+           << String::number(level_ranges.getMaxMobility(), 2) << '\n';
+      }
+
+      // Display intensity range for this MS level
+      if (level_ranges.RangeIntensity::isEmpty())
+      {
+        os << "  intensity: <none> .. <none>\n\n";
+      }
+      else
+      {
+        os << "  intensity: " << String::number(level_ranges.getMinIntensity(), 2) << " .. "
+           << String::number(level_ranges.getMaxIntensity(), 2) << "\n\n";
+      }
+    }
+    
+    // 4. Display Chromatogram Ranges
+    os << "Chromatogram Ranges:" << '\n';
+    const auto& chrom_ranges = exp.chromatogramRanges();
+    
+    if (chrom_ranges.RangeRT::isEmpty())
+    {
+      os << "  retention time: <none> .. <none> sec (<none> min)\n";
+    }
+    else
+    {
+      os << "  retention time: " << String::number(chrom_ranges.getMinRT(), 2) << " .. "
+         << String::number(chrom_ranges.getMaxRT(), 2) << " sec ("
+         << String::number((chrom_ranges.getMaxRT() - chrom_ranges.getMinRT()) / 60, 1) << " min)\n";
+    }
+    
+    // Display m/z range for chromatograms
+    if (chrom_ranges.RangeMZ::isEmpty())
+    {
+      os << "  mass-to-charge: <none> .. <none>\n";
+    }
+    else
+    {
+      os << "  mass-to-charge: " << String::number(chrom_ranges.getMinMZ(), 2) << " .. "
+         << String::number(chrom_ranges.getMaxMZ(), 2) << '\n';
+    }
+
+    // Display intensity range for chromatograms
+    if (chrom_ranges.RangeIntensity::isEmpty())
+    {
+      os << "  intensity: <none> .. <none>\n\n";
+    }
+    else
+    {
+      os << "  intensity: " << String::number(chrom_ranges.getMinIntensity(), 2) << " .. "
+         << String::number(chrom_ranges.getMaxIntensity(), 2) << "\n\n";
+    }
   }
 
   template <class Map>
   void writeRangesMachineReadable_(const Map& map, ostream &os)
   {
-    os << "general: ranges: retention time: min"
-       << '\t' << String::number(map.getMinRT(), 2) << '\n'
-       << "general: ranges: retention time: max"
-       << '\t' << String::number(map.getMaxRT(), 2) << '\n'
-       << "general: ranges: mass-to-charge: min"
-       << '\t' << String::number(map.getMinMZ(), 2) << '\n'
-       << "general: ranges: mass-to-charge: max"
-       << '\t' << String::number(map.getMaxMZ(), 2) << '\n'
-       << "general: ranges: intensity: min"
-       << '\t' << String::number(map.getMinIntensity(), 2) << '\n'
-       << "general: ranges: intensity: max"
-       << '\t' << String::number(map.getMaxIntensity(), 2) << '\n';
+    if (!map.RangeRT::isEmpty())
+    {
+      os << "general: ranges: retention time: min" << '\t' << String::number(map.getMinRT(), 2) << '\n'
+         << "general: ranges: retention time: max" << '\t' << String::number(map.getMaxRT(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: ranges: retention time: min" << '\t' << "<none>" << '\n'
+         << "general: ranges: retention time: max" << '\t' << "<none>" << '\n';
+    }
+    
+    if (!map.RangeMZ::isEmpty())
+    {
+      os << "general: ranges: mass-to-charge: min" << '\t' << String::number(map.getMinMZ(), 2) << '\n'
+         << "general: ranges: mass-to-charge: max" << '\t' << String::number(map.getMaxMZ(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: ranges: mass-to-charge: min" << '\t' << "<none>" << '\n'
+         << "general: ranges: mass-to-charge: max" << '\t' << "<none>" << '\n';
+    }
+
+    if constexpr (std::is_base_of < RangeMobility, Map>())
+    {
+      if (!map.RangeMobility::isEmpty())
+      {
+        os << "general: ranges: ion-mobility: min" << '\t' << String::number(map.getMinMobility(), 2) << '\n'
+           << "general: ranges: ion-mobility: max" << '\t' << String::number(map.getMaxMobility(), 2) << '\n';
+      }
+    }
+
+    if (!map.RangeIntensity::isEmpty())
+    {
+      os << "general: ranges: intensity: min"
+         << '\t' << String::number(map.getMinIntensity(), 2) << '\n'
+         << "general: ranges: intensity: max"
+         << '\t' << String::number(map.getMaxIntensity(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: ranges: intensity: min" << '\t' << "<none>" << '\n'
+         << "general: ranges: intensity: max" << '\t' << "<none>" << '\n';
+    }
+  }
+  
+
+  void writeRangesMachineReadable_(const MSExperiment& exp, ostream &os)
+  {
+    // 1. Combined Ranges
+    if (!exp.combinedRanges().RangeRT::isEmpty())
+    {
+      os << "general: combined ranges: retention time: min" << '\t' << String::number(exp.combinedRanges().getMinRT(), 2) << '\n'
+         << "general: combined ranges: retention time: max" << '\t' << String::number(exp.combinedRanges().getMaxRT(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: combined ranges: retention time: min" << '\t' << "<none>" << '\n'
+         << "general: combined ranges: retention time: max" << '\t' << "<none>" << '\n';
+    }
+    
+    if (!exp.combinedRanges().RangeMZ::isEmpty())
+    {
+      os << "general: combined ranges: mass-to-charge: min" << '\t' << String::number(exp.combinedRanges().getMinMZ(), 2) << '\n'
+         << "general: combined ranges: mass-to-charge: max" << '\t' << String::number(exp.combinedRanges().getMaxMZ(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: combined ranges: mass-to-charge: min" << '\t' << "<none>" << '\n'
+         << "general: combined ranges: mass-to-charge: max" << '\t' << "<none>" << '\n';
+    }
+    
+    if (!exp.combinedRanges().RangeMobility::isEmpty())
+    {
+      os << "general: combined ranges: ion-mobility: min" << '\t' << String::number(exp.combinedRanges().getMinMobility(), 2) << '\n'
+         << "general: combined ranges: ion-mobility: max" << '\t' << String::number(exp.combinedRanges().getMaxMobility(), 2) << '\n';
+    }
+    
+    if (!exp.combinedRanges().RangeIntensity::isEmpty())
+    {
+      os << "general: combined ranges: intensity: min" << '\t' << String::number(exp.combinedRanges().getMinIntensity(), 2) << '\n'
+         << "general: combined ranges: intensity: max" << '\t' << String::number(exp.combinedRanges().getMaxIntensity(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: combined ranges: intensity: min" << '\t' << "<none>" << '\n'
+         << "general: combined ranges: intensity: max" << '\t' << "<none>" << '\n';
+    }
+    
+    // 2. Spectrum Ranges (overall)
+    const auto& spec_ranges = exp.spectrumRanges();
+    if (!spec_ranges.RangeRT::isEmpty())
+    {
+      os << "general: spectrum ranges: retention time: min" << '\t' << String::number(spec_ranges.getMinRT(), 2) << '\n'
+         << "general: spectrum ranges: retention time: max" << '\t' << String::number(spec_ranges.getMaxRT(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: spectrum ranges: retention time: min" << '\t' << "<none>" << '\n'
+         << "general: spectrum ranges: retention time: max" << '\t' << "<none>" << '\n';
+    }
+    
+    // Similar code for m/z, mobility, intensity for spectrum ranges
+    if (!spec_ranges.RangeMZ::isEmpty())
+    {
+      os << "general: spectrum ranges: mass-to-charge: min" << '\t' << String::number(spec_ranges.getMinMZ(), 2) << '\n'
+         << "general: spectrum ranges: mass-to-charge: max" << '\t' << String::number(spec_ranges.getMaxMZ(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: spectrum ranges: mass-to-charge: min" << '\t' << "<none>" << '\n'
+         << "general: spectrum ranges: mass-to-charge: max" << '\t' << "<none>" << '\n';
+    }
+    
+    if (!spec_ranges.RangeMobility::isEmpty())
+    {
+      os << "general: spectrum ranges: ion-mobility: min" << '\t' << String::number(spec_ranges.getMinMobility(), 2) << '\n'
+         << "general: spectrum ranges: ion-mobility: max" << '\t' << String::number(spec_ranges.getMaxMobility(), 2) << '\n';
+    }
+    
+    if (!spec_ranges.RangeIntensity::isEmpty())
+    {
+      os << "general: spectrum ranges: intensity: min" << '\t' << String::number(spec_ranges.getMinIntensity(), 2) << '\n'
+         << "general: spectrum ranges: intensity: max" << '\t' << String::number(spec_ranges.getMaxIntensity(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: spectrum ranges: intensity: min" << '\t' << "<none>" << '\n'
+         << "general: spectrum ranges: intensity: max" << '\t' << "<none>" << '\n';
+    }
+    
+    // 3. MS Level-specific Ranges
+    std::set<UInt> ms_levels = exp.spectrumRanges().getMSLevels();
+    for (UInt ms_level : ms_levels)
+    {
+      const auto& level_ranges = exp.spectrumRanges().byMSLevel(ms_level);
+      if (!level_ranges.RangeRT::isEmpty())
+      {
+        os << "general: MS" << ms_level << " ranges: retention time: min" << '\t' << String::number(level_ranges.getMinRT(), 2) << '\n'
+           << "general: MS" << ms_level << " ranges: retention time: max" << '\t' << String::number(level_ranges.getMaxRT(), 2) << '\n';
+      }
+      else
+      {
+        os << "general: MS" << ms_level << " ranges: retention time: min" << '\t' << "<none>" << '\n'
+           << "general: MS" << ms_level << " ranges: retention time: max" << '\t' << "<none>" << '\n';
+      }
+      
+      // Similar code for other dimensions
+      if (!level_ranges.RangeMZ::isEmpty())
+      {
+        os << "general: MS" << ms_level << " ranges: mass-to-charge: min" << '\t' << String::number(level_ranges.getMinMZ(), 2) << '\n'
+           << "general: MS" << ms_level << " ranges: mass-to-charge: max" << '\t' << String::number(level_ranges.getMaxMZ(), 2) << '\n';
+      }
+      else
+      {
+        os << "general: MS" << ms_level << " ranges: mass-to-charge: min" << '\t' << "<none>" << '\n'
+           << "general: MS" << ms_level << " ranges: mass-to-charge: max" << '\t' << "<none>" << '\n';
+      }
+      
+      if (!level_ranges.RangeMobility::isEmpty())
+      {
+        os << "general: MS" << ms_level << " ranges: ion-mobility: min" << '\t' << String::number(level_ranges.getMinMobility(), 2) << '\n'
+           << "general: MS" << ms_level << " ranges: ion-mobility: max" << '\t' << String::number(level_ranges.getMaxMobility(), 2) << '\n';
+      }
+      
+      if (!level_ranges.RangeIntensity::isEmpty())
+      {
+        os << "general: MS" << ms_level << " ranges: intensity: min" << '\t' << String::number(level_ranges.getMinIntensity(), 2) << '\n'
+           << "general: MS" << ms_level << " ranges: intensity: max" << '\t' << String::number(level_ranges.getMaxIntensity(), 2) << '\n';
+      }
+      else
+      {
+        os << "general: MS" << ms_level << " ranges: intensity: min" << '\t' << "<none>" << '\n'
+           << "general: MS" << ms_level << " ranges: intensity: max" << '\t' << "<none>" << '\n';
+      }
+    }
+    
+    // 4. Chromatogram Ranges
+    const auto& chrom_ranges = exp.chromatogramRanges();
+    if (!chrom_ranges.RangeRT::isEmpty())
+    {
+      os << "general: chromatogram ranges: retention time: min" << '\t' << String::number(chrom_ranges.getMinRT(), 2) << '\n'
+         << "general: chromatogram ranges: retention time: max" << '\t' << String::number(chrom_ranges.getMaxRT(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: chromatogram ranges: retention time: min" << '\t' << "<none>" << '\n'
+         << "general: chromatogram ranges: retention time: max" << '\t' << "<none>" << '\n';
+    }
+    
+    // Similar code for m/z and intensity for chromatogram ranges
+    if (!chrom_ranges.RangeMZ::isEmpty())
+    {
+      os << "general: chromatogram ranges: mass-to-charge: min" << '\t' << String::number(chrom_ranges.getMinMZ(), 2) << '\n'
+         << "general: chromatogram ranges: mass-to-charge: max" << '\t' << String::number(chrom_ranges.getMaxMZ(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: chromatogram ranges: mass-to-charge: min" << '\t' << "<none>" << '\n'
+         << "general: chromatogram ranges: mass-to-charge: max" << '\t' << "<none>" << '\n';
+    }
+    
+    if (!chrom_ranges.RangeIntensity::isEmpty())
+    {
+      os << "general: chromatogram ranges: intensity: min" << '\t' << String::number(chrom_ranges.getMinIntensity(), 2) << '\n'
+         << "general: chromatogram ranges: intensity: max" << '\t' << String::number(chrom_ranges.getMaxIntensity(), 2) << '\n';
+    }
+    else
+    {
+      os << "general: chromatogram ranges: intensity: min" << '\t' << "<none>" << '\n'
+         << "general: chromatogram ranges: intensity: max" << '\t' << "<none>" << '\n';
+    }
   }
 
   template <class T>
@@ -252,7 +655,7 @@ protected:
 
     if (in_type == FileTypes::UNKNOWN)
     {
-      writeLog_("Error: Could not determine input file type!");
+      writeLogError_("Error: Could not determine input file type!");
       return PARSE_ERROR;
     }
 
@@ -406,7 +809,7 @@ protected:
     {
       if (in_type != FileTypes::MZML)
       {
-        writeLog_("Error: Can only validate indices for mzML files");
+        writeLogError_("Error: Can only validate indices for mzML files");
         printUsage_();
         return ILLEGAL_PARAMETERS;
       }
@@ -523,16 +926,15 @@ protected:
       os << "Ambiguous amino acids (B/Z/X)  : " << amb   << " (" << (amb > 0 ? (static_cast<Size>(amb * 10000 / number_of_aacids) / 100.0) : 0) << "%)\n";
       os << "                      (B/Z/X/I): " << amb_I << " (" << (amb_I > 0 ? (static_cast<Size>(amb_I * 10000 / number_of_aacids) / 100.0) : 0) << "%)\n\n";
     }
-
     else if (in_type == FileTypes::FEATUREXML) //features
     {
-      FeatureXMLFile ff;
-      ff.getOptions().setLoadConvexHull(false);   // CH's currently not needed here
-      ff.getOptions().setLoadSubordinates(false); // SO's currently not needed here
+      FileHandler ff;
+      ff.getFeatOptions().setLoadConvexHull(false);   // CH's currently not needed here
+      ff.getFeatOptions().setLoadSubordinates(false); // SO's currently not needed here
 
       SysInfo::MemUsage mu;
       // reading input
-      ff.load(in, feat);
+      ff.loadFeatures(in, feat, {FileTypes::FEATUREXML});
       std::cout << "\n\n" << mu.delta("loading featureXML") << std::endl;
 
       feat.updateRanges();
@@ -583,7 +985,7 @@ protected:
 
       SysInfo::MemUsage mu;
       // reading input
-      ConsensusXMLFile().load(in, cons);
+      FileHandler().loadConsensusFeatures(in, cons, {FileTypes::CONSENSUSXML});
       std::cout << "\n\n" << mu.delta("loading consensusXML") << std::endl;
 
       cons.updateRanges();
@@ -736,7 +1138,7 @@ protected:
       SysInfo::MemUsage mu;
       if (in_type == FileTypes::MZIDENTML)
       {
-        MzIdentMLFile().load(in, id_data.proteins, id_data.peptides);
+        FileHandler().loadIdentifications(in, id_data.proteins, id_data.peptides, {FileTypes::MZIDENTML});
       }
       else
       {
@@ -863,10 +1265,25 @@ protected:
       os << "\nFor pepXML files, only validation against the XML schema is implemented at this point."
          << '\n';
     }
+    else if (in_type == FileTypes::MZTAB)
+    {
+      MzTab mztab;
+      MzTabFile().load(in, mztab);
+      os << "mzTab-version: " << mztab.getMetaData().mz_tab_version.get() << '\n'
+         << "mzTab-mode: " << mztab.getMetaData().mz_tab_mode.get() << '\n'
+         << "mzTab-type: " << mztab.getMetaData().mz_tab_type.get() << '\n'
+         << "number of PSMs: " << mztab.getNumberOfPSMs() << '\n'
+         << "number of peptides: " << mztab.getPeptideSectionRows().size() << '\n'
+         << "number of proteins: " << mztab.getProteinSectionRows().size() << '\n'
+         << "number of oligonucleotides: " << mztab.getOligonucleotideSectionRows().size() << '\n'
+         << "number of OSMs: " << mztab.getOSMSectionRows().size() << '\n'
+         << "number of small molecules: " << mztab.getSmallMoleculeSectionRows().size() << '\n'
+         << "number of nucleic acids: " << mztab.getNucleicAcidSectionRows().size() << '\n';
+    }
     else if (in_type == FileTypes::TRANSFORMATIONXML)
     {
       TransformationDescription trafo;
-      TransformationXMLFile().load(in, trafo);
+      FileHandler().loadTransformations(in, trafo, true, {FileTypes::TRANSFORMATIONXML});
       os << "\nTransformation model: " << trafo.getModelType() << '\n';
       trafo.printSummary(os);
     }
@@ -881,12 +1298,7 @@ protected:
     else // peaks
     {
       SysInfo::MemUsage mu;
-      if (!fh.loadExperiment(in, exp, in_type, log_type_, false, false))
-      {
-        writeLog_("Unsupported or corrupt input file. Aborting!");
-        printUsage_();
-        return ILLEGAL_PARAMETERS;
-      }
+      fh.loadExperiment(in, exp, {in_type}, log_type_, false, false);
 
       // update range information and retrieve which MS levels were recorded
       exp.updateRanges();
@@ -1041,7 +1453,19 @@ protected:
         }
         os << '\n';  
       }
-       
+      
+      auto cvs = FAIMSHelper::getCompensationVoltages(exp);
+      if (!cvs.empty())
+      {        
+        os << "IM (FAIMS_CV): ";
+        StringList cvs_sl;
+        for (double cv : cvs)
+        {
+          cvs_sl.push_back(String(cv));
+        }
+        os << cvs_sl << "\n\n";
+      }
+
       // some chromatogram information
       if (!exp.getChromatograms().empty())
       {
@@ -1109,6 +1533,13 @@ protected:
           {
             os << spectrum.begin()->getMZ() << " .. " << spectrum.rbegin()->getMZ() << '\n';
           }
+
+          if (spectrum.getDriftTimeUnit() != DriftTimeUnit::NONE)
+          {
+            os << "  IM:         " <<  spectrum.getDriftTime() << ' '
+                << spectrum.getDriftTimeUnitAsString()
+                << '\n';
+          }            
 
           os << "Precursors:  " << spectrum.getPrecursors().size() <<  '\n';
 
@@ -1654,7 +2085,7 @@ protected:
       else //peaks
       {
         //copy intensities of  MS-level 1 peaks
-        exp.updateRanges(1);
+        exp.updateRanges();
         Size size = exp.getSize();
         vector<double> intensities;
         intensities.reserve(size);

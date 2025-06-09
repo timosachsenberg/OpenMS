@@ -5,16 +5,24 @@ set(directory source/KERNEL)
 set(sources_list
 AreaIterator.cpp
 BaseFeature.cpp
+BinnedSpectrum.cpp
+ChromatogramPeak.cpp
+ChromatogramTools.cpp
 ConsensusFeature.cpp
 ConsensusMap.cpp
 ConversionHelper.cpp
+DimMapper.cpp
 DPeak.cpp
 Feature.cpp
 FeatureHandle.cpp
 FeatureMap.cpp
 MassTrace.cpp
+MobilityPeak1D.cpp
+MobilityPeak2D.cpp
+Mobilogram.cpp
 MRMFeature.cpp
 MRMTransitionGroup.cpp
+MSChromatogram.cpp
 MSExperiment.cpp
 MSSpectrum.cpp
 OnDiscMSExperiment.cpp
@@ -23,11 +31,9 @@ Peak2D.cpp
 PeakIndex.cpp
 RangeManager.cpp
 RichPeak2D.cpp
-StandardTypes.cpp
-ChromatogramPeak.cpp
-MSChromatogram.cpp
-ChromatogramTools.cpp
 SpectrumHelper.cpp
+SpectrumRangeManager.cpp
+ChromatogramRangeManager.cpp
 )
 
 ### add path to the filenames
@@ -41,4 +47,3 @@ set(OpenMS_sources ${OpenMS_sources} ${sources})
 
 ### source group definition
 source_group("Source Files\\KERNEL" FILES ${sources})
-

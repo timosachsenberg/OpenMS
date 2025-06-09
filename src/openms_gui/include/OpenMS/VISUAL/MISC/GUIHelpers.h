@@ -1,31 +1,5 @@
-// --------------------------------------------------------------------------
-//                   OpenMS -- Open-Source Mass Spectrometry
-// --------------------------------------------------------------------------
-// Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2021.
-//
-// This software is released under a three-clause BSD license:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of any author or any participating institution
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-// For a full list of authors, refer to the file AUTHORS.
-// --------------------------------------------------------------------------
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL ANY OF THE AUTHORS OR THE CONTRIBUTING
-// INSTITUTIONS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
+// SPDX-License-Identifier: BSD-3-Clause
 //
 // --------------------------------------------------------------------------
 // $Maintainer: Chris Bielow $
@@ -38,16 +12,16 @@
 #include <OpenMS/DATASTRUCTURES/ListUtils.h>
 #include <OpenMS/FORMAT/FileHandler.h>
 
-
 // declare Qt classes OUTSIDE of namespace OpenMS!
 class QPainter;
 class QPoint;
-class QString; 
-class QStringList;
+class QPointF;
+class QRectF;
 class QWidget;
 
 #include <QColor>
 #include <QFont>
+#include <QtCore/qcontainerfwd.h> // for QStringList
 
 #include <array>
 
@@ -60,8 +34,7 @@ namespace OpenMS
     Namespace which holds static GUI-related helper functions.
   */
   namespace GUIHelpers
-  {
-    
+  {        
     /// Open a folder in file explorer
     /// Will show a message box on failure
     OPENMS_GUI_DLLAPI void openFolder(const QString& folder);
@@ -71,13 +44,14 @@ namespace OpenMS
     OPENMS_GUI_DLLAPI QString getSaveFilename(QWidget* parent,
                                               const QString& caption,
                                               const QString& dir,
-                                              FileTypeList supported_file_types, 
+                                              const FileTypeList& supported_file_types, 
                                               bool add_all_filter,
                                               const FileTypes::Type fallback_extension);
 
 
-    /// Open TOPPView (e.g. from within TOPPAS)
-    OPENMS_GUI_DLLAPI void startTOPPView(const QStringList& args);
+    /// Open TOPPView (e.g. from within TOPPAS) as a detached process (i.e. will continue running when this process ends)
+    /// @return true if process started successfully
+    OPENMS_GUI_DLLAPI bool startTOPPView(QStringList args);
 
     /// Open a certain URL (in a browser)
     /// Will show a message box on failure
@@ -95,7 +69,7 @@ namespace OpenMS
        @param col_bg Optional background color of bounding rectangle; if invalid (=default) no background will be painted
        @param font Font to use; will use Courier by default
     */
-    OPENMS_GUI_DLLAPI void drawText(QPainter& painter, const QStringList& text, const QPoint& where, const QColor col_fg = QColor("invalid"), const QColor col_bg = QColor("invalid"),
+    OPENMS_GUI_DLLAPI void drawText(QPainter& painter, const QStringList& text, const QPoint& where, const QColor& col_fg = QColor("invalid"), const QColor& col_bg = QColor("invalid"),
                                    const QFont& font = QFont("Courier"));
 
 
@@ -104,6 +78,18 @@ namespace OpenMS
     
     */
     OPENMS_GUI_DLLAPI QRectF getTextDimension(const QStringList& text, const QFont& font, int& line_spacing);
+
+
+    /// Returns the point in the @p list that is nearest to @p origin
+    OPENMS_GUI_DLLAPI QPointF nearestPoint(const QPointF& origin, const QList<QPointF>& list);
+
+    /**
+     * \brief Find the point on a rectangle where a ray/line from a point @p p to its center would intersect at
+     * \param rect Rectangle which intersects with the line from @p p to its center
+     * \param p A point outside the rectangle
+     * \return The intersection point or the center() of @p rect if @p p is inside the rectangle
+     */
+    OPENMS_GUI_DLLAPI QPointF intersectionPoint(const QRectF& rect, const QPointF& p);
 
 
     /**

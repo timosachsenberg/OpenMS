@@ -1,31 +1,5 @@
-// --------------------------------------------------------------------------
-//                   OpenMS -- Open-Source Mass Spectrometry
-// --------------------------------------------------------------------------
-// Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2021.
-//
-// This software is released under a three-clause BSD license:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of any author or any participating institution
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-// For a full list of authors, refer to the file AUTHORS.
-// --------------------------------------------------------------------------
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL ANY OF THE AUTHORS OR THE CONTRIBUTING
-// INSTITUTIONS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
+// SPDX-License-Identifier: BSD-3-Clause
 //
 // --------------------------------------------------------------------------
 // $Maintainer: Hendrik Weisser $
@@ -51,6 +25,12 @@
 
 namespace OpenMS
 {
+  /* Concept for FeatureMap or ConsensusMap*/
+  template <typename MapType>
+  concept IsFCMap = std::same_as<MapType, OpenMS::FeatureMap> || std::same_as<MapType, OpenMS::ConsensusMap>; 
+
+  class AnnotatedMSRun;
+
   /**
     @brief A map alignment algorithm based on peptide identifications from MS2 spectra.
 
@@ -81,7 +61,7 @@ public:
     ~MapAlignmentAlgorithmIdentification() override;
 
     // Set a reference for the alignment
-    template <typename DataType> void setReference(DataType& data)
+    template <typename DataType> void setReference(const DataType& data)
     {
       reference_.clear();
       if (data.empty()) return; // empty input resets the reference
@@ -100,16 +80,16 @@ public:
     }
 
     /**
-      @brief Align feature maps, consensus maps, peak maps, or peptide identifications.
+      @brief Align feature maps, consensus maps, or peptide identifications.
 
-      @param data Vector of input data (FeatureMap, ConsensusMap, PeakMap or @p vector<PeptideIdentification>) that should be aligned.
+      @param data Vector of input data (FeatureMap, ConsensusMap, or @p vector<PeptideIdentification>) that should be aligned.
       @param transformations Vector of RT transformations that will be computed.
       @param reference_index Index in @p data of the reference to align to, if any
 
       @throw Exception::MissingInformation Not enough suitable RT data to perform alignment
     */
     template <typename DataType>
-    void align(std::vector<DataType>& data,
+    void align(const std::vector<DataType>& data,
                std::vector<TransformationDescription>& transformations,
                Int reference_index = -1)
     {
@@ -168,16 +148,16 @@ protected:
     Size min_run_occur_;
 
     /// Use feature RT instead of RT from best peptide ID in the feature?
-    bool use_feature_rt_;
+    bool use_feature_rt_{};
 
     /// Consider differently adducted IDs as different?
-    bool use_adducts_;
+    bool use_adducts_{};
 
     /// Minimum score to reach for a peptide to be considered
     double min_score_;
 
     /// Actually use the above defined score_cutoff? Needed since it is hard to define a non-cutting score for a user.
-    bool score_cutoff_;
+    bool score_cutoff_{};
 
     /// Score type to use for filtering
     String score_type_;
@@ -205,7 +185,7 @@ protected:
 
       @return Are the RTs already sorted? (Here: false)
     */
-    bool getRetentionTimes_(std::vector<PeptideIdentification>& peptides,
+    bool getRetentionTimes_(const std::vector<PeptideIdentification>& peptides,
                             SeqToList& rt_data);
 
     /**
@@ -217,17 +197,7 @@ protected:
       @return Are the RTs already sorted? (Here: false)
     */
     // "id_data" can't be "const" here or template resolution will fail
-    bool getRetentionTimes_(IdentificationData& id_data, SeqToList& rt_data);
-
-    /**
-      @brief Collect retention time data from peptide IDs annotated to spectra
-
-      @param experiment Input map for RT data
-      @param rt_data Lists of RT values for diff. peptide sequences (output)
-
-      @return Are the RTs already sorted? (Here: false)
-    */
-    bool getRetentionTimes_(PeakMap& experiment, SeqToList& rt_data);
+    bool getRetentionTimes_(const IdentificationData& id_data, SeqToList& rt_data);
 
     /**
       @brief Collect retention time data from peptide IDs contained in feature maps or consensus maps
@@ -243,8 +213,8 @@ protected:
 
       @return Are the RTs already sorted? (Here: true)
     */
-    template <typename MapType>
-    bool getRetentionTimes_(MapType& features, SeqToList& rt_data)
+
+    bool getRetentionTimes_(const IsFCMap auto& features, SeqToList& rt_data)
     {
       if (!score_cutoff_)
       {
@@ -262,8 +232,7 @@ protected:
         { return a <= b; };
       }
 
-      for (typename MapType::Iterator feat_it = features.begin();
-           feat_it != features.end(); ++feat_it)
+      for (auto feat_it = features.cbegin(); feat_it != features.cend(); ++feat_it)
       {
         if (use_feature_rt_)
         {
@@ -271,7 +240,7 @@ protected:
           String sequence;
           double rt_distance = std::numeric_limits<double>::max();
           bool any_hit = false;
-          for (std::vector<PeptideIdentification>::iterator pep_it =
+          for (std::vector<PeptideIdentification>::const_iterator pep_it =
                  feat_it->getPeptideIdentifications().begin(); pep_it !=
                  feat_it->getPeptideIdentifications().end(); ++pep_it)
           {
@@ -282,10 +251,10 @@ protected:
                                              feat_it->getRT());
               if (current_distance < rt_distance)
               {
-                pep_it->sort();
-                if (better_(pep_it->getHits()[0].getScore(), min_score_))
+                const PeptideHit* best_hit = getBestScoringHit(pep_it->getHits(), pep_it->isHigherScoreBetter());
+                if (best_hit && better_(best_hit->getScore(), min_score_))
                 {
-                  sequence = pep_it->getHits()[0].getSequence().toString();
+                  sequence = best_hit->getSequence().toString();
                   rt_distance = current_distance;
                 }
               }
@@ -353,6 +322,16 @@ protected:
       @return Reference to the score type denoted by algorithm parameter "score_type"
      */
     IdentificationData::ScoreTypeRef handleIdDataScoreType_(const IdentificationData& id_data);
+
+    /**
+      @brief Get the best-scoring PeptideHit from a list of hits
+
+      @param hits List of peptide hits
+      @param is_higher_score_better Decides if higher score is better in deciding best scoring hit
+
+      @return Pointer to the best-scoring hit, or nullptr if the list is empty
+    */
+    const PeptideHit* getBestScoringHit(const std::vector<PeptideHit>& hits, const bool is_higher_score_better);
 
 private:
 

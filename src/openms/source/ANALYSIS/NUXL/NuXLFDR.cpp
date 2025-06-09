@@ -1,31 +1,5 @@
-// --------------------------------------------------------------------------
-//                   OpenMS -- Open-Source Mass Spectrometry
-// --------------------------------------------------------------------------
-// Copyright The OpenMS Team -- Eberhard Karls University Tuebingen,
-// ETH Zurich, and Freie Universitaet Berlin 2002-2020.
-//
-// This software is released under a three-clause BSD license:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of any author or any participating institution
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-// For a full list of authors, refer to the file AUTHORS.
-// --------------------------------------------------------------------------
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL ANY OF THE AUTHORS OR THE CONTRIBUTING
-// INSTITUTIONS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2002-2023, The OpenMS Team -- EKU Tuebingen, ETH Zurich, and FU Berlin
+// SPDX-License-Identifier: BSD-3-Clause
 //
 // --------------------------------------------------------------------------
 // $Maintainer: Timo Sachsenberg $
@@ -34,10 +8,10 @@
 
 #include <OpenMS/ANALYSIS/NUXL/NuXLFDR.h>
 #include <OpenMS/ANALYSIS/ID/FalseDiscoveryRate.h>
-#include <OpenMS/FILTERING/ID/IDFilter.h>
+#include <OpenMS/PROCESSING/ID/IDFilter.h>
 #include <OpenMS/FORMAT/IdXMLFile.h>
 #include <OpenMS/FORMAT/TextFile.h>
-
+#include <OpenMS/CONCEPT/Exception.h>
 using namespace std;
 
 namespace OpenMS
@@ -58,7 +32,7 @@ namespace OpenMS
       p.setValue("use_all_hits", "true");
     }
     fdr.setParameters(p);
-    fdr.apply(peptide_ids);
+    fdr.apply(peptide_ids, true); // also calculate Constants::UserParam::PEPTIDE_Q_VALUE
   }
 
   void NuXLFDR::splitIntoPeptidesAndXLs(const vector<PeptideIdentification>& peptide_ids, vector<PeptideIdentification>& pep_pi, vector<PeptideIdentification>& xl_pi) const
@@ -110,7 +84,7 @@ namespace OpenMS
           hits.push_back(h);
         }
         peptide_ids[index].setHits(hits);
-        peptide_ids[index].assignRanks();
+        peptide_ids[index].sort();
       }
     }
   }
@@ -129,9 +103,9 @@ namespace OpenMS
 
     splitIntoPeptidesAndXLs(peptide_ids, pep_pi, xl_pi);
   
-    // calculate FDRs separately
-    fdr.apply(xl_pi); 
-    fdr.apply(pep_pi);
+    // calculate PSM and peptide FDRs separately
+    fdr.apply(xl_pi, true); 
+    fdr.apply(pep_pi, true);
   }
 
   void NuXLFDR::calculatePeptideAndXLQValueAndFilterAtPSMLevel(
@@ -139,8 +113,10 @@ namespace OpenMS
       const vector<PeptideIdentification>& peptide_ids, 
       vector<PeptideIdentification>& pep_pi,
       double peptide_PSM_qvalue_threshold,
+      double peptide_peptide_qvalue_threshold,
       vector<PeptideIdentification>& xl_pi,
       vector<double> xl_PSM_qvalue_thresholds,
+      vector<double> xl_peptidelevel_qvalue_thresholds,
       const String& out_idxml,
       int decoy_factor) const
   {
@@ -217,10 +193,27 @@ namespace OpenMS
     IDFilter::removeDecoyHits(xl_pi);
     IDFilter::removeDecoyHits(pep_pi);
 
+    // filter on peptide-level q-value
+    if (peptide_peptide_qvalue_threshold > 0.0 && peptide_peptide_qvalue_threshold < 1.0)
+    {
+      auto chechBadPeptideQValue = [&peptide_peptide_qvalue_threshold](PeptideHit& ph)->bool
+      {
+        return (double)ph.getMetaValue(Constants::UserParam::PEPTIDE_Q_VALUE) >= peptide_peptide_qvalue_threshold; 
+      }; // of lambda
+
+      for (auto & pid : pep_pi)
+      {
+        vector<PeptideHit>& phs = pid.getHits();
+        phs.erase(remove_if(phs.begin(), phs.end(), chechBadPeptideQValue), phs.end());
+      }
+    }
+
+    // filter on PSM-level q-value
     if (peptide_PSM_qvalue_threshold > 0.0 && peptide_PSM_qvalue_threshold < 1.0)
     {
       IDFilter::filterHitsByScore(pep_pi, peptide_PSM_qvalue_threshold); 
     }
+
 
     // store peptide PSM result
     {
@@ -232,9 +225,36 @@ namespace OpenMS
     // treat disabled filtering as 100% FDR
     std::replace(xl_PSM_qvalue_thresholds.begin(), xl_PSM_qvalue_thresholds.end(), 0.0, 1.0);
     std::sort(xl_PSM_qvalue_thresholds.begin(), xl_PSM_qvalue_thresholds.end(), greater<double>()); // important: sort by threshold (descending) to generate results by applying increasingly stringent q-value filters
-    for (double xlFDR : xl_PSM_qvalue_thresholds)
+
+    if (xl_PSM_qvalue_thresholds.size() != xl_peptidelevel_qvalue_thresholds.size())
+    {
+      throw Exception::InvalidValue(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, 
+          "q-value list for PSMs and peptides differ in size.", 
+          String(xl_PSM_qvalue_thresholds.size()) + "!=" + String(xl_peptidelevel_qvalue_thresholds.size()));
+    }
+
+    for (Size i = 0; i != xl_PSM_qvalue_thresholds.size(); ++i)
     { 
+      double xlFDR = xl_PSM_qvalue_thresholds[i];
+      double xl_peptidelevel_FDR = xl_peptidelevel_qvalue_thresholds[i];
       OPENMS_LOG_INFO << "Writing XL results at xl-FDR: " << xlFDR << endl;
+
+      // filter cross-links on peptide-level q-value
+      if (xl_peptidelevel_FDR > 0.0 && xl_peptidelevel_FDR < 1.0)
+      {
+        auto chechBadPeptideQValue = [&xl_peptidelevel_FDR](PeptideHit& ph)->bool
+        {
+          return (double)ph.getMetaValue(Constants::UserParam::PEPTIDE_Q_VALUE) >= xl_peptidelevel_FDR;
+        }; // of lambda
+
+        for (auto & pid : xl_pi)
+        {
+          vector<PeptideHit>& phs = pid.getHits();
+          phs.erase(remove_if(phs.begin(), phs.end(), chechBadPeptideQValue), phs.end());
+        }
+      }
+
+      // filter cross-links on PSM-level q-value
       if (xlFDR > 0.0 && xlFDR < 1.0)
       {
         IDFilter::filterHitsByScore(xl_pi, xlFDR);
@@ -254,7 +274,7 @@ namespace OpenMS
       {
         OPENMS_LOG_INFO << "Writing XL protein results at xl-FDR: " << xlFDR << endl;
         TextFile tsv_file;
-        RNPxlProteinReport::annotateProteinModificationForTopHits(tmp_prots, xl_pi, tsv_file);
+        NuXLProteinReport::annotateProteinModificationForTopHits(tmp_prots, xl_pi, tsv_file);
         tsv_file.store(out_idxml + "proteins" + String::number(xlFDR, 4) + "_XLs.tsv");
       }      
    }
