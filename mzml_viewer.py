@@ -9,6 +9,7 @@ Supports FeatureMap overlay with centroids, bounding boxes, and convex hulls.
 
 import io
 import base64
+import math
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -19,14 +20,66 @@ import datashader as ds
 import datashader.transfer_functions as tf
 from colorcet import fire
 
-# PIL for drawing overlays
-from PIL import Image, ImageDraw
+# PIL for drawing overlays and axes
+from PIL import Image, ImageDraw, ImageFont
 
 # pyOpenMS for mzML and featureXML loading
 from pyopenms import MSExperiment, MzMLFile, FeatureMap, FeatureXMLFile
 
 # NiceGUI for the web interface
 from nicegui import ui, app
+
+
+def calculate_nice_ticks(vmin: float, vmax: float, num_ticks: int = 6) -> List[float]:
+    """Calculate nice round tick values for an axis."""
+    if vmin >= vmax:
+        return [vmin]
+
+    range_val = vmax - vmin
+    rough_step = range_val / (num_ticks - 1)
+
+    # Find the order of magnitude
+    mag = math.floor(math.log10(rough_step))
+    pow10 = 10 ** mag
+
+    # Normalize step to 1-10 range
+    norm_step = rough_step / pow10
+
+    # Choose a nice step value
+    if norm_step < 1.5:
+        nice_step = 1
+    elif norm_step < 3:
+        nice_step = 2
+    elif norm_step < 7:
+        nice_step = 5
+    else:
+        nice_step = 10
+
+    step = nice_step * pow10
+
+    # Calculate tick positions
+    first_tick = math.ceil(vmin / step) * step
+    ticks = []
+    tick = first_tick
+    while tick <= vmax + step * 0.001:  # Small tolerance for floating point
+        ticks.append(tick)
+        tick += step
+
+    return ticks
+
+
+def format_tick_label(value: float, range_val: float) -> str:
+    """Format a tick label based on the value and range."""
+    if range_val >= 1000:
+        if abs(value) >= 1000:
+            return f"{value:.0f}"
+        return f"{value:.1f}"
+    elif range_val >= 10:
+        return f"{value:.1f}"
+    elif range_val >= 1:
+        return f"{value:.2f}"
+    else:
+        return f"{value:.3f}"
 
 
 class MzMLViewer:
@@ -53,9 +106,19 @@ class MzMLViewer:
         self.view_mz_min = None
         self.view_mz_max = None
 
-        # Image dimensions
-        self.plot_width = 1200
-        self.plot_height = 600
+        # Image dimensions (plot area only)
+        self.plot_width = 1100
+        self.plot_height = 550
+
+        # Axis margins
+        self.margin_left = 80     # Space for y-axis labels
+        self.margin_right = 20
+        self.margin_top = 20
+        self.margin_bottom = 50   # Space for x-axis labels
+
+        # Total canvas size
+        self.canvas_width = self.plot_width + self.margin_left + self.margin_right
+        self.canvas_height = self.plot_height + self.margin_top + self.margin_bottom
 
         # Feature display options
         self.show_centroids = True
@@ -66,6 +129,12 @@ class MzMLViewer:
         self.centroid_color = (0, 255, 100, 255)  # Green
         self.bbox_color = (255, 255, 0, 200)  # Yellow
         self.hull_color = (0, 200, 255, 150)  # Cyan
+
+        # Axis colors
+        self.axis_color = (200, 200, 200, 255)  # Light gray
+        self.tick_color = (180, 180, 180, 255)
+        self.label_color = (220, 220, 220, 255)
+        self.grid_color = (60, 60, 60, 255)  # Subtle grid
 
         # UI elements
         self.image_element = None
@@ -188,9 +257,8 @@ class MzMLViewer:
         self.feature_info_label.set_text("Features: None")
         ui.notify("Features cleared", type="info")
 
-    def _coord_to_pixel(self, rt: float, mz: float) -> Tuple[int, int]:
-        """Convert RT/m/z coordinates to pixel coordinates."""
-        # X axis = RT, Y axis = m/z (inverted for image coords)
+    def _data_to_plot_pixel(self, rt: float, mz: float) -> Tuple[int, int]:
+        """Convert RT/m/z coordinates to pixel coordinates within the plot area."""
         rt_range = self.view_rt_max - self.view_rt_min
         mz_range = self.view_mz_max - self.view_mz_min
 
@@ -203,6 +271,15 @@ class MzMLViewer:
 
         return (x, y)
 
+    def _plot_to_canvas_pixel(self, plot_x: int, plot_y: int) -> Tuple[int, int]:
+        """Convert plot pixel coordinates to canvas pixel coordinates."""
+        return (plot_x + self.margin_left, plot_y + self.margin_top)
+
+    def _coord_to_pixel(self, rt: float, mz: float) -> Tuple[int, int]:
+        """Convert RT/m/z coordinates to canvas pixel coordinates."""
+        plot_x, plot_y = self._data_to_plot_pixel(rt, mz)
+        return self._plot_to_canvas_pixel(plot_x, plot_y)
+
     def _is_in_view(self, rt: float, mz: float) -> bool:
         """Check if a point is within the current view."""
         return (self.view_rt_min <= rt <= self.view_rt_max and
@@ -214,8 +291,8 @@ class MzMLViewer:
         return not (rt_max < self.view_rt_min or rt_min > self.view_rt_max or
                     mz_max < self.view_mz_min or mz_min > self.view_mz_max)
 
-    def _draw_features(self, img: Image.Image) -> Image.Image:
-        """Draw feature overlays on the image."""
+    def _draw_features_on_plot(self, img: Image.Image) -> Image.Image:
+        """Draw feature overlays on the plot image (before adding axes)."""
         if self.feature_map is None or self.feature_map.size() == 0:
             return img
 
@@ -238,7 +315,6 @@ class MzMLViewer:
             # Get bounding box from convex hulls
             hulls = feature.getConvexHulls()
             if hulls:
-                # Get overall bounding box from all hull points
                 all_points = []
                 for hull in hulls:
                     points = hull.getHullPoints()
@@ -250,11 +326,9 @@ class MzMLViewer:
                     feat_rt_min, feat_rt_max = min(rt_coords), max(rt_coords)
                     feat_mz_min, feat_mz_max = min(mz_coords), max(mz_coords)
                 else:
-                    # Fallback to centroid with small box
                     feat_rt_min, feat_rt_max = rt - 1, rt + 1
                     feat_mz_min, feat_mz_max = mz - 0.5, mz + 0.5
             else:
-                # No hulls - use small box around centroid
                 feat_rt_min, feat_rt_max = rt - 1, rt + 1
                 feat_mz_min, feat_mz_max = mz - 0.5, mz + 0.5
 
@@ -265,33 +339,132 @@ class MzMLViewer:
 
             features_drawn += 1
 
-            # Draw convex hulls
+            # Draw convex hulls (using plot coordinates, not canvas)
             if self.show_convex_hulls and hulls:
                 for hull in hulls:
                     points = hull.getHullPoints()
                     if len(points) >= 3:
-                        pixel_points = [self._coord_to_pixel(p[0], p[1]) for p in points]
-                        # Close the polygon
+                        pixel_points = [self._data_to_plot_pixel(p[0], p[1]) for p in points]
                         pixel_points.append(pixel_points[0])
                         draw.polygon(pixel_points, outline=self.hull_color,
                                     fill=(*self.hull_color[:3], 50))
 
             # Draw bounding box
             if self.show_bounding_boxes:
-                top_left = self._coord_to_pixel(feat_rt_min, feat_mz_max)
-                bottom_right = self._coord_to_pixel(feat_rt_max, feat_mz_min)
+                top_left = self._data_to_plot_pixel(feat_rt_min, feat_mz_max)
+                bottom_right = self._data_to_plot_pixel(feat_rt_max, feat_mz_min)
                 draw.rectangle([top_left, bottom_right], outline=self.bbox_color, width=1)
 
             # Draw centroid
             if self.show_centroids:
-                cx, cy = self._coord_to_pixel(rt, mz)
-                r = 3  # radius
+                cx, cy = self._data_to_plot_pixel(rt, mz)
+                r = 3
                 draw.ellipse([cx-r, cy-r, cx+r, cy+r], fill=self.centroid_color,
                             outline=(255, 255, 255, 255))
 
-        # Composite overlay onto image
         img = Image.alpha_composite(img, overlay)
         return img
+
+    def _draw_axes(self, canvas: Image.Image) -> Image.Image:
+        """Draw axes, tick marks, labels, and axis titles on the canvas."""
+        draw = ImageDraw.Draw(canvas)
+
+        # Try to load a font, fall back to default
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+            title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+        except:
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/TTF/DejaVuSans.ttf", 12)
+                title_font = ImageFont.truetype("/usr/share/fonts/TTF/DejaVuSans.ttf", 14)
+            except:
+                font = ImageFont.load_default()
+                title_font = font
+
+        # Plot area boundaries on canvas
+        plot_left = self.margin_left
+        plot_right = self.margin_left + self.plot_width
+        plot_top = self.margin_top
+        plot_bottom = self.margin_top + self.plot_height
+
+        # Draw plot border
+        draw.rectangle(
+            [plot_left, plot_top, plot_right, plot_bottom],
+            outline=self.axis_color,
+            width=1
+        )
+
+        # --- X-axis (RT) ---
+        rt_ticks = calculate_nice_ticks(self.view_rt_min, self.view_rt_max, num_ticks=8)
+        rt_range = self.view_rt_max - self.view_rt_min
+
+        for tick_val in rt_ticks:
+            if self.view_rt_min <= tick_val <= self.view_rt_max:
+                # Calculate x position
+                x_frac = (tick_val - self.view_rt_min) / rt_range
+                x = plot_left + int(x_frac * self.plot_width)
+
+                # Draw tick mark
+                draw.line([(x, plot_bottom), (x, plot_bottom + 5)], fill=self.tick_color, width=1)
+
+                # Draw grid line (subtle)
+                draw.line([(x, plot_top), (x, plot_bottom)], fill=self.grid_color, width=1)
+
+                # Draw label
+                label = format_tick_label(tick_val, rt_range)
+                bbox = draw.textbbox((0, 0), label, font=font)
+                label_width = bbox[2] - bbox[0]
+                draw.text((x - label_width // 2, plot_bottom + 8), label, fill=self.label_color, font=font)
+
+        # X-axis title
+        x_title = "RT (s)"
+        bbox = draw.textbbox((0, 0), x_title, font=title_font)
+        title_width = bbox[2] - bbox[0]
+        draw.text(
+            (plot_left + self.plot_width // 2 - title_width // 2, plot_bottom + 28),
+            x_title, fill=self.label_color, font=title_font
+        )
+
+        # --- Y-axis (m/z) ---
+        mz_ticks = calculate_nice_ticks(self.view_mz_min, self.view_mz_max, num_ticks=8)
+        mz_range = self.view_mz_max - self.view_mz_min
+
+        for tick_val in mz_ticks:
+            if self.view_mz_min <= tick_val <= self.view_mz_max:
+                # Calculate y position (inverted - higher m/z at top)
+                y_frac = 1 - (tick_val - self.view_mz_min) / mz_range
+                y = plot_top + int(y_frac * self.plot_height)
+
+                # Draw tick mark
+                draw.line([(plot_left - 5, y), (plot_left, y)], fill=self.tick_color, width=1)
+
+                # Draw grid line (subtle)
+                draw.line([(plot_left, y), (plot_right, y)], fill=self.grid_color, width=1)
+
+                # Draw label
+                label = format_tick_label(tick_val, mz_range)
+                bbox = draw.textbbox((0, 0), label, font=font)
+                label_width = bbox[2] - bbox[0]
+                label_height = bbox[3] - bbox[1]
+                draw.text((plot_left - label_width - 10, y - label_height // 2), label, fill=self.label_color, font=font)
+
+        # Y-axis title (rotated text - we'll draw it vertically)
+        y_title = "m/z"
+        bbox = draw.textbbox((0, 0), y_title, font=title_font)
+        title_height = bbox[3] - bbox[1]
+
+        # Create a small image for rotated text
+        txt_img = Image.new('RGBA', (100, 30), (0, 0, 0, 0))
+        txt_draw = ImageDraw.Draw(txt_img)
+        txt_draw.text((0, 0), y_title, fill=self.label_color, font=title_font)
+        txt_img = txt_img.rotate(90, expand=True)
+
+        # Paste rotated text
+        y_title_x = 5
+        y_title_y = plot_top + self.plot_height // 2 - txt_img.height // 2
+        canvas.paste(txt_img, (y_title_x, y_title_y), txt_img)
+
+        return canvas
 
     def render_image(self) -> str:
         """Render the current view using datashader and return base64 PNG."""
@@ -310,8 +483,8 @@ class MzMLViewer:
         if len(view_df) == 0:
             return ""
 
-        # Create datashader canvas
-        canvas = ds.Canvas(
+        # Create datashader canvas for the plot area only
+        ds_canvas = ds.Canvas(
             plot_width=self.plot_width,
             plot_height=self.plot_height,
             x_range=(self.view_rt_min, self.view_rt_max),
@@ -319,25 +492,34 @@ class MzMLViewer:
         )
 
         # Aggregate using mean of log intensity
-        agg = canvas.points(view_df, 'rt', 'mz', ds.mean('log_intensity'))
+        agg = ds_canvas.points(view_df, 'rt', 'mz', ds.mean('log_intensity'))
 
-        # Apply colormap (fire is great for MS data)
+        # Apply colormap
         img = tf.shade(agg, cmap=fire, how='linear')
         img = tf.set_background(img, 'black')
 
         # Convert to PIL Image
-        pil_img = img.to_pil()
+        plot_img = img.to_pil()
 
-        # Draw feature overlays
+        # Draw feature overlays on the plot image
         if self.feature_map is not None:
-            pil_img = self._draw_features(pil_img)
+            plot_img = self._draw_features_on_plot(plot_img)
+
+        # Create the full canvas with margins for axes
+        canvas = Image.new('RGBA', (self.canvas_width, self.canvas_height), (20, 20, 25, 255))
+
+        # Paste the plot image onto the canvas
+        plot_img_rgba = plot_img.convert('RGBA')
+        canvas.paste(plot_img_rgba, (self.margin_left, self.margin_top))
+
+        # Draw axes
+        canvas = self._draw_axes(canvas)
 
         # Convert to PNG bytes
         buffer = io.BytesIO()
-        pil_img.save(buffer, format='PNG')
+        canvas.save(buffer, format='PNG')
         buffer.seek(0)
 
-        # Return base64 encoded
         return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
     def update_plot(self):
@@ -555,10 +737,10 @@ def create_ui():
 
             hull_cb = ui.checkbox('Convex Hulls', value=True, on_change=toggle_hulls).classes('text-cyan-400')
 
-        # The main plot image
+        # The main plot image (now with axes included)
         with ui.card().classes('p-0'):
             viewer.image_element = ui.image().classes('w-full').style(
-                f'width: {viewer.plot_width}px; height: {viewer.plot_height}px; background: black;'
+                f'width: {viewer.canvas_width}px; height: {viewer.canvas_height}px; background: #141419;'
             )
 
         # Navigation controls
