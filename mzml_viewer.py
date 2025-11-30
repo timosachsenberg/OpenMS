@@ -4,6 +4,7 @@ Fast mzML Peak Map Viewer using NiceGUI + Datashader + pyOpenMS
 
 Designed to handle 50+ million peaks with smooth zooming and panning.
 Uses datashader for server-side rendering of massive datasets.
+Supports FeatureMap overlay with centroids, bounding boxes, and convex hulls.
 """
 
 import io
@@ -11,26 +12,34 @@ import base64
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from typing import List, Tuple, Optional
 
 # Datashader for fast rendering
 import datashader as ds
 import datashader.transfer_functions as tf
 from colorcet import fire
 
-# pyOpenMS for mzML loading
-from pyopenms import MSExperiment, MzMLFile
+# PIL for drawing overlays
+from PIL import Image, ImageDraw
+
+# pyOpenMS for mzML and featureXML loading
+from pyopenms import MSExperiment, MzMLFile, FeatureMap, FeatureXMLFile
 
 # NiceGUI for the web interface
 from nicegui import ui, app
 
 
 class MzMLViewer:
-    """High-performance mzML peak map viewer using datashader."""
+    """High-performance mzML peak map viewer using datashader with feature overlay."""
 
     def __init__(self):
         self.exp = None
         self.df = None  # DataFrame with rt, mz, intensity
         self.current_file = None
+
+        # FeatureMap data
+        self.feature_map = None
+        self.features_file = None
 
         # View bounds (will be set after loading)
         self.rt_min = 0
@@ -48,10 +57,21 @@ class MzMLViewer:
         self.plot_width = 1200
         self.plot_height = 600
 
+        # Feature display options
+        self.show_centroids = True
+        self.show_bounding_boxes = True
+        self.show_convex_hulls = True
+
+        # Feature colors (RGBA)
+        self.centroid_color = (0, 255, 100, 255)  # Green
+        self.bbox_color = (255, 255, 0, 200)  # Yellow
+        self.hull_color = (0, 200, 255, 150)  # Cyan
+
         # UI elements
         self.image_element = None
         self.status_label = None
         self.info_label = None
+        self.feature_info_label = None
         self.rt_range_label = None
         self.mz_range_label = None
 
@@ -138,6 +158,141 @@ class MzMLViewer:
             ui.notify(f"Error loading file: {e}", type="negative")
             return False
 
+    def load_featuremap(self, filepath: str) -> bool:
+        """Load featureXML file."""
+        try:
+            self.status_label.set_text(f"Loading features from {Path(filepath).name}...")
+            ui.notify(f"Loading {filepath}...", type="info")
+
+            self.feature_map = FeatureMap()
+            FeatureXMLFile().load(filepath, self.feature_map)
+
+            self.features_file = filepath
+
+            n_features = self.feature_map.size()
+            self.feature_info_label.set_text(f"Features: {n_features:,}")
+            self.status_label.set_text("Ready")
+            ui.notify(f"Loaded {n_features:,} features", type="positive")
+
+            return True
+
+        except Exception as e:
+            self.status_label.set_text(f"Error: {e}")
+            ui.notify(f"Error loading features: {e}", type="negative")
+            return False
+
+    def clear_features(self):
+        """Clear loaded feature map."""
+        self.feature_map = None
+        self.features_file = None
+        self.feature_info_label.set_text("Features: None")
+        ui.notify("Features cleared", type="info")
+
+    def _coord_to_pixel(self, rt: float, mz: float) -> Tuple[int, int]:
+        """Convert RT/m/z coordinates to pixel coordinates."""
+        # X axis = RT, Y axis = m/z (inverted for image coords)
+        rt_range = self.view_rt_max - self.view_rt_min
+        mz_range = self.view_mz_max - self.view_mz_min
+
+        if rt_range == 0 or mz_range == 0:
+            return (0, 0)
+
+        x = int((rt - self.view_rt_min) / rt_range * self.plot_width)
+        # Invert Y axis (higher m/z at top)
+        y = int((1 - (mz - self.view_mz_min) / mz_range) * self.plot_height)
+
+        return (x, y)
+
+    def _is_in_view(self, rt: float, mz: float) -> bool:
+        """Check if a point is within the current view."""
+        return (self.view_rt_min <= rt <= self.view_rt_max and
+                self.view_mz_min <= mz <= self.view_mz_max)
+
+    def _feature_intersects_view(self, rt_min: float, rt_max: float,
+                                  mz_min: float, mz_max: float) -> bool:
+        """Check if a feature's bounding box intersects the current view."""
+        return not (rt_max < self.view_rt_min or rt_min > self.view_rt_max or
+                    mz_max < self.view_mz_min or mz_min > self.view_mz_max)
+
+    def _draw_features(self, img: Image.Image) -> Image.Image:
+        """Draw feature overlays on the image."""
+        if self.feature_map is None or self.feature_map.size() == 0:
+            return img
+
+        # Convert to RGBA for transparency
+        img = img.convert('RGBA')
+        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        features_drawn = 0
+        max_features = 10000  # Limit for performance
+
+        for feature in self.feature_map:
+            if features_drawn >= max_features:
+                break
+
+            # Get feature properties
+            rt = feature.getRT()
+            mz = feature.getMZ()
+
+            # Get bounding box from convex hulls
+            hulls = feature.getConvexHulls()
+            if hulls:
+                # Get overall bounding box from all hull points
+                all_points = []
+                for hull in hulls:
+                    points = hull.getHullPoints()
+                    all_points.extend([(p[0], p[1]) for p in points])
+
+                if all_points:
+                    rt_coords = [p[0] for p in all_points]
+                    mz_coords = [p[1] for p in all_points]
+                    feat_rt_min, feat_rt_max = min(rt_coords), max(rt_coords)
+                    feat_mz_min, feat_mz_max = min(mz_coords), max(mz_coords)
+                else:
+                    # Fallback to centroid with small box
+                    feat_rt_min, feat_rt_max = rt - 1, rt + 1
+                    feat_mz_min, feat_mz_max = mz - 0.5, mz + 0.5
+            else:
+                # No hulls - use small box around centroid
+                feat_rt_min, feat_rt_max = rt - 1, rt + 1
+                feat_mz_min, feat_mz_max = mz - 0.5, mz + 0.5
+
+            # Skip if not in view
+            if not self._feature_intersects_view(feat_rt_min, feat_rt_max,
+                                                  feat_mz_min, feat_mz_max):
+                continue
+
+            features_drawn += 1
+
+            # Draw convex hulls
+            if self.show_convex_hulls and hulls:
+                for hull in hulls:
+                    points = hull.getHullPoints()
+                    if len(points) >= 3:
+                        pixel_points = [self._coord_to_pixel(p[0], p[1]) for p in points]
+                        # Close the polygon
+                        pixel_points.append(pixel_points[0])
+                        draw.polygon(pixel_points, outline=self.hull_color,
+                                    fill=(*self.hull_color[:3], 50))
+
+            # Draw bounding box
+            if self.show_bounding_boxes:
+                top_left = self._coord_to_pixel(feat_rt_min, feat_mz_max)
+                bottom_right = self._coord_to_pixel(feat_rt_max, feat_mz_min)
+                draw.rectangle([top_left, bottom_right], outline=self.bbox_color, width=1)
+
+            # Draw centroid
+            if self.show_centroids:
+                cx, cy = self._coord_to_pixel(rt, mz)
+                r = 3  # radius
+                draw.ellipse([cx-r, cy-r, cx+r, cy+r], fill=self.centroid_color,
+                            outline=(255, 255, 255, 255))
+
+        # Composite overlay onto image
+        img = Image.alpha_composite(img, overlay)
+        return img
+
     def render_image(self) -> str:
         """Render the current view using datashader and return base64 PNG."""
         if self.df is None or len(self.df) == 0:
@@ -170,8 +325,14 @@ class MzMLViewer:
         img = tf.shade(agg, cmap=fire, how='linear')
         img = tf.set_background(img, 'black')
 
-        # Convert to PNG bytes
+        # Convert to PIL Image
         pil_img = img.to_pil()
+
+        # Draw feature overlays
+        if self.feature_map is not None:
+            pil_img = self._draw_features(pil_img)
+
+        # Convert to PNG bytes
         buffer = io.BytesIO()
         pil_img.save(buffer, format='PNG')
         buffer.seek(0)
@@ -282,50 +443,117 @@ def create_ui():
     ui.dark_mode().enable()
 
     with ui.column().classes('w-full items-center p-4'):
-        ui.label('mzML Peak Map Viewer').classes('text-3xl font-bold mb-4')
+        ui.label('mzML Peak Map Viewer').classes('text-3xl font-bold mb-2')
         ui.label('High-performance visualization with Datashader + pyOpenMS').classes('text-gray-400 mb-4')
 
-        # File upload section
-        with ui.row().classes('w-full justify-center mb-4'):
-            async def handle_upload(e):
-                content = e.content.read()
-                # Save to temp file
-                temp_path = Path('/tmp') / e.name
-                temp_path.write_bytes(content)
-                if viewer.load_mzml(str(temp_path)):
-                    viewer.update_plot()
+        # File upload section - mzML
+        with ui.card().classes('w-full max-w-5xl mb-4'):
+            ui.label('Load Data').classes('text-xl font-semibold mb-2')
 
-            ui.upload(
-                label='Upload mzML file',
-                on_upload=handle_upload,
-                auto_upload=True
-            ).props('accept=.mzML,.mzml').classes('max-w-lg')
+            with ui.row().classes('w-full items-end gap-4'):
+                # mzML section
+                with ui.column().classes('flex-1'):
+                    ui.label('mzML File (Peak Data)').classes('text-sm text-gray-400')
+                    with ui.row().classes('w-full items-end gap-2'):
+                        async def handle_mzml_upload(e):
+                            content = e.content.read()
+                            temp_path = Path('/tmp') / e.name
+                            temp_path.write_bytes(content)
+                            if viewer.load_mzml(str(temp_path)):
+                                viewer.update_plot()
 
-            # Or load from path
-            file_input = ui.input(
-                label='Or enter file path',
-                placeholder='/path/to/file.mzML'
-            ).classes('w-96')
+                        ui.upload(
+                            label='Upload mzML',
+                            on_upload=handle_mzml_upload,
+                            auto_upload=True
+                        ).props('accept=.mzML,.mzml').classes('w-48')
 
-            async def load_from_path():
-                path = file_input.value
-                if path and Path(path).exists():
-                    if viewer.load_mzml(path):
-                        viewer.update_plot()
-                else:
-                    ui.notify("File not found", type="warning")
+                        mzml_input = ui.input(
+                            placeholder='/path/to/file.mzML'
+                        ).classes('flex-1')
 
-            ui.button('Load', on_click=load_from_path).props('color=primary')
+                        async def load_mzml_path():
+                            path = mzml_input.value
+                            if path and Path(path).exists():
+                                if viewer.load_mzml(path):
+                                    viewer.update_plot()
+                            else:
+                                ui.notify("File not found", type="warning")
+
+                        ui.button('Load', on_click=load_mzml_path).props('color=primary dense')
+
+                # FeatureXML section
+                with ui.column().classes('flex-1'):
+                    ui.label('FeatureXML (Feature Overlay)').classes('text-sm text-gray-400')
+                    with ui.row().classes('w-full items-end gap-2'):
+                        async def handle_feature_upload(e):
+                            content = e.content.read()
+                            temp_path = Path('/tmp') / e.name
+                            temp_path.write_bytes(content)
+                            if viewer.load_featuremap(str(temp_path)):
+                                viewer.update_plot()
+
+                        ui.upload(
+                            label='Upload featureXML',
+                            on_upload=handle_feature_upload,
+                            auto_upload=True
+                        ).props('accept=.featureXML,.xml').classes('w-48')
+
+                        feature_input = ui.input(
+                            placeholder='/path/to/features.featureXML'
+                        ).classes('flex-1')
+
+                        async def load_feature_path():
+                            path = feature_input.value
+                            if path and Path(path).exists():
+                                if viewer.load_featuremap(path):
+                                    viewer.update_plot()
+                            else:
+                                ui.notify("File not found", type="warning")
+
+                        ui.button('Load', on_click=load_feature_path).props('color=primary dense')
+
+                        def clear_features():
+                            viewer.clear_features()
+                            viewer.update_plot()
+
+                        ui.button('Clear', on_click=clear_features).props('color=negative dense')
 
         # Info bar
         with ui.row().classes('w-full justify-center gap-8 mb-2'):
             viewer.info_label = ui.label('No file loaded').classes('text-gray-400')
+            viewer.feature_info_label = ui.label('Features: None').classes('text-cyan-400')
             viewer.status_label = ui.label('Ready').classes('text-green-400')
 
         # Range display
         with ui.row().classes('w-full justify-center gap-8 mb-2'):
             viewer.rt_range_label = ui.label('RT: -- - -- s').classes('text-blue-300')
             viewer.mz_range_label = ui.label('m/z: -- - --').classes('text-blue-300')
+
+        # Feature display options
+        with ui.row().classes('w-full justify-center gap-4 mb-2'):
+            ui.label('Show:').classes('text-gray-400')
+
+            def toggle_centroids():
+                viewer.show_centroids = centroid_cb.value
+                if viewer.df is not None:
+                    viewer.update_plot()
+
+            centroid_cb = ui.checkbox('Centroids', value=True, on_change=toggle_centroids).classes('text-green-400')
+
+            def toggle_bboxes():
+                viewer.show_bounding_boxes = bbox_cb.value
+                if viewer.df is not None:
+                    viewer.update_plot()
+
+            bbox_cb = ui.checkbox('Bounding Boxes', value=True, on_change=toggle_bboxes).classes('text-yellow-400')
+
+            def toggle_hulls():
+                viewer.show_convex_hulls = hull_cb.value
+                if viewer.df is not None:
+                    viewer.update_plot()
+
+            hull_cb = ui.checkbox('Convex Hulls', value=True, on_change=toggle_hulls).classes('text-cyan-400')
 
         # The main plot image
         with ui.card().classes('p-0'):
@@ -361,16 +589,31 @@ def create_ui():
 
                 ui.button('Apply Range', on_click=apply_range).props('color=primary')
 
-        # Keyboard shortcuts info
-        with ui.expansion('Keyboard Shortcuts', icon='keyboard').classes('w-full max-w-4xl mt-2'):
-            ui.markdown('''
-            | Key | Action |
-            |-----|--------|
-            | `+` / `=` | Zoom In |
-            | `-` | Zoom Out |
-            | `Arrow Keys` | Pan |
-            | `Home` | Reset View |
-            ''')
+        # Legend
+        with ui.expansion('Legend & Help', icon='help').classes('w-full max-w-4xl mt-2'):
+            with ui.row().classes('gap-8'):
+                with ui.column():
+                    ui.label('Feature Overlay Colors:').classes('font-semibold')
+                    with ui.row().classes('items-center gap-2'):
+                        ui.html('<div style="width:16px;height:16px;background:#00ff64;border-radius:50%;border:1px solid white;"></div>')
+                        ui.label('Centroid (feature center)')
+                    with ui.row().classes('items-center gap-2'):
+                        ui.html('<div style="width:16px;height:16px;border:2px solid #ffff00;"></div>')
+                        ui.label('Bounding Box')
+                    with ui.row().classes('items-center gap-2'):
+                        ui.html('<div style="width:16px;height:16px;background:rgba(0,200,255,0.5);border:1px solid #00c8ff;"></div>')
+                        ui.label('Convex Hull')
+
+                with ui.column():
+                    ui.label('Keyboard Shortcuts:').classes('font-semibold')
+                    ui.markdown('''
+| Key | Action |
+|-----|--------|
+| `+` / `=` | Zoom In |
+| `-` | Zoom Out |
+| `Arrow Keys` | Pan |
+| `Home` | Reset View |
+                    ''')
 
         # Add keyboard handlers
         ui.keyboard(
