@@ -13,7 +13,7 @@ import math
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 
 # Datashader for fast rendering
 import datashader as ds
@@ -93,6 +93,7 @@ class MzMLViewer:
         # FeatureMap data
         self.feature_map = None
         self.features_file = None
+        self.feature_data = []  # List of dicts for table display
 
         # View bounds (will be set after loading)
         self.rt_min = 0
@@ -105,6 +106,9 @@ class MzMLViewer:
         self.view_rt_max = None
         self.view_mz_min = None
         self.view_mz_max = None
+
+        # Selected feature index
+        self.selected_feature_idx = None
 
         # Image dimensions (plot area only)
         self.plot_width = 1100
@@ -129,6 +133,7 @@ class MzMLViewer:
         self.centroid_color = (0, 255, 100, 255)  # Green
         self.bbox_color = (255, 255, 0, 200)  # Yellow
         self.hull_color = (0, 200, 255, 150)  # Cyan
+        self.selected_color = (255, 100, 255, 255)  # Magenta for selected
 
         # Axis colors
         self.axis_color = (200, 200, 200, 255)  # Light gray
@@ -143,6 +148,7 @@ class MzMLViewer:
         self.feature_info_label = None
         self.rt_range_label = None
         self.mz_range_label = None
+        self.feature_table = None
 
     def load_mzml(self, filepath: str) -> bool:
         """Load mzML file and extract peak data into a pandas DataFrame."""
@@ -227,6 +233,47 @@ class MzMLViewer:
             ui.notify(f"Error loading file: {e}", type="negative")
             return False
 
+    def _extract_feature_data(self) -> List[Dict[str, Any]]:
+        """Extract feature data into a list of dicts for the table."""
+        if self.feature_map is None:
+            return []
+
+        data = []
+        for idx, feature in enumerate(self.feature_map):
+            rt = feature.getRT()
+            mz = feature.getMZ()
+            intensity = feature.getIntensity()
+            charge = feature.getCharge()
+            quality = feature.getOverallQuality()
+
+            # Get bounding box from convex hulls
+            hulls = feature.getConvexHulls()
+            rt_width = 0
+            mz_width = 0
+            if hulls:
+                all_points = []
+                for hull in hulls:
+                    points = hull.getHullPoints()
+                    all_points.extend([(p[0], p[1]) for p in points])
+                if all_points:
+                    rt_coords = [p[0] for p in all_points]
+                    mz_coords = [p[1] for p in all_points]
+                    rt_width = max(rt_coords) - min(rt_coords)
+                    mz_width = max(mz_coords) - min(mz_coords)
+
+            data.append({
+                'idx': idx,
+                'rt': round(rt, 2),
+                'mz': round(mz, 4),
+                'intensity': f"{intensity:.2e}",
+                'charge': charge if charge != 0 else '-',
+                'quality': round(quality, 3) if quality > 0 else '-',
+                'rt_width': round(rt_width, 2) if rt_width > 0 else '-',
+                'mz_width': round(mz_width, 4) if mz_width > 0 else '-',
+            })
+
+        return data
+
     def load_featuremap(self, filepath: str) -> bool:
         """Load featureXML file."""
         try:
@@ -237,11 +284,19 @@ class MzMLViewer:
             FeatureXMLFile().load(filepath, self.feature_map)
 
             self.features_file = filepath
+            self.selected_feature_idx = None
+
+            # Extract feature data for table
+            self.feature_data = self._extract_feature_data()
 
             n_features = self.feature_map.size()
             self.feature_info_label.set_text(f"Features: {n_features:,}")
             self.status_label.set_text("Ready")
             ui.notify(f"Loaded {n_features:,} features", type="positive")
+
+            # Update table
+            if self.feature_table is not None:
+                self.feature_table.update_rows(self.feature_data)
 
             return True
 
@@ -254,8 +309,62 @@ class MzMLViewer:
         """Clear loaded feature map."""
         self.feature_map = None
         self.features_file = None
+        self.feature_data = []
+        self.selected_feature_idx = None
         self.feature_info_label.set_text("Features: None")
+        if self.feature_table is not None:
+            self.feature_table.update_rows([])
         ui.notify("Features cleared", type="info")
+
+    def zoom_to_feature(self, feature_idx: int, padding: float = 0.2):
+        """Zoom the view to center on a specific feature."""
+        if self.feature_map is None or feature_idx >= self.feature_map.size():
+            return
+
+        self.selected_feature_idx = feature_idx
+        feature = self.feature_map[feature_idx]
+
+        rt = feature.getRT()
+        mz = feature.getMZ()
+
+        # Get feature bounds from convex hulls
+        hulls = feature.getConvexHulls()
+        if hulls:
+            all_points = []
+            for hull in hulls:
+                points = hull.getHullPoints()
+                all_points.extend([(p[0], p[1]) for p in points])
+
+            if all_points:
+                rt_coords = [p[0] for p in all_points]
+                mz_coords = [p[1] for p in all_points]
+                feat_rt_min, feat_rt_max = min(rt_coords), max(rt_coords)
+                feat_mz_min, feat_mz_max = min(mz_coords), max(mz_coords)
+            else:
+                feat_rt_min, feat_rt_max = rt - 10, rt + 10
+                feat_mz_min, feat_mz_max = mz - 2, mz + 2
+        else:
+            feat_rt_min, feat_rt_max = rt - 10, rt + 10
+            feat_mz_min, feat_mz_max = mz - 2, mz + 2
+
+        # Add padding
+        rt_range = feat_rt_max - feat_rt_min
+        mz_range = feat_mz_max - feat_mz_min
+
+        # Ensure minimum view size
+        rt_range = max(rt_range, 20)
+        mz_range = max(mz_range, 4)
+
+        rt_pad = rt_range * padding
+        mz_pad = mz_range * padding
+
+        self.view_rt_min = max(self.rt_min, feat_rt_min - rt_pad)
+        self.view_rt_max = min(self.rt_max, feat_rt_max + rt_pad)
+        self.view_mz_min = max(self.mz_min, feat_mz_min - mz_pad)
+        self.view_mz_max = min(self.mz_max, feat_mz_max + mz_pad)
+
+        self.update_plot()
+        ui.notify(f"Zoomed to feature {feature_idx + 1}", type="info")
 
     def _data_to_plot_pixel(self, rt: float, mz: float) -> Tuple[int, int]:
         """Convert RT/m/z coordinates to pixel coordinates within the plot area."""
@@ -304,9 +413,12 @@ class MzMLViewer:
         features_drawn = 0
         max_features = 10000  # Limit for performance
 
-        for feature in self.feature_map:
+        for idx, feature in enumerate(self.feature_map):
             if features_drawn >= max_features:
                 break
+
+            # Check if this feature is selected
+            is_selected = (idx == self.selected_feature_idx)
 
             # Get feature properties
             rt = feature.getRT()
@@ -339,6 +451,12 @@ class MzMLViewer:
 
             features_drawn += 1
 
+            # Use different colors for selected feature
+            hull_color = self.selected_color if is_selected else self.hull_color
+            bbox_color = self.selected_color if is_selected else self.bbox_color
+            centroid_color = self.selected_color if is_selected else self.centroid_color
+            line_width = 3 if is_selected else 1
+
             # Draw convex hulls (using plot coordinates, not canvas)
             if self.show_convex_hulls and hulls:
                 for hull in hulls:
@@ -346,20 +464,21 @@ class MzMLViewer:
                     if len(points) >= 3:
                         pixel_points = [self._data_to_plot_pixel(p[0], p[1]) for p in points]
                         pixel_points.append(pixel_points[0])
-                        draw.polygon(pixel_points, outline=self.hull_color,
-                                    fill=(*self.hull_color[:3], 50))
+                        fill_alpha = 100 if is_selected else 50
+                        draw.polygon(pixel_points, outline=hull_color,
+                                    fill=(*hull_color[:3], fill_alpha))
 
             # Draw bounding box
             if self.show_bounding_boxes:
                 top_left = self._data_to_plot_pixel(feat_rt_min, feat_mz_max)
                 bottom_right = self._data_to_plot_pixel(feat_rt_max, feat_mz_min)
-                draw.rectangle([top_left, bottom_right], outline=self.bbox_color, width=1)
+                draw.rectangle([top_left, bottom_right], outline=bbox_color, width=line_width)
 
             # Draw centroid
             if self.show_centroids:
                 cx, cy = self._data_to_plot_pixel(rt, mz)
-                r = 3
-                draw.ellipse([cx-r, cy-r, cx+r, cy+r], fill=self.centroid_color,
+                r = 5 if is_selected else 3
+                draw.ellipse([cx-r, cy-r, cx+r, cy+r], fill=centroid_color,
                             outline=(255, 255, 255, 255))
 
         img = Image.alpha_composite(img, overlay)
@@ -547,6 +666,7 @@ class MzMLViewer:
         self.view_rt_max = self.rt_max
         self.view_mz_min = self.mz_min
         self.view_mz_max = self.mz_max
+        self.selected_feature_idx = None
         self.update_plot()
 
     def zoom_in(self, factor=0.5):
@@ -755,6 +875,39 @@ def create_ui():
             ui.button('↑ Pan Up', on_click=lambda: viewer.pan(mz_frac=0.25)).props('color=accent')
             ui.button('↓ Pan Down', on_click=lambda: viewer.pan(mz_frac=-0.25)).props('color=accent')
 
+        # Feature Table
+        with ui.card().classes('w-full max-w-5xl mt-4'):
+            ui.label('Features').classes('text-xl font-semibold mb-2')
+            ui.label('Click a row to zoom to that feature').classes('text-sm text-gray-400 mb-2')
+
+            # Define table columns
+            columns = [
+                {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
+                {'name': 'rt', 'label': 'RT (s)', 'field': 'rt', 'sortable': True, 'align': 'right'},
+                {'name': 'mz', 'label': 'm/z', 'field': 'mz', 'sortable': True, 'align': 'right'},
+                {'name': 'intensity', 'label': 'Intensity', 'field': 'intensity', 'sortable': True, 'align': 'right'},
+                {'name': 'charge', 'label': 'Charge', 'field': 'charge', 'sortable': True, 'align': 'center'},
+                {'name': 'quality', 'label': 'Quality', 'field': 'quality', 'sortable': True, 'align': 'right'},
+                {'name': 'rt_width', 'label': 'RT Width', 'field': 'rt_width', 'sortable': True, 'align': 'right'},
+                {'name': 'mz_width', 'label': 'm/z Width', 'field': 'mz_width', 'sortable': True, 'align': 'right'},
+            ]
+
+            def on_row_click(e):
+                """Handle row click to zoom to feature."""
+                row = e.args[1]  # Get the row data
+                if row and 'idx' in row:
+                    viewer.zoom_to_feature(row['idx'])
+
+            viewer.feature_table = ui.table(
+                columns=columns,
+                rows=[],
+                row_key='idx',
+                pagination={'rowsPerPage': 10, 'sortBy': 'intensity', 'descending': True}
+            ).classes('w-full').on('rowClick', on_row_click)
+
+            # Style the table for dark mode
+            viewer.feature_table.props('dark flat bordered')
+
         # Custom range inputs
         with ui.expansion('Custom Range', icon='tune').classes('w-full max-w-4xl mt-4'):
             with ui.row().classes('w-full gap-4 items-end'):
@@ -785,6 +938,9 @@ def create_ui():
                     with ui.row().classes('items-center gap-2'):
                         ui.html('<div style="width:16px;height:16px;background:rgba(0,200,255,0.5);border:1px solid #00c8ff;"></div>')
                         ui.label('Convex Hull')
+                    with ui.row().classes('items-center gap-2'):
+                        ui.html('<div style="width:16px;height:16px;background:#ff64ff;border:2px solid #ff64ff;border-radius:50%;"></div>')
+                        ui.label('Selected Feature')
 
                 with ui.column():
                     ui.label('Keyboard Shortcuts:').classes('font-semibold')
