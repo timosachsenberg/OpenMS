@@ -1,0 +1,8 @@
+# Requirements for mzML Peak Map Viewer
+nicegui>=1.4.0
+datashader>=0.16.0
+pandas>=2.0.0
+numpy>=1.24.0
+colorcet>=3.0.0
+pillow>=10.0.0
+pyopenms>=3.0.0
