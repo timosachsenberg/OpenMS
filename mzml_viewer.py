@@ -7,6 +7,7 @@ Uses datashader for server-side rendering of massive datasets.
 Supports FeatureMap overlay with centroids, bounding boxes, and convex hulls.
 Supports idXML overlay showing peptide identification precursor positions.
 Includes annotated MS2 spectrum viewer for peptide identifications.
+Displays Total Ion Chromatogram (TIC) with clickable MS1 spectrum viewer.
 
 Usage:
     python mzml_viewer.py                           # Start with empty viewer
@@ -283,6 +284,10 @@ class MzMLViewer:
         self.id_file = None
         self.id_data = []
 
+        # TIC data
+        self.tic_rt = None
+        self.tic_intensity = None
+
         # View bounds
         self.rt_min = 0
         self.rt_max = 1
@@ -343,6 +348,9 @@ class MzMLViewer:
         self.id_table = None
         self.spectrum_plot = None
         self.spectrum_info_label = None
+        self.tic_plot = None
+        self.ms1_spectrum_plot = None
+        self.ms1_spectrum_info_label = None
 
     def load_mzml(self, filepath: str) -> bool:
         """Load mzML file and extract peak data."""
@@ -367,6 +375,10 @@ class MzMLViewer:
             mzs = np.empty(total_peaks, dtype=np.float32)
             intensities = np.empty(total_peaks, dtype=np.float32)
 
+            # Also compute TIC
+            tic_rts = []
+            tic_intensities = []
+
             idx = 0
             for spec in self.exp:
                 if spec.getMSLevel() != 1:
@@ -379,10 +391,17 @@ class MzMLViewer:
                     mzs[idx:idx+n] = mz_array
                     intensities[idx:idx+n] = int_array
                     idx += n
+                    # TIC: sum of all intensities for this spectrum
+                    tic_rts.append(rt)
+                    tic_intensities.append(float(np.sum(int_array)))
 
             rts = rts[:idx]
             mzs = mzs[:idx]
             intensities = intensities[:idx]
+
+            # Store TIC data
+            self.tic_rt = np.array(tic_rts, dtype=np.float32)
+            self.tic_intensity = np.array(tic_intensities, dtype=np.float32)
 
             self.df = pd.DataFrame({
                 'rt': rts,
@@ -667,6 +686,145 @@ class MzMLViewer:
         if self.spectrum_info_label is not None:
             self.spectrum_info_label.set_text(
                 f"Spectrum: {sequence_str} | RT: {rt:.2f}s | Precursor m/z: {mz:.4f} | Charge: {charge}+"
+            )
+
+    def create_tic_plot(self) -> go.Figure:
+        """Create TIC (Total Ion Chromatogram) plot."""
+        fig = go.Figure()
+
+        if self.tic_rt is None or len(self.tic_rt) == 0:
+            fig.update_layout(
+                title="TIC - No data loaded",
+                template="plotly_dark",
+                height=200
+            )
+            return fig
+
+        # Create TIC trace
+        fig.add_trace(go.Scatter(
+            x=self.tic_rt,
+            y=self.tic_intensity,
+            mode='lines',
+            name='TIC',
+            line=dict(color='#00d4ff', width=1),
+            fill='tozeroy',
+            fillcolor='rgba(0, 212, 255, 0.2)',
+            hovertemplate='RT: %{x:.2f}s<br>Intensity: %{y:.2e}<extra></extra>'
+        ))
+
+        # Add view range indicator
+        if self.view_rt_min is not None and self.view_rt_max is not None:
+            fig.add_vrect(
+                x0=self.view_rt_min,
+                x1=self.view_rt_max,
+                fillcolor="rgba(255, 255, 0, 0.15)",
+                layer="below",
+                line_width=1,
+                line_color="rgba(255, 255, 0, 0.5)"
+            )
+
+        fig.update_layout(
+            title=dict(text="Total Ion Chromatogram (TIC) - Click to view MS1 spectrum", font=dict(size=14)),
+            xaxis_title="RT (s)",
+            yaxis_title="Total Intensity",
+            template="plotly_dark",
+            height=200,
+            margin=dict(l=60, r=20, t=40, b=40),
+            showlegend=False,
+            hovermode='x unified'
+        )
+
+        # Set x-axis range to match data
+        if len(self.tic_rt) > 0:
+            fig.update_xaxes(range=[self.rt_min, self.rt_max])
+
+        return fig
+
+    def update_tic_plot(self):
+        """Update the TIC plot display."""
+        if self.tic_plot is not None:
+            fig = self.create_tic_plot()
+            self.tic_plot.update_figure(fig)
+
+    def find_ms1_spectrum_at_rt(self, target_rt: float) -> Optional[MSSpectrum]:
+        """Find the MS1 spectrum closest to the given RT."""
+        if self.exp is None:
+            return None
+
+        best_spec = None
+        best_rt_diff = float('inf')
+
+        for spec in self.exp:
+            if spec.getMSLevel() != 1:
+                continue
+
+            spec_rt = spec.getRT()
+            rt_diff = abs(spec_rt - target_rt)
+            if rt_diff < best_rt_diff:
+                best_rt_diff = rt_diff
+                best_spec = spec
+
+        return best_spec
+
+    def show_ms1_spectrum(self, rt: float):
+        """Display MS1 spectrum at the given retention time."""
+        if self.exp is None:
+            ui.notify("Load mzML file first", type="warning")
+            return
+
+        spec = self.find_ms1_spectrum_at_rt(rt)
+        if spec is None:
+            ui.notify(f"No MS1 spectrum found near RT={rt:.1f}s", type="warning")
+            return
+
+        mz_array, int_array = spec.get_peaks()
+        actual_rt = spec.getRT()
+
+        if len(mz_array) == 0:
+            ui.notify("Spectrum is empty", type="warning")
+            return
+
+        # Normalize intensities
+        max_int = int_array.max() if len(int_array) > 0 else 1
+        int_norm = (int_array / max_int) * 100
+
+        # Create figure
+        fig = go.Figure()
+
+        # Add spectrum as bars
+        fig.add_trace(go.Bar(
+            x=mz_array,
+            y=int_norm,
+            marker_color='#00ff64',
+            width=0.5,
+            opacity=0.8,
+            hovertemplate='m/z: %{x:.4f}<br>Intensity: %{y:.1f}%<extra></extra>'
+        ))
+
+        fig.update_layout(
+            title=dict(
+                text=f"MS1 Spectrum at RT={actual_rt:.2f}s ({len(mz_array):,} peaks)",
+                font=dict(size=14)
+            ),
+            xaxis_title="m/z",
+            yaxis_title="Relative Intensity (%)",
+            template="plotly_dark",
+            height=300,
+            margin=dict(l=60, r=20, t=50, b=50),
+            showlegend=False
+        )
+
+        fig.update_xaxes(range=[self.view_mz_min, self.view_mz_max] if self.view_mz_min else [0, 2000])
+        fig.update_yaxes(range=[0, 105])
+
+        # Update plot
+        if self.ms1_spectrum_plot is not None:
+            self.ms1_spectrum_plot.update_figure(fig)
+
+        if self.ms1_spectrum_info_label is not None:
+            tic_val = float(np.sum(int_array))
+            self.ms1_spectrum_info_label.set_text(
+                f"RT: {actual_rt:.2f}s | Peaks: {len(mz_array):,} | TIC: {tic_val:.2e}"
             )
 
     def zoom_to_feature(self, feature_idx: int, padding: float = 0.2):
@@ -1009,6 +1167,9 @@ class MzMLViewer:
         if self.mz_range_label:
             self.mz_range_label.set_text(f"m/z: {self.view_mz_min:.2f} - {self.view_mz_max:.2f}")
 
+        # Update TIC plot (shows current view range)
+        self.update_tic_plot()
+
         if self.status_label:
             self.status_label.set_text("Ready")
 
@@ -1242,6 +1403,23 @@ def create_ui():
 
             ids_cb = ui.checkbox('Identifications', value=True, on_change=toggle_ids).classes('text-orange-400')
 
+        # TIC Plot (clickable to show MS1 spectrum)
+        with ui.card().classes('w-full max-w-6xl'):
+            viewer.tic_plot = ui.plotly(viewer.create_tic_plot()).classes('w-full')
+
+            # Handle click on TIC plot
+            def on_tic_click(e):
+                try:
+                    if e.args and 'points' in e.args and e.args['points']:
+                        point = e.args['points'][0]
+                        if 'x' in point:
+                            rt = point['x']
+                            viewer.show_ms1_spectrum(rt)
+                except Exception:
+                    pass
+
+            viewer.tic_plot.on('plotly_click', on_tic_click)
+
         # Main plot
         with ui.card().classes('p-0'):
             viewer.image_element = ui.image().classes('w-full').style(
@@ -1260,7 +1438,15 @@ def create_ui():
             ui.button('↑ Pan Up', on_click=lambda: viewer.pan(mz_frac=0.25)).props('color=accent')
             ui.button('↓ Pan Down', on_click=lambda: viewer.pan(mz_frac=-0.25)).props('color=accent')
 
-        # Annotated Spectrum Viewer
+        # MS1 Spectrum Viewer (from TIC click)
+        with ui.card().classes('w-full max-w-6xl mt-4'):
+            ui.label('MS1 Spectrum Viewer').classes('text-xl font-semibold mb-2')
+            viewer.ms1_spectrum_info_label = ui.label(
+                'Click on the TIC plot above to display an MS1 spectrum'
+            ).classes('text-sm text-gray-400 mb-2')
+            viewer.ms1_spectrum_plot = ui.plotly(go.Figure()).classes('w-full')
+
+        # Annotated MS2 Spectrum Viewer
         with ui.card().classes('w-full max-w-6xl mt-4'):
             ui.label('Annotated MS2 Spectrum').classes('text-xl font-semibold mb-2')
             viewer.spectrum_info_label = ui.label(
@@ -1368,6 +1554,18 @@ def create_ui():
                     with ui.row().classes('items-center gap-2'):
                         ui.html('<div style="width:16px;height:16px;background:gray;"></div>')
                         ui.label('Unmatched peaks')
+
+                with ui.column():
+                    ui.label('TIC & Spectra:').classes('font-semibold')
+                    with ui.row().classes('items-center gap-2'):
+                        ui.html('<div style="width:16px;height:4px;background:#00d4ff;"></div>')
+                        ui.label('TIC trace')
+                    with ui.row().classes('items-center gap-2'):
+                        ui.html('<div style="width:16px;height:16px;background:rgba(255,255,0,0.2);border:1px solid rgba(255,255,0,0.5);"></div>')
+                        ui.label('Current view range')
+                    with ui.row().classes('items-center gap-2'):
+                        ui.html('<div style="width:16px;height:16px;background:#00ff64;"></div>')
+                        ui.label('MS1 spectrum peaks')
 
                 with ui.column():
                     ui.label('Keyboard Shortcuts:').classes('font-semibold')
