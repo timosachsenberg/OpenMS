@@ -326,6 +326,7 @@ class MzMLViewer:
         self.show_bounding_boxes = True
         self.show_convex_hulls = True
         self.show_ids = True
+        self.show_spectrum_marker = True  # Show RT marker for selected spectrum
 
         # Colors
         self.centroid_color = (0, 255, 100, 255)
@@ -616,6 +617,10 @@ class MzMLViewer:
             self.spectrum_browser_info.set_text(
                 f"RT: {rt:.2f}s | MS Level: {ms_level} | Peaks: {len(mz_array):,} | TIC: {tic:.2e} | m/z: {mz_range}"
             )
+
+        # Update peak map to show the spectrum marker
+        if self.show_spectrum_marker and self.df is not None:
+            self.update_plot()
 
     def navigate_spectrum(self, direction: int):
         """Navigate to prev/next spectrum."""
@@ -1167,6 +1172,43 @@ class MzMLViewer:
         img = Image.alpha_composite(img, overlay)
         return img
 
+    def _draw_spectrum_marker_on_plot(self, img: Image.Image) -> Image.Image:
+        """Draw a horizontal line at the selected spectrum's RT."""
+        if self.selected_spectrum_idx is None or self.exp is None:
+            return img
+
+        spec = self.exp[self.selected_spectrum_idx]
+        rt = spec.getRT()
+
+        # Check if RT is in view
+        if rt < self.view_rt_min or rt > self.view_rt_max:
+            return img
+
+        img = img.convert('RGBA')
+        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        # Calculate x position for the RT
+        x, _ = self._data_to_plot_pixel(rt, self.view_mz_min)
+
+        # Draw vertical line across the full height
+        ms_level = spec.getMSLevel()
+        line_color = (0, 212, 255, 200) if ms_level == 1 else (255, 107, 107, 200)  # cyan for MS1, red for MS2
+
+        draw.line([(x, 0), (x, self.plot_height)], fill=line_color, width=2)
+
+        # Draw small label at top
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 10)
+        except:
+            font = ImageFont.load_default()
+
+        label = f"MS{ms_level} #{self.selected_spectrum_idx}"
+        draw.text((x + 4, 4), label, fill=line_color, font=font)
+
+        img = Image.alpha_composite(img, overlay)
+        return img
+
     def _draw_ids_on_plot(self, img: Image.Image) -> Image.Image:
         """Draw peptide ID precursor positions."""
         if not self.peptide_ids or not self.show_ids:
@@ -1310,6 +1352,9 @@ class MzMLViewer:
 
         if self.peptide_ids:
             plot_img = self._draw_ids_on_plot(plot_img)
+
+        if self.show_spectrum_marker:
+            plot_img = self._draw_spectrum_marker_on_plot(plot_img)
 
         canvas = Image.new('RGBA', (self.canvas_width, self.canvas_height), (20, 20, 25, 255))
         plot_img_rgba = plot_img.convert('RGBA')
@@ -1576,6 +1621,13 @@ def create_ui():
 
             ids_cb = ui.checkbox('Identifications', value=True, on_change=toggle_ids).classes('text-orange-400')
 
+            def toggle_spectrum_marker():
+                viewer.show_spectrum_marker = spectrum_marker_cb.value
+                if viewer.df is not None:
+                    viewer.update_plot()
+
+            spectrum_marker_cb = ui.checkbox('Spectrum Marker', value=True, on_change=toggle_spectrum_marker).classes('text-pink-400')
+
         # TIC Plot (clickable to show MS1 spectrum)
         with ui.card().classes('w-full max-w-6xl'):
             viewer.tic_plot = ui.plotly(viewer.create_tic_plot()).classes('w-full')
@@ -1593,27 +1645,54 @@ def create_ui():
 
             viewer.tic_plot.on('plotly_click', on_tic_click)
 
-        # Main plot
-        with ui.card().classes('p-0'):
-            viewer.image_element = ui.image().classes('w-full').style(
-                f'width: {viewer.canvas_width}px; height: {viewer.canvas_height}px; background: #141419;'
-            )
+        # Main visualization area - peak map with spectrum browser overlay
+        with ui.card().classes('w-full max-w-6xl p-2'):
+            # Peak map
+            with ui.row().classes('w-full items-start gap-0'):
+                # Peak map image
+                with ui.column().classes('flex-none'):
+                    viewer.image_element = ui.image().classes('w-full').style(
+                        f'width: {viewer.canvas_width}px; height: {viewer.canvas_height}px; background: #141419;'
+                    )
+
+            # 1D Spectrum Browser Plot (directly below peak map, same width)
+            with ui.column().classes('w-full mt-2'):
+                # Navigation and info row
+                with ui.row().classes('w-full items-center gap-2 mb-1'):
+                    ui.label('1D Spectrum:').classes('text-sm font-semibold text-gray-300')
+                    ui.button('|<', on_click=lambda: viewer.show_spectrum_in_browser(0)).props('dense size=sm').tooltip('First')
+                    ui.button('< MS1', on_click=lambda: viewer.navigate_spectrum_by_ms_level(-1, 1)).props('dense size=sm color=cyan').tooltip('Prev MS1')
+                    ui.button('<', on_click=lambda: viewer.navigate_spectrum(-1)).props('dense size=sm').tooltip('Prev')
+
+                    viewer.spectrum_nav_label = ui.label('No spectrum').classes('mx-2 text-gray-400 text-sm')
+
+                    ui.button('>', on_click=lambda: viewer.navigate_spectrum(1)).props('dense size=sm').tooltip('Next')
+                    ui.button('MS1 >', on_click=lambda: viewer.navigate_spectrum_by_ms_level(1, 1)).props('dense size=sm color=cyan').tooltip('Next MS1')
+                    ui.button('>|', on_click=lambda: viewer.show_spectrum_in_browser(len(viewer.exp) - 1 if viewer.exp else 0)).props('dense size=sm').tooltip('Last')
+
+                    ui.label('|').classes('mx-1 text-gray-600')
+                    ui.button('< MS2', on_click=lambda: viewer.navigate_spectrum_by_ms_level(-1, 2)).props('dense size=sm color=orange').tooltip('Prev MS2')
+                    ui.button('MS2 >', on_click=lambda: viewer.navigate_spectrum_by_ms_level(1, 2)).props('dense size=sm color=orange').tooltip('Next MS2')
+
+                    ui.element('div').classes('flex-grow')  # Spacer
+
+                    viewer.spectrum_browser_info = ui.label('Click TIC or use spectrum table to select').classes('text-xs text-gray-500')
+
+                # Spectrum plot
+                viewer.spectrum_browser_plot = ui.plotly(go.Figure()).classes('w-full').style(f'max-width: {viewer.canvas_width}px;')
 
         # Navigation controls
-        with ui.row().classes('justify-center gap-2 mt-4'):
+        with ui.row().classes('justify-center gap-2 mt-2'):
             ui.button('Reset View', on_click=viewer.reset_view).props('color=secondary')
             ui.button('Zoom In', on_click=lambda: viewer.zoom_in(0.5)).props('color=primary')
             ui.button('Zoom Out', on_click=lambda: viewer.zoom_out(2.0)).props('color=primary')
-
-        with ui.row().classes('justify-center gap-2 mt-2'):
             ui.button('← Pan Left', on_click=lambda: viewer.pan(rt_frac=-0.25)).props('color=accent')
             ui.button('→ Pan Right', on_click=lambda: viewer.pan(rt_frac=0.25)).props('color=accent')
             ui.button('↑ Pan Up', on_click=lambda: viewer.pan(mz_frac=0.25)).props('color=accent')
             ui.button('↓ Pan Down', on_click=lambda: viewer.pan(mz_frac=-0.25)).props('color=accent')
 
-        # MS1 Spectrum Viewer (from TIC click)
-        with ui.card().classes('w-full max-w-6xl mt-4'):
-            ui.label('MS1 Spectrum Viewer').classes('text-xl font-semibold mb-2')
+        # MS1 Spectrum Viewer (from TIC click) - now in expansion
+        with ui.expansion('TIC Spectrum Viewer', icon='show_chart').classes('w-full max-w-6xl mt-2'):
             viewer.ms1_spectrum_info_label = ui.label(
                 'Click on the TIC plot above to display an MS1 spectrum'
             ).classes('text-sm text-gray-400 mb-2')
@@ -1679,61 +1758,31 @@ def create_ui():
                 ).classes('w-full').on('rowClick', on_id_click)
                 viewer.id_table.props('dark flat bordered dense')
 
-        # 1D Spectrum Browser
-        with ui.expansion('1D Spectrum Browser', icon='insights').classes('w-full max-w-6xl mt-4'):
-            # Spectrum browser viewer
-            with ui.card().classes('w-full'):
-                ui.label('Spectrum Viewer').classes('text-xl font-semibold mb-2')
+        # Spectrum Table (for browsing all spectra)
+        with ui.expansion('Spectrum Table', icon='list').classes('w-full max-w-6xl mt-2'):
+            ui.label('Click a row to view the spectrum in the 1D viewer above').classes('text-sm text-gray-400 mb-2')
 
-                # Navigation controls
-                with ui.row().classes('w-full items-center gap-2 mb-2'):
-                    ui.button('|<', on_click=lambda: viewer.show_spectrum_in_browser(0)).props('dense').tooltip('First spectrum')
-                    ui.button('< MS1', on_click=lambda: viewer.navigate_spectrum_by_ms_level(-1, 1)).props('dense').tooltip('Previous MS1')
-                    ui.button('<', on_click=lambda: viewer.navigate_spectrum(-1)).props('dense').tooltip('Previous spectrum')
+            spectrum_columns = [
+                {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
+                {'name': 'rt', 'label': 'RT (s)', 'field': 'rt', 'sortable': True, 'align': 'right'},
+                {'name': 'ms_level', 'label': 'MS', 'field': 'ms_level', 'sortable': True, 'align': 'center'},
+                {'name': 'n_peaks', 'label': 'Peaks', 'field': 'n_peaks', 'sortable': True, 'align': 'right'},
+                {'name': 'tic', 'label': 'TIC', 'field': 'tic', 'sortable': True, 'align': 'right'},
+                {'name': 'mz_range', 'label': 'm/z Range', 'field': 'mz_range', 'sortable': False, 'align': 'center'},
+                {'name': 'precursor_mz', 'label': 'Prec m/z', 'field': 'precursor_mz', 'sortable': True, 'align': 'right'},
+                {'name': 'precursor_z', 'label': 'Prec Z', 'field': 'precursor_z', 'sortable': True, 'align': 'center'},
+            ]
 
-                    viewer.spectrum_nav_label = ui.label('No spectrum selected').classes('mx-4 text-gray-300')
+            def on_spectrum_click(e):
+                row = e.args[1]
+                if row and 'idx' in row:
+                    viewer.show_spectrum_in_browser(row['idx'])
 
-                    ui.button('>', on_click=lambda: viewer.navigate_spectrum(1)).props('dense').tooltip('Next spectrum')
-                    ui.button('MS1 >', on_click=lambda: viewer.navigate_spectrum_by_ms_level(1, 1)).props('dense').tooltip('Next MS1')
-                    ui.button('>|', on_click=lambda: viewer.show_spectrum_in_browser(len(viewer.exp) - 1 if viewer.exp else 0)).props('dense').tooltip('Last spectrum')
-
-                    ui.label('|').classes('mx-2 text-gray-500')
-
-                    ui.button('< MS2', on_click=lambda: viewer.navigate_spectrum_by_ms_level(-1, 2)).props('dense color=orange').tooltip('Previous MS2')
-                    ui.button('MS2 >', on_click=lambda: viewer.navigate_spectrum_by_ms_level(1, 2)).props('dense color=orange').tooltip('Next MS2')
-
-                viewer.spectrum_browser_info = ui.label(
-                    'Select a spectrum from the table below or use navigation buttons'
-                ).classes('text-sm text-gray-400 mb-2')
-
-                viewer.spectrum_browser_plot = ui.plotly(go.Figure()).classes('w-full')
-
-            # Spectrum table
-            with ui.card().classes('w-full mt-2'):
-                ui.label('All Spectra').classes('text-lg font-semibold mb-2')
-                ui.label('Click a row to view the spectrum').classes('text-sm text-gray-400 mb-2')
-
-                spectrum_columns = [
-                    {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
-                    {'name': 'rt', 'label': 'RT (s)', 'field': 'rt', 'sortable': True, 'align': 'right'},
-                    {'name': 'ms_level', 'label': 'MS', 'field': 'ms_level', 'sortable': True, 'align': 'center'},
-                    {'name': 'n_peaks', 'label': 'Peaks', 'field': 'n_peaks', 'sortable': True, 'align': 'right'},
-                    {'name': 'tic', 'label': 'TIC', 'field': 'tic', 'sortable': True, 'align': 'right'},
-                    {'name': 'mz_range', 'label': 'm/z Range', 'field': 'mz_range', 'sortable': False, 'align': 'center'},
-                    {'name': 'precursor_mz', 'label': 'Prec m/z', 'field': 'precursor_mz', 'sortable': True, 'align': 'right'},
-                    {'name': 'precursor_z', 'label': 'Prec Z', 'field': 'precursor_z', 'sortable': True, 'align': 'center'},
-                ]
-
-                def on_spectrum_click(e):
-                    row = e.args[1]
-                    if row and 'idx' in row:
-                        viewer.show_spectrum_in_browser(row['idx'])
-
-                viewer.spectrum_table = ui.table(
-                    columns=spectrum_columns, rows=viewer.spectrum_data, row_key='idx',
-                    pagination={'rowsPerPage': 10, 'sortBy': 'idx', 'descending': False}
-                ).classes('w-full').on('rowClick', on_spectrum_click)
-                viewer.spectrum_table.props('dark flat bordered dense')
+            viewer.spectrum_table = ui.table(
+                columns=spectrum_columns, rows=viewer.spectrum_data, row_key='idx',
+                pagination={'rowsPerPage': 10, 'sortBy': 'idx', 'descending': False}
+            ).classes('w-full').on('rowClick', on_spectrum_click)
+            viewer.spectrum_table.props('dark flat bordered dense')
 
         # Custom range
         with ui.expansion('Custom Range', icon='tune').classes('w-full max-w-4xl mt-4'):
@@ -1795,6 +1844,12 @@ def create_ui():
                     with ui.row().classes('items-center gap-2'):
                         ui.html('<div style="width:16px;height:16px;background:#00ff64;"></div>', sanitize=False)
                         ui.label('MS1 spectrum peaks')
+                    with ui.row().classes('items-center gap-2'):
+                        ui.html('<div style="width:2px;height:16px;background:#00d4ff;"></div>', sanitize=False)
+                        ui.label('MS1 spectrum marker (cyan)')
+                    with ui.row().classes('items-center gap-2'):
+                        ui.html('<div style="width:2px;height:16px;background:#ff6b6b;"></div>', sanitize=False)
+                        ui.label('MS2 spectrum marker (red)')
 
                 with ui.column():
                     ui.label('Keyboard Shortcuts:').classes('font-semibold')
