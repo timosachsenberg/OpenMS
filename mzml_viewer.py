@@ -1528,43 +1528,43 @@ def create_ui():
                 with ui.column():
                     ui.label('Overlay Colors:').classes('font-semibold')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:16px;background:#00ff64;border-radius:50%;border:1px solid white;"></div>')
+                        ui.html('<div style="width:16px;height:16px;background:#00ff64;border-radius:50%;border:1px solid white;"></div>', sanitize=False)
                         ui.label('Feature Centroid')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:16px;border:2px solid #ffff00;"></div>')
+                        ui.html('<div style="width:16px;height:16px;border:2px solid #ffff00;"></div>', sanitize=False)
                         ui.label('Feature Bounding Box')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:16px;background:rgba(0,200,255,0.5);border:1px solid #00c8ff;"></div>')
+                        ui.html('<div style="width:16px;height:16px;background:rgba(0,200,255,0.5);border:1px solid #00c8ff;"></div>', sanitize=False)
                         ui.label('Feature Convex Hull')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:16px;background:#ff9632;transform:rotate(45deg);"></div>')
+                        ui.html('<div style="width:16px;height:16px;background:#ff9632;transform:rotate(45deg);"></div>', sanitize=False)
                         ui.label('ID Precursor Position')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:16px;background:#ff64ff;border-radius:50%;"></div>')
+                        ui.html('<div style="width:16px;height:16px;background:#ff64ff;border-radius:50%;"></div>', sanitize=False)
                         ui.label('Selected Item')
 
                 with ui.column():
                     ui.label('Spectrum Annotation:').classes('font-semibold')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:16px;background:#1f77b4;"></div>')
+                        ui.html('<div style="width:16px;height:16px;background:#1f77b4;"></div>', sanitize=False)
                         ui.label('b-ions (blue)')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:16px;background:#d62728;"></div>')
+                        ui.html('<div style="width:16px;height:16px;background:#d62728;"></div>', sanitize=False)
                         ui.label('y-ions (red)')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:16px;background:gray;"></div>')
+                        ui.html('<div style="width:16px;height:16px;background:gray;"></div>', sanitize=False)
                         ui.label('Unmatched peaks')
 
                 with ui.column():
                     ui.label('TIC & Spectra:').classes('font-semibold')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:4px;background:#00d4ff;"></div>')
+                        ui.html('<div style="width:16px;height:4px;background:#00d4ff;"></div>', sanitize=False)
                         ui.label('TIC trace')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:16px;background:rgba(255,255,0,0.2);border:1px solid rgba(255,255,0,0.5);"></div>')
+                        ui.html('<div style="width:16px;height:16px;background:rgba(255,255,0,0.2);border:1px solid rgba(255,255,0,0.5);"></div>', sanitize=False)
                         ui.label('Current view range')
                     with ui.row().classes('items-center gap-2'):
-                        ui.html('<div style="width:16px;height:16px;background:#00ff64;"></div>')
+                        ui.html('<div style="width:16px;height:16px;background:#00ff64;"></div>', sanitize=False)
                         ui.label('MS1 spectrum peaks')
 
                 with ui.column():
@@ -1592,20 +1592,17 @@ def create_ui():
             )
         )
 
-    # Load CLI files
-    async def load_cli_files():
-        await ui.context.client.connected()
-        if _cli_files['mzml']:
-            if viewer.load_mzml(_cli_files['mzml']):
-                viewer.update_plot()
-        if _cli_files['featurexml']:
-            if viewer.load_featuremap(_cli_files['featurexml']):
-                viewer.update_plot()
-        if _cli_files['idxml']:
-            if viewer.load_idxml(_cli_files['idxml']):
-                viewer.update_plot()
-
-    app.on_startup(load_cli_files)
+    # Load CLI files after UI is ready
+    if _cli_files['mzml']:
+        if viewer.load_mzml(_cli_files['mzml']):
+            viewer.update_plot()
+            viewer.update_tic_plot()
+    if _cli_files['featurexml']:
+        if viewer.load_featuremap(_cli_files['featurexml']):
+            viewer.update_plot()
+    if _cli_files['idxml']:
+        if viewer.load_idxml(_cli_files['idxml']):
+            viewer.update_plot()
 
 
 @click.command()
@@ -1661,7 +1658,10 @@ def main(files, port, host):
 
     click.echo(f"\nStarting server at http://{host}:{port}")
 
-    create_ui()
+    @ui.page('/')
+    def index():
+        create_ui()
+
     ui.run(
         title='mzML Peak Map Viewer',
         host=host,
