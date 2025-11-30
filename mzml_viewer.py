@@ -288,6 +288,10 @@ class MzMLViewer:
         self.tic_rt = None
         self.tic_intensity = None
 
+        # Spectrum browser data
+        self.spectrum_data = []  # List of spectrum metadata for table
+        self.selected_spectrum_idx = None
+
         # View bounds
         self.rt_min = 0
         self.rt_max = 1
@@ -352,6 +356,12 @@ class MzMLViewer:
         self.ms1_spectrum_plot = None
         self.ms1_spectrum_info_label = None
 
+        # Spectrum browser UI elements
+        self.spectrum_table = None
+        self.spectrum_browser_plot = None
+        self.spectrum_browser_info = None
+        self.spectrum_nav_label = None
+
     def load_mzml(self, filepath: str) -> bool:
         """Load mzML file and extract peak data."""
         try:
@@ -403,6 +413,9 @@ class MzMLViewer:
             self.tic_rt = np.array(tic_rts, dtype=np.float32)
             self.tic_intensity = np.array(tic_intensities, dtype=np.float32)
 
+            # Extract spectrum metadata for browser
+            self.spectrum_data = self._extract_spectrum_data()
+
             self.df = pd.DataFrame({
                 'rt': rts,
                 'mz': mzs,
@@ -430,6 +443,11 @@ class MzMLViewer:
                 )
             if self.status_label:
                 self.status_label.set_text("Ready")
+
+            # Update spectrum browser table
+            if self.spectrum_table is not None:
+                self.spectrum_table.update_rows(self.spectrum_data)
+
             ui.notify(f"Loaded {len(self.df):,} peaks", type="positive")
 
             return True
@@ -479,6 +497,161 @@ class MzMLViewer:
             })
 
         return data
+
+    def _extract_spectrum_data(self) -> List[Dict[str, Any]]:
+        """Extract spectrum metadata for the spectrum browser table."""
+        if self.exp is None:
+            return []
+
+        data = []
+        for idx in range(len(self.exp)):
+            spec = self.exp[idx]
+            rt = spec.getRT()
+            ms_level = spec.getMSLevel()
+            n_peaks = spec.size()
+
+            # Get peaks for TIC calculation
+            mz_array, int_array = spec.get_peaks()
+            tic = float(np.sum(int_array)) if len(int_array) > 0 else 0
+
+            # Get m/z range
+            mz_min = float(mz_array.min()) if len(mz_array) > 0 else 0
+            mz_max = float(mz_array.max()) if len(mz_array) > 0 else 0
+
+            # Get precursor info for MS2+
+            precursor_mz = '-'
+            precursor_charge = '-'
+            if ms_level > 1:
+                precursors = spec.getPrecursors()
+                if precursors:
+                    precursor_mz = round(precursors[0].getMZ(), 4)
+                    charge = precursors[0].getCharge()
+                    precursor_charge = charge if charge > 0 else '-'
+
+            data.append({
+                'idx': idx,
+                'rt': round(rt, 2),
+                'ms_level': ms_level,
+                'n_peaks': n_peaks,
+                'tic': f"{tic:.2e}",
+                'mz_range': f"{mz_min:.1f}-{mz_max:.1f}" if n_peaks > 0 else '-',
+                'precursor_mz': precursor_mz,
+                'precursor_z': precursor_charge,
+            })
+
+        return data
+
+    def show_spectrum_in_browser(self, spectrum_idx: int):
+        """Display a spectrum in the 1D browser view."""
+        if self.exp is None or spectrum_idx < 0 or spectrum_idx >= len(self.exp):
+            return
+
+        self.selected_spectrum_idx = spectrum_idx
+        spec = self.exp[spectrum_idx]
+
+        mz_array, int_array = spec.get_peaks()
+        rt = spec.getRT()
+        ms_level = spec.getMSLevel()
+
+        if len(mz_array) == 0:
+            ui.notify("Spectrum is empty", type="warning")
+            return
+
+        # Normalize intensities
+        max_int = int_array.max() if len(int_array) > 0 else 1
+        int_norm = (int_array / max_int) * 100
+
+        # Create figure
+        fig = go.Figure()
+
+        # Color based on MS level
+        color = '#00d4ff' if ms_level == 1 else '#ff6b6b'
+
+        # Add spectrum as bars
+        fig.add_trace(go.Bar(
+            x=mz_array,
+            y=int_norm,
+            marker_color=color,
+            width=0.5,
+            opacity=0.8,
+            hovertemplate='m/z: %{x:.4f}<br>Intensity: %{y:.1f}%<extra></extra>'
+        ))
+
+        # Title with spectrum info
+        title = f"Spectrum #{spectrum_idx} | MS{ms_level} | RT={rt:.2f}s | {len(mz_array):,} peaks"
+
+        # Add precursor line for MS2+
+        if ms_level > 1:
+            precursors = spec.getPrecursors()
+            if precursors:
+                prec_mz = precursors[0].getMZ()
+                fig.add_vline(x=prec_mz, line_dash="dash", line_color="orange",
+                              annotation_text=f"Precursor ({prec_mz:.2f})")
+                title += f" | Precursor: {prec_mz:.4f}"
+
+        fig.update_layout(
+            title=dict(text=title, font=dict(size=14)),
+            xaxis_title="m/z",
+            yaxis_title="Relative Intensity (%)",
+            template="plotly_dark",
+            height=350,
+            margin=dict(l=60, r=20, t=50, b=50),
+            showlegend=False
+        )
+
+        fig.update_yaxes(range=[0, 105])
+
+        # Update plot
+        if self.spectrum_browser_plot is not None:
+            self.spectrum_browser_plot.update_figure(fig)
+
+        # Update navigation label
+        if self.spectrum_nav_label is not None:
+            self.spectrum_nav_label.set_text(f"Spectrum {spectrum_idx + 1} of {len(self.exp)}")
+
+        # Update info label
+        if self.spectrum_browser_info is not None:
+            tic = float(np.sum(int_array))
+            mz_range = f"{mz_array.min():.2f} - {mz_array.max():.2f}" if len(mz_array) > 0 else "-"
+            self.spectrum_browser_info.set_text(
+                f"RT: {rt:.2f}s | MS Level: {ms_level} | Peaks: {len(mz_array):,} | TIC: {tic:.2e} | m/z: {mz_range}"
+            )
+
+    def navigate_spectrum(self, direction: int):
+        """Navigate to prev/next spectrum."""
+        if self.exp is None or len(self.exp) == 0:
+            return
+
+        if self.selected_spectrum_idx is None:
+            new_idx = 0
+        else:
+            new_idx = self.selected_spectrum_idx + direction
+
+        # Clamp to valid range
+        new_idx = max(0, min(len(self.exp) - 1, new_idx))
+        self.show_spectrum_in_browser(new_idx)
+
+    def navigate_spectrum_by_ms_level(self, direction: int, ms_level: int):
+        """Navigate to prev/next spectrum of specific MS level."""
+        if self.exp is None or len(self.exp) == 0:
+            return
+
+        start_idx = self.selected_spectrum_idx if self.selected_spectrum_idx is not None else 0
+
+        if direction > 0:
+            # Search forward
+            for i in range(start_idx + 1, len(self.exp)):
+                if self.exp[i].getMSLevel() == ms_level:
+                    self.show_spectrum_in_browser(i)
+                    return
+        else:
+            # Search backward
+            for i in range(start_idx - 1, -1, -1):
+                if self.exp[i].getMSLevel() == ms_level:
+                    self.show_spectrum_in_browser(i)
+                    return
+
+        ui.notify(f"No more MS{ms_level} spectra in that direction", type="info")
 
     def load_featuremap(self, filepath: str) -> bool:
         """Load featureXML file."""
@@ -1505,6 +1678,62 @@ def create_ui():
                     pagination={'rowsPerPage': 8, 'sortBy': 'score', 'descending': True}
                 ).classes('w-full').on('rowClick', on_id_click)
                 viewer.id_table.props('dark flat bordered dense')
+
+        # 1D Spectrum Browser
+        with ui.expansion('1D Spectrum Browser', icon='insights').classes('w-full max-w-6xl mt-4'):
+            # Spectrum browser viewer
+            with ui.card().classes('w-full'):
+                ui.label('Spectrum Viewer').classes('text-xl font-semibold mb-2')
+
+                # Navigation controls
+                with ui.row().classes('w-full items-center gap-2 mb-2'):
+                    ui.button('|<', on_click=lambda: viewer.show_spectrum_in_browser(0)).props('dense').tooltip('First spectrum')
+                    ui.button('< MS1', on_click=lambda: viewer.navigate_spectrum_by_ms_level(-1, 1)).props('dense').tooltip('Previous MS1')
+                    ui.button('<', on_click=lambda: viewer.navigate_spectrum(-1)).props('dense').tooltip('Previous spectrum')
+
+                    viewer.spectrum_nav_label = ui.label('No spectrum selected').classes('mx-4 text-gray-300')
+
+                    ui.button('>', on_click=lambda: viewer.navigate_spectrum(1)).props('dense').tooltip('Next spectrum')
+                    ui.button('MS1 >', on_click=lambda: viewer.navigate_spectrum_by_ms_level(1, 1)).props('dense').tooltip('Next MS1')
+                    ui.button('>|', on_click=lambda: viewer.show_spectrum_in_browser(len(viewer.exp) - 1 if viewer.exp else 0)).props('dense').tooltip('Last spectrum')
+
+                    ui.label('|').classes('mx-2 text-gray-500')
+
+                    ui.button('< MS2', on_click=lambda: viewer.navigate_spectrum_by_ms_level(-1, 2)).props('dense color=orange').tooltip('Previous MS2')
+                    ui.button('MS2 >', on_click=lambda: viewer.navigate_spectrum_by_ms_level(1, 2)).props('dense color=orange').tooltip('Next MS2')
+
+                viewer.spectrum_browser_info = ui.label(
+                    'Select a spectrum from the table below or use navigation buttons'
+                ).classes('text-sm text-gray-400 mb-2')
+
+                viewer.spectrum_browser_plot = ui.plotly(go.Figure()).classes('w-full')
+
+            # Spectrum table
+            with ui.card().classes('w-full mt-2'):
+                ui.label('All Spectra').classes('text-lg font-semibold mb-2')
+                ui.label('Click a row to view the spectrum').classes('text-sm text-gray-400 mb-2')
+
+                spectrum_columns = [
+                    {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
+                    {'name': 'rt', 'label': 'RT (s)', 'field': 'rt', 'sortable': True, 'align': 'right'},
+                    {'name': 'ms_level', 'label': 'MS', 'field': 'ms_level', 'sortable': True, 'align': 'center'},
+                    {'name': 'n_peaks', 'label': 'Peaks', 'field': 'n_peaks', 'sortable': True, 'align': 'right'},
+                    {'name': 'tic', 'label': 'TIC', 'field': 'tic', 'sortable': True, 'align': 'right'},
+                    {'name': 'mz_range', 'label': 'm/z Range', 'field': 'mz_range', 'sortable': False, 'align': 'center'},
+                    {'name': 'precursor_mz', 'label': 'Prec m/z', 'field': 'precursor_mz', 'sortable': True, 'align': 'right'},
+                    {'name': 'precursor_z', 'label': 'Prec Z', 'field': 'precursor_z', 'sortable': True, 'align': 'center'},
+                ]
+
+                def on_spectrum_click(e):
+                    row = e.args[1]
+                    if row and 'idx' in row:
+                        viewer.show_spectrum_in_browser(row['idx'])
+
+                viewer.spectrum_table = ui.table(
+                    columns=spectrum_columns, rows=viewer.spectrum_data, row_key='idx',
+                    pagination={'rowsPerPage': 10, 'sortBy': 'idx', 'descending': False}
+                ).classes('w-full').on('rowClick', on_spectrum_click)
+                viewer.spectrum_table.props('dark flat bordered dense')
 
         # Custom range
         with ui.expansion('Custom Range', icon='tune').classes('w-full max-w-4xl mt-4'):
