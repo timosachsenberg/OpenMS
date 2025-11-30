@@ -288,6 +288,13 @@ class MzMLViewer:
         self.tic_rt = None
         self.tic_intensity = None
 
+        # FAIMS data
+        self.faims_cvs = []  # List of unique CV values
+        self.faims_data = {}  # Dict: CV -> DataFrame of peaks
+        self.faims_tic = {}  # Dict: CV -> (rt_array, intensity_array)
+        self.has_faims = False
+        self.show_faims_view = False  # Toggle for FAIMS multi-panel view
+
         # Spectrum browser data
         self.spectrum_data = []  # List of spectrum metadata for table
         self.selected_spectrum_idx = None
@@ -363,6 +370,41 @@ class MzMLViewer:
         self.spectrum_browser_info = None
         self.spectrum_nav_label = None
 
+        # FAIMS UI elements
+        self.faims_container = None  # Container for multiple peak maps
+        self.faims_images = {}  # Dict: CV -> image element
+        self.faims_toggle = None
+        self.faims_info_label = None
+
+    def _get_cv_from_spectrum(self, spec) -> Optional[float]:
+        """Extract FAIMS compensation voltage from spectrum metadata."""
+        # Try common CV metadata names
+        cv_names = [
+            "FAIMS compensation voltage",
+            "ion mobility drift time",  # Alternative
+            "MS:1001581",  # CV accession for FAIMS CV
+        ]
+        for name in cv_names:
+            if spec.metaValueExists(name):
+                try:
+                    return float(spec.getMetaValue(name))
+                except (ValueError, TypeError):
+                    pass
+
+        # Check in acquisition info / scan windows
+        try:
+            # Try to get from instrument settings or other metadata
+            acq = spec.getAcquisitionInfo()
+            if acq:
+                for a in acq:
+                    for name in cv_names:
+                        if a.metaValueExists(name):
+                            return float(a.getMetaValue(name))
+        except Exception:
+            pass
+
+        return None
+
     def load_mzml(self, filepath: str) -> bool:
         """Load mzML file and extract peak data."""
         try:
@@ -382,13 +424,27 @@ class MzMLViewer:
                 ui.notify("No peaks found in file!", type="warning")
                 return False
 
+            # First pass: detect FAIMS CVs
+            cv_set = set()
+            for spec in self.exp:
+                if spec.getMSLevel() == 1:
+                    cv = self._get_cv_from_spectrum(spec)
+                    if cv is not None:
+                        cv_set.add(cv)
+
+            self.has_faims = len(cv_set) > 1
+            self.faims_cvs = sorted(cv_set) if self.has_faims else []
+
+            # Data structures for peak extraction
             rts = np.empty(total_peaks, dtype=np.float32)
             mzs = np.empty(total_peaks, dtype=np.float32)
             intensities = np.empty(total_peaks, dtype=np.float32)
+            cvs = np.empty(total_peaks, dtype=np.float32) if self.has_faims else None
 
-            # Also compute TIC
+            # Also compute TIC (overall and per-CV)
             tic_rts = []
             tic_intensities = []
+            faims_tic_data = {cv: {'rt': [], 'int': []} for cv in self.faims_cvs} if self.has_faims else {}
 
             idx = 0
             for spec in self.exp:
@@ -397,32 +453,64 @@ class MzMLViewer:
                 rt = spec.getRT()
                 mz_array, int_array = spec.get_peaks()
                 n = len(mz_array)
+
+                cv = self._get_cv_from_spectrum(spec) if self.has_faims else None
+
                 if n > 0:
                     rts[idx:idx+n] = rt
                     mzs[idx:idx+n] = mz_array
                     intensities[idx:idx+n] = int_array
+                    if self.has_faims and cv is not None:
+                        cvs[idx:idx+n] = cv
                     idx += n
+
                     # TIC: sum of all intensities for this spectrum
+                    tic_sum = float(np.sum(int_array))
                     tic_rts.append(rt)
-                    tic_intensities.append(float(np.sum(int_array)))
+                    tic_intensities.append(tic_sum)
+
+                    # Per-CV TIC
+                    if self.has_faims and cv is not None:
+                        faims_tic_data[cv]['rt'].append(rt)
+                        faims_tic_data[cv]['int'].append(tic_sum)
 
             rts = rts[:idx]
             mzs = mzs[:idx]
             intensities = intensities[:idx]
+            if self.has_faims:
+                cvs = cvs[:idx]
 
             # Store TIC data
             self.tic_rt = np.array(tic_rts, dtype=np.float32)
             self.tic_intensity = np.array(tic_intensities, dtype=np.float32)
 
+            # Store per-CV TIC data
+            self.faims_tic = {}
+            for cv in self.faims_cvs:
+                self.faims_tic[cv] = (
+                    np.array(faims_tic_data[cv]['rt'], dtype=np.float32),
+                    np.array(faims_tic_data[cv]['int'], dtype=np.float32)
+                )
+
             # Extract spectrum metadata for browser
             self.spectrum_data = self._extract_spectrum_data()
 
+            # Create main DataFrame
             self.df = pd.DataFrame({
                 'rt': rts,
                 'mz': mzs,
                 'intensity': intensities
             })
+            if self.has_faims:
+                self.df['cv'] = cvs
             self.df['log_intensity'] = np.log1p(self.df['intensity'])
+
+            # Create per-CV DataFrames for FAIMS view
+            self.faims_data = {}
+            if self.has_faims:
+                for cv in self.faims_cvs:
+                    cv_df = self.df[self.df['cv'] == cv].copy()
+                    self.faims_data[cv] = cv_df
 
             self.rt_min = float(self.df['rt'].min())
             self.rt_max = float(self.df['rt'].max())
@@ -436,20 +524,47 @@ class MzMLViewer:
 
             self.current_file = filepath
 
+            # Build info text
+            info_text = (
+                f"Loaded: {Path(filepath).name} | "
+                f"Spectra: {len(self.exp):,} | "
+                f"Peaks: {len(self.df):,}"
+            )
+            if self.has_faims:
+                info_text += f" | FAIMS: {len(self.faims_cvs)} CVs"
+
             if self.info_label:
-                self.info_label.set_text(
-                    f"Loaded: {Path(filepath).name} | "
-                    f"Spectra: {len(self.exp):,} | "
-                    f"Peaks: {len(self.df):,}"
-                )
+                self.info_label.set_text(info_text)
             if self.status_label:
                 self.status_label.set_text("Ready")
+
+            # Update FAIMS UI
+            if self.has_faims:
+                if self.faims_info_label:
+                    cv_str = ", ".join([f"{cv:.1f}V" for cv in self.faims_cvs])
+                    self.faims_info_label.set_text(f"FAIMS CVs detected: {cv_str}")
+                    self.faims_info_label.set_visibility(True)
+                if self.faims_toggle:
+                    self.faims_toggle.set_visibility(True)
+                # Create FAIMS image elements
+                if hasattr(self, '_create_faims_images') and self._create_faims_images:
+                    self._create_faims_images()
+            else:
+                if self.faims_info_label:
+                    self.faims_info_label.set_visibility(False)
+                if self.faims_toggle:
+                    self.faims_toggle.set_visibility(False)
+                    self.show_faims_view = False
+                if self.faims_container:
+                    self.faims_container.set_visibility(False)
 
             # Update spectrum browser table
             if self.spectrum_table is not None:
                 self.spectrum_table.update_rows(self.spectrum_data)
 
             ui.notify(f"Loaded {len(self.df):,} peaks", type="positive")
+            if self.has_faims:
+                ui.notify(f"FAIMS data detected: {len(self.faims_cvs)} compensation voltages", type="info")
 
             return True
 
@@ -1368,6 +1483,75 @@ class MzMLViewer:
 
         return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
+    def render_faims_image(self, cv: float) -> str:
+        """Render a single FAIMS CV peak map using datashader."""
+        if cv not in self.faims_data or len(self.faims_data[cv]) == 0:
+            return ""
+
+        cv_df = self.faims_data[cv]
+
+        mask = (
+            (cv_df['rt'] >= self.view_rt_min) &
+            (cv_df['rt'] <= self.view_rt_max) &
+            (cv_df['mz'] >= self.view_mz_min) &
+            (cv_df['mz'] <= self.view_mz_max)
+        )
+        view_df = cv_df[mask]
+
+        if len(view_df) == 0:
+            return ""
+
+        # Smaller plot size for FAIMS panels
+        faims_plot_width = self.plot_width // max(1, min(len(self.faims_cvs), 4))
+        faims_plot_height = self.plot_height
+
+        ds_canvas = ds.Canvas(
+            plot_width=faims_plot_width,
+            plot_height=faims_plot_height,
+            x_range=(self.view_rt_min, self.view_rt_max),
+            y_range=(self.view_mz_min, self.view_mz_max)
+        )
+
+        agg = ds_canvas.points(view_df, 'rt', 'mz', ds.mean('log_intensity'))
+        img = tf.shade(agg, cmap=fire, how='linear')
+        img = tf.set_background(img, 'black')
+
+        plot_img = img.to_pil()
+
+        # Add CV label at top
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+        except:
+            font = ImageFont.load_default()
+
+        draw = ImageDraw.Draw(plot_img)
+        label = f"CV: {cv:.1f}V"
+        bbox = draw.textbbox((0, 0), label, font=font)
+        label_width = bbox[2] - bbox[0]
+        draw.rectangle([(5, 5), (label_width + 15, 25)], fill=(0, 0, 0, 180))
+        draw.text((10, 7), label, fill=(255, 255, 255, 255), font=font)
+
+        # Add border
+        draw.rectangle([(0, 0), (faims_plot_width - 1, faims_plot_height - 1)],
+                       outline=(100, 100, 100, 255), width=1)
+
+        buffer = io.BytesIO()
+        plot_img.save(buffer, format='PNG')
+        buffer.seek(0)
+
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+    def update_faims_plots(self):
+        """Update all FAIMS CV peak map panels."""
+        if not self.has_faims or not self.show_faims_view:
+            return
+
+        for cv in self.faims_cvs:
+            if cv in self.faims_images and self.faims_images[cv] is not None:
+                img_data = self.render_faims_image(cv)
+                if img_data:
+                    self.faims_images[cv].set_source(f"data:image/png;base64,{img_data}")
+
     def update_plot(self):
         """Update displayed plot."""
         if self.df is None:
@@ -1379,6 +1563,10 @@ class MzMLViewer:
         img_data = self.render_image()
         if img_data and self.image_element:
             self.image_element.set_source(f"data:image/png;base64,{img_data}")
+
+        # Update FAIMS plots if enabled
+        if self.has_faims and self.show_faims_view:
+            self.update_faims_plots()
 
         if self.rt_range_label:
             self.rt_range_label.set_text(f"RT: {self.view_rt_min:.2f} - {self.view_rt_max:.2f} s")
@@ -1582,6 +1770,8 @@ def create_ui():
             viewer.info_label = ui.label('No file loaded').classes('text-gray-400')
             viewer.feature_info_label = ui.label('Features: None').classes('text-cyan-400')
             viewer.id_info_label = ui.label('IDs: None').classes('text-orange-400')
+            viewer.faims_info_label = ui.label('').classes('text-purple-400')
+            viewer.faims_info_label.set_visibility(False)
             viewer.status_label = ui.label('Ready').classes('text-green-400')
 
         # Range display
@@ -1627,6 +1817,18 @@ def create_ui():
                     viewer.update_plot()
 
             spectrum_marker_cb = ui.checkbox('Spectrum Marker', value=True, on_change=toggle_spectrum_marker).classes('text-pink-400')
+
+            # FAIMS toggle (hidden by default, shown when FAIMS data is detected)
+            def toggle_faims_view():
+                viewer.show_faims_view = faims_toggle.value
+                if viewer.faims_container:
+                    viewer.faims_container.set_visibility(viewer.show_faims_view)
+                if viewer.df is not None and viewer.show_faims_view:
+                    viewer.update_faims_plots()
+
+            faims_toggle = ui.checkbox('FAIMS Multi-CV View', value=False, on_change=toggle_faims_view).classes('text-purple-400')
+            faims_toggle.set_visibility(False)
+            viewer.faims_toggle = faims_toggle
 
         # TIC Plot (clickable to show MS1 spectrum)
         with ui.card().classes('w-full max-w-6xl'):
@@ -1680,6 +1882,45 @@ def create_ui():
 
                 # Spectrum plot
                 viewer.spectrum_browser_plot = ui.plotly(go.Figure()).classes('w-full').style(f'max-width: {viewer.canvas_width}px;')
+
+        # FAIMS Multi-CV Peak Maps (hidden by default)
+        faims_container = ui.card().classes('w-full max-w-6xl mt-2 p-2')
+        faims_container.set_visibility(False)
+        viewer.faims_container = faims_container
+
+        with faims_container:
+            ui.label('FAIMS Compensation Voltage Peak Maps').classes('text-lg font-semibold mb-2 text-purple-300')
+            ui.label('Separate peak maps for each CV value - zoom/pan is synchronized').classes('text-xs text-gray-500 mb-2')
+
+            # Container for dynamic FAIMS images
+            faims_row = ui.row().classes('w-full gap-1 flex-wrap justify-center')
+
+            # Note: Actual images will be created dynamically when FAIMS data is loaded
+            # We need to create a method to dynamically populate this container
+
+            def create_faims_images():
+                """Create FAIMS image elements dynamically based on detected CVs."""
+                faims_row.clear()
+                viewer.faims_images = {}
+
+                if not viewer.has_faims:
+                    return
+
+                n_cvs = len(viewer.faims_cvs)
+                # Calculate width for each panel (max 4 per row)
+                panel_width = viewer.plot_width // max(1, min(n_cvs, 4))
+                panel_height = viewer.plot_height
+
+                with faims_row:
+                    for cv in viewer.faims_cvs:
+                        with ui.column().classes('flex-none'):
+                            img = ui.image().style(
+                                f'width: {panel_width}px; height: {panel_height}px; background: #141419;'
+                            )
+                            viewer.faims_images[cv] = img
+
+            # Store the function reference for later use
+            viewer._create_faims_images = create_faims_images
 
         # Navigation controls
         with ui.row().classes('justify-center gap-2 mt-2'):
