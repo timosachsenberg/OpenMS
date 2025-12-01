@@ -532,6 +532,15 @@ class MzMLViewer:
         self.loading_label = None  # Label for progress text
         self.is_loading = False
 
+        # 3D visualization
+        self.show_3d_view = False
+        self.scene_3d = None
+        self.scene_3d_container = None
+        self.view_3d_status = None  # Status label for 3D view
+        self.max_3d_peaks = 5000  # Limit peaks for 3D performance
+        self.rt_threshold_3d = 60.0  # Max RT range for 3D (seconds)
+        self.mz_threshold_3d = 20.0  # Max m/z range for 3D
+
     def _get_cv_from_spectrum(self, spec) -> Optional[float]:
         """Extract FAIMS compensation voltage from spectrum metadata."""
         # Try common CV metadata names
@@ -2130,6 +2139,10 @@ class MzMLViewer:
         # Update breadcrumb
         self.update_breadcrumb()
 
+        # Update 3D view if enabled
+        if self.show_3d_view:
+            self.update_3d_view()
+
     def render_minimap(self) -> Optional[str]:
         """Render the minimap showing full data extent with view rectangle overlay."""
         if self.df is None or len(self.df) == 0:
@@ -2310,6 +2323,181 @@ class MzMLViewer:
 
         rt, mz = self.pixel_to_data_coords(pixel_x, pixel_y)
         self.coord_label.set_text(f"RT: {rt:.2f}s  m/z: {mz:.4f}")
+
+    # ==================== 3D Visualization Methods ====================
+
+    def is_small_region(self) -> bool:
+        """Check if current view is small enough for 3D visualization."""
+        if self.view_rt_min is None or self.view_mz_min is None:
+            return False
+        rt_range = self.view_rt_max - self.view_rt_min
+        mz_range = self.view_mz_max - self.view_mz_min
+        return rt_range <= self.rt_threshold_3d and mz_range <= self.mz_threshold_3d
+
+    def update_3d_view(self):
+        """Update the 3D visualization with current view data."""
+        if not self.show_3d_view or self.scene_3d is None or self.df is None:
+            return
+
+        # Clear existing objects
+        self.scene_3d.clear()
+
+        # Check if region is small enough
+        if not self.is_small_region():
+            # Show message that region is too large
+            if self.view_3d_status:
+                rt_range = self.view_rt_max - self.view_rt_min
+                mz_range = self.view_mz_max - self.view_mz_min
+                self.view_3d_status.set_text(
+                    f'Zoom in more for 3D (current: RT={rt_range:.0f}s, m/z={mz_range:.0f} | need: RT≤{self.rt_threshold_3d:.0f}s, m/z≤{self.mz_threshold_3d:.0f})'
+                )
+            return
+
+        # Get peaks in current view
+        mask = (
+            (self.df['rt'] >= self.view_rt_min) &
+            (self.df['rt'] <= self.view_rt_max) &
+            (self.df['mz'] >= self.view_mz_min) &
+            (self.df['mz'] <= self.view_mz_max)
+        )
+        view_df = self.df[mask]
+
+        if len(view_df) == 0:
+            return
+
+        # Subsample if too many peaks
+        num_peaks_total = len(view_df)
+        if len(view_df) > self.max_3d_peaks:
+            view_df = view_df.nlargest(self.max_3d_peaks, 'intensity')
+        num_peaks_shown = len(view_df)
+
+        # Normalize coordinates for 3D scene
+        rt_range = self.view_rt_max - self.view_rt_min
+        mz_range = self.view_mz_max - self.view_mz_min
+        max_intensity = view_df['intensity'].max()
+
+        # Scene dimensions (arbitrary units for visualization)
+        scene_width = 8  # RT axis (x)
+        scene_depth = 6  # m/z axis (z)
+        scene_height = 4  # Intensity axis (y)
+
+        # Add baseline grid
+        with self.scene_3d.group() as baseline:
+            # Baseline plane (grid lines)
+            baseline_color = '#444444'
+            # RT lines (along z)
+            for i in range(5):
+                x = (i / 4) * scene_width - scene_width / 2
+                self.scene_3d.line(
+                    [x, 0, -scene_depth / 2],
+                    [x, 0, scene_depth / 2]
+                ).material(baseline_color)
+            # m/z lines (along x)
+            for i in range(5):
+                z = (i / 4) * scene_depth - scene_depth / 2
+                self.scene_3d.line(
+                    [-scene_width / 2, 0, z],
+                    [scene_width / 2, 0, z]
+                ).material(baseline_color)
+
+        # Add peak sticks
+        stick_color = '#00aaff'
+        for _, row in view_df.iterrows():
+            # Normalize to scene coordinates
+            x = ((row['rt'] - self.view_rt_min) / rt_range - 0.5) * scene_width
+            z = ((row['mz'] - self.view_mz_min) / mz_range - 0.5) * scene_depth
+            y = (row['intensity'] / max_intensity) * scene_height
+
+            # Draw stick from baseline to peak
+            self.scene_3d.line([x, 0, z], [x, y, z]).material(stick_color)
+            # Add small sphere at top
+            self.scene_3d.sphere(0.03).move(x, y, z).material(stick_color)
+
+        # Draw features on baseline if available
+        if self.feature_map is not None and self.show_centroids:
+            self._draw_features_on_3d_baseline(scene_width, scene_depth, rt_range, mz_range)
+
+        # Add axis labels using text
+        self._add_3d_axis_labels(scene_width, scene_depth, scene_height)
+
+        # Update status
+        if self.view_3d_status:
+            if num_peaks_shown < num_peaks_total:
+                self.view_3d_status.set_text(f'Showing {num_peaks_shown:,} of {num_peaks_total:,} peaks (top intensity)')
+            else:
+                self.view_3d_status.set_text(f'Showing {num_peaks_shown:,} peaks')
+
+    def _draw_features_on_3d_baseline(self, scene_width: float, scene_depth: float,
+                                       rt_range: float, mz_range: float):
+        """Draw feature outlines on the 3D baseline plane."""
+        if self.feature_map is None:
+            return
+
+        feature_color = '#00ff66'
+        selected_color = '#ff66ff'
+
+        for i, feature in enumerate(self.feature_map):
+            rt = feature.getRT()
+            mz = feature.getMZ()
+
+            # Check if feature is in current view
+            if not (self.view_rt_min <= rt <= self.view_rt_max and
+                    self.view_mz_min <= mz <= self.view_mz_max):
+                continue
+
+            # Normalize to scene coordinates
+            x = ((rt - self.view_rt_min) / rt_range - 0.5) * scene_width
+            z = ((mz - self.view_mz_min) / mz_range - 0.5) * scene_depth
+
+            color = selected_color if i == self.selected_feature_idx else feature_color
+
+            # Draw feature centroid as a flat marker on baseline
+            self.scene_3d.sphere(0.08).move(x, 0.01, z).material(color)
+
+            # Draw bounding box outline on baseline if enabled
+            if self.show_bounding_boxes:
+                hull = feature.getConvexHulls()
+                if hull:
+                    bb = hull[0].getBoundingBox()
+                    rt_min_f, rt_max_f = bb.minX(), bb.maxX()
+                    mz_min_f, mz_max_f = bb.minY(), bb.maxY()
+
+                    # Normalize to scene coords
+                    x1 = ((rt_min_f - self.view_rt_min) / rt_range - 0.5) * scene_width
+                    x2 = ((rt_max_f - self.view_rt_min) / rt_range - 0.5) * scene_width
+                    z1 = ((mz_min_f - self.view_mz_min) / mz_range - 0.5) * scene_depth
+                    z2 = ((mz_max_f - self.view_mz_min) / mz_range - 0.5) * scene_depth
+
+                    # Draw rectangle on baseline
+                    y_bb = 0.02
+                    self.scene_3d.line([x1, y_bb, z1], [x2, y_bb, z1]).material(color)
+                    self.scene_3d.line([x2, y_bb, z1], [x2, y_bb, z2]).material(color)
+                    self.scene_3d.line([x2, y_bb, z2], [x1, y_bb, z2]).material(color)
+                    self.scene_3d.line([x1, y_bb, z2], [x1, y_bb, z1]).material(color)
+
+    def _add_3d_axis_labels(self, scene_width: float, scene_depth: float, scene_height: float):
+        """Add axis labels to the 3D scene."""
+        # These are positioned at the ends of axes
+        label_color = '#888888'
+
+        # RT axis label (along x)
+        rt_mid = (self.view_rt_min + self.view_rt_max) / 2
+        self.scene_3d.text(
+            f"RT ({self.view_rt_min:.1f}-{self.view_rt_max:.1f}s)",
+            f'font-size: 0.3px; color: {label_color}'
+        ).move(0, -0.3, scene_depth / 2 + 0.5)
+
+        # m/z axis label (along z)
+        self.scene_3d.text(
+            f"m/z ({self.view_mz_min:.1f}-{self.view_mz_max:.1f})",
+            f'font-size: 0.3px; color: {label_color}'
+        ).move(scene_width / 2 + 0.5, -0.3, 0).rotate(0, -90, 0)
+
+        # Intensity axis label (along y)
+        self.scene_3d.text(
+            "Intensity",
+            f'font-size: 0.3px; color: {label_color}'
+        ).move(-scene_width / 2 - 0.5, scene_height / 2, 0).rotate(0, 0, 90)
 
     # ==================== Search and Filter Methods ====================
 
@@ -3030,6 +3218,18 @@ def create_ui():
                 colormap_options = list(COLORMAPS.keys())
                 ui.select(colormap_options, value='jet', on_change=change_colormap).props('dense outlined').classes('w-28')
 
+                ui.label('|').classes('text-gray-600 mx-2')
+
+                def toggle_3d_view():
+                    viewer.show_3d_view = view_3d_cb.value
+                    if viewer.scene_3d_container:
+                        viewer.scene_3d_container.set_visibility(viewer.show_3d_view)
+                    if viewer.show_3d_view and viewer.df is not None:
+                        viewer.update_3d_view()
+
+                view_3d_cb = ui.checkbox('3D View', value=False, on_change=toggle_3d_view).props('dense').classes('text-purple-400')
+                ui.label('(zoom in for detail)').classes('text-xs text-gray-500')
+
             # Breadcrumb trail and coordinate display row
             with ui.row().classes('w-full items-center justify-between mb-1'):
                 with ui.row().classes('items-center gap-2'):
@@ -3194,6 +3394,24 @@ def create_ui():
                             viewer.go_to_zoom_history(len(viewer.zoom_history) - 2)
 
                     ui.button('← Back', on_click=go_back).props('dense size=sm color=grey').classes('mt-1').tooltip('Go to previous view')
+
+            # 3D View Container (hidden by default)
+            viewer.scene_3d_container = ui.column().classes('w-full mt-2')
+            viewer.scene_3d_container.set_visibility(False)
+            with viewer.scene_3d_container:
+                with ui.row().classes('w-full items-center gap-2 mb-1'):
+                    ui.label('3D Peak View').classes('text-sm font-semibold text-purple-400')
+                    ui.label('(drag to rotate, scroll to zoom)').classes('text-xs text-gray-500')
+                    viewer.view_3d_status = ui.label('').classes('text-xs text-gray-400 ml-4')
+
+                with ui.card().classes('w-full').style('background: #1a1a1f;'):
+                    viewer.scene_3d = ui.scene(
+                        width=viewer.canvas_width,
+                        height=400,
+                        background_color='#1a1a1f'
+                    ).classes('w-full')
+                    # Set initial camera position for good viewing angle
+                    viewer.scene_3d.move_camera(x=8, y=6, z=8, look_at_x=0, look_at_y=1, look_at_z=0)
 
             # 1D Spectrum Browser Plot (directly below peak map, same width)
             with ui.column().classes('w-full mt-2'):
