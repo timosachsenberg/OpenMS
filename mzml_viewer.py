@@ -1963,21 +1963,20 @@ def create_ui():
 
         # Main visualization area - peak map with spectrum browser overlay
         with ui.card().classes('w-full max-w-6xl p-2'):
-            ui.label('Peak Map - Scroll to zoom, drag to pan').classes('text-xs text-gray-500 mb-1')
+            ui.label('Peak Map - Scroll to zoom, drag to select region, double-click to reset').classes('text-xs text-gray-500 mb-1')
 
             # Peak map with mouse interaction
             with ui.row().classes('w-full items-start gap-0'):
                 # Peak map image with mouse handlers
                 with ui.column().classes('flex-none'):
                     viewer.image_element = ui.image().classes('w-full').style(
-                        f'width: {viewer.canvas_width}px; height: {viewer.canvas_height}px; background: #141419; cursor: grab;'
+                        f'width: {viewer.canvas_width}px; height: {viewer.canvas_height}px; background: #141419; cursor: crosshair;'
                     )
 
                     # Mouse wheel zoom handler
                     def on_wheel(e):
                         try:
                             # Get mouse position relative to image
-                            # Account for margins in the rendered image
                             offset_x = e.args.get('offsetX', 0)
                             offset_y = e.args.get('offsetY', 0)
                             delta_y = e.args.get('deltaY', 0)
@@ -1997,36 +1996,74 @@ def create_ui():
 
                     viewer.image_element.on('wheel.prevent', on_wheel)
 
-                    # Mouse drag pan handlers
-                    drag_state = {'dragging': False, 'last_x': 0, 'last_y': 0}
+                    # Drag to select region for zoom (no continuous updates - just on release)
+                    drag_state = {'dragging': False, 'start_x': 0, 'start_y': 0}
 
                     def on_mousedown(e):
-                        drag_state['dragging'] = True
-                        drag_state['last_x'] = e.args.get('clientX', 0)
-                        drag_state['last_y'] = e.args.get('clientY', 0)
-
-                    def on_mousemove(e):
-                        if drag_state['dragging']:
-                            current_x = e.args.get('clientX', 0)
-                            current_y = e.args.get('clientY', 0)
-                            dx = current_x - drag_state['last_x']
-                            dy = current_y - drag_state['last_y']
-
-                            if abs(dx) > 2 or abs(dy) > 2:  # Threshold to avoid tiny movements
-                                viewer.pan_by_pixels(dx, dy)
-                                drag_state['last_x'] = current_x
-                                drag_state['last_y'] = current_y
+                        offset_x = e.args.get('offsetX', 0)
+                        offset_y = e.args.get('offsetY', 0)
+                        # Only start drag if within plot area
+                        plot_x = offset_x - viewer.margin_left
+                        plot_y = offset_y - viewer.margin_top
+                        if 0 <= plot_x <= viewer.plot_width and 0 <= plot_y <= viewer.plot_height:
+                            drag_state['dragging'] = True
+                            drag_state['start_x'] = offset_x
+                            drag_state['start_y'] = offset_y
 
                     def on_mouseup(e):
-                        drag_state['dragging'] = False
+                        if drag_state['dragging']:
+                            drag_state['dragging'] = False
+                            end_x = e.args.get('offsetX', 0)
+                            end_y = e.args.get('offsetY', 0)
+
+                            # Calculate selection in plot coordinates
+                            start_plot_x = drag_state['start_x'] - viewer.margin_left
+                            start_plot_y = drag_state['start_y'] - viewer.margin_top
+                            end_plot_x = end_x - viewer.margin_left
+                            end_plot_y = end_y - viewer.margin_top
+
+                            # Ensure within bounds
+                            start_plot_x = max(0, min(viewer.plot_width, start_plot_x))
+                            start_plot_y = max(0, min(viewer.plot_height, start_plot_y))
+                            end_plot_x = max(0, min(viewer.plot_width, end_plot_x))
+                            end_plot_y = max(0, min(viewer.plot_height, end_plot_y))
+
+                            # Only zoom if dragged a meaningful distance (>10 pixels)
+                            dx = abs(end_plot_x - start_plot_x)
+                            dy = abs(end_plot_y - start_plot_y)
+
+                            if dx > 10 and dy > 10:
+                                # Convert to data coordinates
+                                rt_range = viewer.view_rt_max - viewer.view_rt_min
+                                mz_range = viewer.view_mz_max - viewer.view_mz_min
+
+                                x1_frac = min(start_plot_x, end_plot_x) / viewer.plot_width
+                                x2_frac = max(start_plot_x, end_plot_x) / viewer.plot_width
+                                y1_frac = min(start_plot_y, end_plot_y) / viewer.plot_height
+                                y2_frac = max(start_plot_y, end_plot_y) / viewer.plot_height
+
+                                new_rt_min = viewer.view_rt_min + x1_frac * rt_range
+                                new_rt_max = viewer.view_rt_min + x2_frac * rt_range
+                                # Y is inverted (top = high m/z)
+                                new_mz_max = viewer.view_mz_max - y1_frac * mz_range
+                                new_mz_min = viewer.view_mz_max - y2_frac * mz_range
+
+                                viewer.view_rt_min = new_rt_min
+                                viewer.view_rt_max = new_rt_max
+                                viewer.view_mz_min = new_mz_min
+                                viewer.view_mz_max = new_mz_max
+                                viewer.update_plot()
 
                     def on_mouseleave(e):
                         drag_state['dragging'] = False
 
+                    def on_dblclick(e):
+                        viewer.reset_view()
+
                     viewer.image_element.on('mousedown', on_mousedown)
-                    viewer.image_element.on('mousemove', on_mousemove)
                     viewer.image_element.on('mouseup', on_mouseup)
                     viewer.image_element.on('mouseleave', on_mouseleave)
+                    viewer.image_element.on('dblclick', on_dblclick)
 
             # 1D Spectrum Browser Plot (directly below peak map, same width)
             with ui.column().classes('w-full mt-2'):
@@ -2103,75 +2140,8 @@ def create_ui():
             ui.button('↑ Pan Up', on_click=lambda: viewer.pan(mz_frac=0.25)).props('color=accent')
             ui.button('↓ Pan Down', on_click=lambda: viewer.pan(mz_frac=-0.25)).props('color=accent')
 
-        # MS1 Spectrum Viewer (from TIC click) - now in expansion
-        with ui.expansion('TIC Spectrum Viewer', icon='show_chart').classes('w-full max-w-6xl mt-2'):
-            viewer.ms1_spectrum_info_label = ui.label(
-                'Click on the TIC plot above to display an MS1 spectrum'
-            ).classes('text-sm text-gray-400 mb-2')
-            viewer.ms1_spectrum_plot = ui.plotly(go.Figure()).classes('w-full')
-
-        # Annotated MS2 Spectrum Viewer
-        with ui.card().classes('w-full max-w-6xl mt-4'):
-            ui.label('Annotated MS2 Spectrum').classes('text-xl font-semibold mb-2')
-            viewer.spectrum_info_label = ui.label(
-                'Click an identification to view its annotated MS2 spectrum'
-            ).classes('text-sm text-gray-400 mb-2')
-            viewer.spectrum_plot = ui.plotly(go.Figure()).classes('w-full')
-
-        # Tables section
-        with ui.row().classes('w-full max-w-6xl mt-4 gap-4 flex-wrap'):
-            # Feature Table
-            with ui.card().classes('flex-1 min-w-96'):
-                ui.label('Features').classes('text-xl font-semibold mb-2')
-                ui.label('Click a row to zoom to that feature').classes('text-sm text-gray-400 mb-2')
-
-                feature_columns = [
-                    {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
-                    {'name': 'rt', 'label': 'RT (s)', 'field': 'rt', 'sortable': True, 'align': 'right'},
-                    {'name': 'mz', 'label': 'm/z', 'field': 'mz', 'sortable': True, 'align': 'right'},
-                    {'name': 'intensity', 'label': 'Intensity', 'field': 'intensity', 'sortable': True, 'align': 'right'},
-                    {'name': 'charge', 'label': 'Z', 'field': 'charge', 'sortable': True, 'align': 'center'},
-                    {'name': 'quality', 'label': 'Quality', 'field': 'quality', 'sortable': True, 'align': 'right'},
-                ]
-
-                def on_feature_click(e):
-                    row = e.args[1]
-                    if row and 'idx' in row:
-                        viewer.zoom_to_feature(row['idx'])
-
-                viewer.feature_table = ui.table(
-                    columns=feature_columns, rows=[], row_key='idx',
-                    pagination={'rowsPerPage': 8, 'sortBy': 'intensity', 'descending': True}
-                ).classes('w-full').on('rowClick', on_feature_click)
-                viewer.feature_table.props('dark flat bordered dense')
-
-            # ID Table
-            with ui.card().classes('flex-1 min-w-96'):
-                ui.label('Identifications').classes('text-xl font-semibold mb-2')
-                ui.label('Click a row to zoom and view annotated spectrum').classes('text-sm text-gray-400 mb-2')
-
-                id_columns = [
-                    {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
-                    {'name': 'rt', 'label': 'RT (s)', 'field': 'rt', 'sortable': True, 'align': 'right'},
-                    {'name': 'mz', 'label': 'm/z', 'field': 'mz', 'sortable': True, 'align': 'right'},
-                    {'name': 'sequence', 'label': 'Sequence', 'field': 'sequence', 'sortable': True, 'align': 'left'},
-                    {'name': 'charge', 'label': 'Z', 'field': 'charge', 'sortable': True, 'align': 'center'},
-                    {'name': 'score', 'label': 'Score', 'field': 'score', 'sortable': True, 'align': 'right'},
-                ]
-
-                def on_id_click(e):
-                    row = e.args[1]
-                    if row and 'idx' in row:
-                        viewer.zoom_to_id(row['idx'])
-
-                viewer.id_table = ui.table(
-                    columns=id_columns, rows=[], row_key='idx',
-                    pagination={'rowsPerPage': 8, 'sortBy': 'score', 'descending': True}
-                ).classes('w-full').on('rowClick', on_id_click)
-                viewer.id_table.props('dark flat bordered dense')
-
-        # Spectrum Table (for browsing all spectra)
-        with ui.expansion('Spectrum Table', icon='list').classes('w-full max-w-6xl mt-2'):
+        # Spectrum Table (moved up for better visibility)
+        with ui.expansion('Spectrum Table', icon='list', value=True).classes('w-full max-w-6xl mt-2'):
             ui.label('Click a row to view the spectrum in the 1D viewer above').classes('text-sm text-gray-400 mb-2')
 
             spectrum_columns = [
@@ -2195,6 +2165,69 @@ def create_ui():
                 pagination={'rowsPerPage': 10, 'sortBy': 'idx', 'descending': False}
             ).classes('w-full').on('rowClick', on_spectrum_click)
             viewer.spectrum_table.props('dark flat bordered dense')
+
+        # MS1 Spectrum Viewer (from TIC click) - now in expansion
+        with ui.expansion('TIC Spectrum Viewer', icon='show_chart').classes('w-full max-w-6xl mt-2'):
+            viewer.ms1_spectrum_info_label = ui.label(
+                'Click on the TIC plot above to display an MS1 spectrum'
+            ).classes('text-sm text-gray-400 mb-2')
+            viewer.ms1_spectrum_plot = ui.plotly(go.Figure()).classes('w-full')
+
+        # Annotated MS2 Spectrum Viewer
+        with ui.card().classes('w-full max-w-6xl mt-4'):
+            ui.label('Annotated MS2 Spectrum').classes('text-xl font-semibold mb-2')
+            viewer.spectrum_info_label = ui.label(
+                'Click an identification to view its annotated MS2 spectrum'
+            ).classes('text-sm text-gray-400 mb-2')
+            viewer.spectrum_plot = ui.plotly(go.Figure()).classes('w-full')
+
+        # Feature Table
+        with ui.expansion('Features', icon='scatter_plot').classes('w-full max-w-6xl mt-2'):
+            ui.label('Click a row to zoom to that feature').classes('text-sm text-gray-400 mb-2')
+
+            feature_columns = [
+                {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
+                {'name': 'rt', 'label': 'RT (s)', 'field': 'rt', 'sortable': True, 'align': 'right'},
+                {'name': 'mz', 'label': 'm/z', 'field': 'mz', 'sortable': True, 'align': 'right'},
+                {'name': 'intensity', 'label': 'Intensity', 'field': 'intensity', 'sortable': True, 'align': 'right'},
+                {'name': 'charge', 'label': 'Z', 'field': 'charge', 'sortable': True, 'align': 'center'},
+                {'name': 'quality', 'label': 'Quality', 'field': 'quality', 'sortable': True, 'align': 'right'},
+            ]
+
+            def on_feature_click(e):
+                row = e.args[1]
+                if row and 'idx' in row:
+                    viewer.zoom_to_feature(row['idx'])
+
+            viewer.feature_table = ui.table(
+                columns=feature_columns, rows=[], row_key='idx',
+                pagination={'rowsPerPage': 8, 'sortBy': 'intensity', 'descending': True}
+            ).classes('w-full').on('rowClick', on_feature_click)
+            viewer.feature_table.props('dark flat bordered dense')
+
+        # ID Table
+        with ui.expansion('Identifications', icon='biotech').classes('w-full max-w-6xl mt-2'):
+            ui.label('Click a row to zoom and view annotated spectrum').classes('text-sm text-gray-400 mb-2')
+
+            id_columns = [
+                {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
+                {'name': 'rt', 'label': 'RT (s)', 'field': 'rt', 'sortable': True, 'align': 'right'},
+                {'name': 'mz', 'label': 'm/z', 'field': 'mz', 'sortable': True, 'align': 'right'},
+                {'name': 'sequence', 'label': 'Sequence', 'field': 'sequence', 'sortable': True, 'align': 'left'},
+                {'name': 'charge', 'label': 'Z', 'field': 'charge', 'sortable': True, 'align': 'center'},
+                {'name': 'score', 'label': 'Score', 'field': 'score', 'sortable': True, 'align': 'right'},
+            ]
+
+            def on_id_click(e):
+                row = e.args[1]
+                if row and 'idx' in row:
+                    viewer.zoom_to_id(row['idx'])
+
+            viewer.id_table = ui.table(
+                columns=id_columns, rows=[], row_key='idx',
+                pagination={'rowsPerPage': 8, 'sortBy': 'score', 'descending': True}
+            ).classes('w-full').on('rowClick', on_id_click)
+            viewer.id_table.props('dark flat bordered dense')
 
         # Custom range
         with ui.expansion('Custom Range', icon='tune').classes('w-full max-w-4xl mt-4'):
