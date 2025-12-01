@@ -2689,7 +2689,7 @@ def create_ui():
                 with viewer.loading_indicator:
                     with ui.column().classes('items-center gap-2'):
                         ui.spinner('dots', size='xl', color='cyan')
-                        ui.label('Loading...').classes('text-cyan-400 text-sm').bind_text(viewer.loading_indicator, 'loading_text')
+                        ui.label('Loading...').classes('text-cyan-400 text-sm')
 
             # Peak map with mouse interaction and minimap
             with ui.row().classes('w-full items-start gap-2'):
