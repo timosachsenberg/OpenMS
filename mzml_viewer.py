@@ -2429,7 +2429,7 @@ def create_ui():
         ui.label('mzML Peak Map Viewer').classes('text-3xl font-bold mb-2')
         ui.label('High-performance visualization with Datashader + pyOpenMS').classes('text-gray-400 mb-4')
 
-        # File upload section
+        # File loading section (local filesystem paths)
         with ui.card().classes('w-full max-w-6xl mb-4'):
             ui.label('Load Data').classes('text-xl font-semibold mb-2')
 
@@ -2438,34 +2438,6 @@ def create_ui():
                 with ui.column().classes('flex-1 min-w-64'):
                     ui.label('mzML File (Peak Data)').classes('text-sm text-gray-400')
                     with ui.row().classes('w-full items-end gap-2'):
-                        async def handle_mzml_upload(e):
-                            # Handle different NiceGUI upload API versions
-                            try:
-                                content = None
-                                filename = None
-
-                                # New API: e.file.content and e.file.name
-                                if hasattr(e, 'file') and e.file is not None:
-                                    content = e.file.content.read()
-                                    filename = e.file.name
-                                # Old API: e.content and e.name
-                                elif hasattr(e, 'content') and e.content is not None:
-                                    content = e.content.read()
-                                    filename = e.name
-                                else:
-                                    ui.notify("Upload failed - unsupported NiceGUI version", type="negative")
-                                    return
-
-                                temp_path = Path('/tmp') / filename
-                                temp_path.write_bytes(content)
-                                if viewer.load_mzml(str(temp_path)):
-                                    viewer.update_plot()
-                            except Exception as ex:
-                                ui.notify(f"Upload error: {ex}", type="negative")
-
-                        ui.upload(label='Upload mzML', on_upload=handle_mzml_upload,
-                                  auto_upload=True).props('accept=.mzML,.mzml').classes('w-40')
-
                         mzml_input = ui.input(placeholder='/path/to/file.mzML').classes('flex-1')
 
                         async def load_mzml_path():
@@ -2473,6 +2445,7 @@ def create_ui():
                             if path and Path(path).exists():
                                 if viewer.load_mzml(path):
                                     viewer.update_plot()
+                                    viewer.update_tic_plot()
                             else:
                                 ui.notify("File not found", type="warning")
 
@@ -2482,28 +2455,6 @@ def create_ui():
                 with ui.column().classes('flex-1 min-w-64'):
                     ui.label('FeatureXML (Features)').classes('text-sm text-gray-400')
                     with ui.row().classes('w-full items-end gap-2'):
-                        async def handle_feature_upload(e):
-                            # Handle different NiceGUI upload API versions
-                            try:
-                                if hasattr(e, 'file') and e.file is not None:
-                                    content = e.file.content.read()
-                                    filename = e.file.name
-                                elif hasattr(e, 'content') and e.content is not None:
-                                    content = e.content.read()
-                                    filename = e.name
-                                else:
-                                    ui.notify("Upload failed - unsupported NiceGUI version", type="negative")
-                                    return
-                                temp_path = Path('/tmp') / filename
-                                temp_path.write_bytes(content)
-                                if viewer.load_featuremap(str(temp_path)):
-                                    viewer.update_plot()
-                            except Exception as ex:
-                                ui.notify(f"Upload error: {ex}", type="negative")
-
-                        ui.upload(label='Upload featureXML', on_upload=handle_feature_upload,
-                                  auto_upload=True).props('accept=.featureXML,.xml').classes('w-40')
-
                         feature_input = ui.input(placeholder='/path/to/features.featureXML').classes('flex-1')
 
                         async def load_feature_path():
@@ -2526,27 +2477,6 @@ def create_ui():
                 with ui.column().classes('flex-1 min-w-64'):
                     ui.label('idXML (Identifications)').classes('text-sm text-gray-400')
                     with ui.row().classes('w-full items-end gap-2'):
-                        async def handle_id_upload(e):
-                            # Handle different NiceGUI upload API versions
-                            try:
-                                if hasattr(e, 'file') and e.file is not None:
-                                    content = e.file.content.read()
-                                    filename = e.file.name
-                                elif hasattr(e, 'content') and e.content is not None:
-                                    content = e.content.read()
-                                    filename = e.name
-                                else:
-                                    ui.notify("Upload failed - unsupported NiceGUI version", type="negative")
-                                    return
-                                temp_path = Path('/tmp') / filename
-                                temp_path.write_bytes(content)
-                                if viewer.load_idxml(str(temp_path)):
-                                    viewer.update_plot()
-                            except Exception as ex:
-                                ui.notify(f"Upload error: {ex}", type="negative")
-
-                        ui.upload(label='Upload idXML', on_upload=handle_id_upload,
-                                  auto_upload=True).props('accept=.idXML,.xml').classes('w-40')
 
                         id_input = ui.input(placeholder='/path/to/ids.idXML').classes('flex-1')
 
