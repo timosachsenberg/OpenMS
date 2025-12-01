@@ -376,6 +376,9 @@ class MzMLViewer:
         self.faims_toggle = None
         self.faims_info_label = None
 
+        # UI update flags
+        self._updating_from_tic = False  # Prevent circular TIC updates
+
     def _get_cv_from_spectrum(self, spec) -> Optional[float]:
         """Extract FAIMS compensation voltage from spectrum metadata."""
         # Try common CV metadata names
@@ -1035,6 +1038,9 @@ class MzMLViewer:
 
     def update_tic_plot(self):
         """Update the TIC plot display."""
+        # Skip if we're updating from a TIC interaction to prevent circular updates
+        if self._updating_from_tic:
+            return
         if self.tic_plot is not None:
             fig = self.create_tic_plot()
             self.tic_plot.update_figure(fig)
@@ -1830,11 +1836,12 @@ def create_ui():
             faims_toggle.set_visibility(False)
             viewer.faims_toggle = faims_toggle
 
-        # TIC Plot (clickable to show MS1 spectrum)
+        # TIC Plot (clickable to show MS1 spectrum, zoomable to update peak map)
         with ui.card().classes('w-full max-w-6xl'):
+            ui.label('TIC - Click to view spectrum, drag to zoom RT range').classes('text-xs text-gray-500 mb-1')
             viewer.tic_plot = ui.plotly(viewer.create_tic_plot()).classes('w-full')
 
-            # Handle click on TIC plot
+            # Handle click on TIC plot - show spectrum and center peak map
             def on_tic_click(e):
                 try:
                     if e.args and 'points' in e.args and e.args['points']:
@@ -1842,10 +1849,43 @@ def create_ui():
                         if 'x' in point:
                             rt = point['x']
                             viewer.show_ms1_spectrum(rt)
+                            # Also center the peak map on this RT
+                            rt_range = viewer.view_rt_max - viewer.view_rt_min
+                            viewer.view_rt_min = max(viewer.rt_min, rt - rt_range / 2)
+                            viewer.view_rt_max = min(viewer.rt_max, rt + rt_range / 2)
+                            viewer.update_plot()
                 except Exception:
                     pass
 
             viewer.tic_plot.on('plotly_click', on_tic_click)
+
+            # Handle zoom/pan on TIC plot - sync RT range to peak map
+            def on_tic_relayout(e):
+                try:
+                    if e.args:
+                        args = e.args
+                        # Check for x-axis range changes (zoom or pan)
+                        if 'xaxis.range[0]' in args and 'xaxis.range[1]' in args:
+                            new_rt_min = float(args['xaxis.range[0]'])
+                            new_rt_max = float(args['xaxis.range[1]'])
+                            # Clamp to data bounds
+                            viewer.view_rt_min = max(viewer.rt_min, new_rt_min)
+                            viewer.view_rt_max = min(viewer.rt_max, new_rt_max)
+                            # Set flag to prevent TIC reset during update
+                            viewer._updating_from_tic = True
+                            viewer.update_plot()
+                            viewer._updating_from_tic = False
+                        elif 'xaxis.autorange' in args and args['xaxis.autorange']:
+                            # Reset to full range
+                            viewer.view_rt_min = viewer.rt_min
+                            viewer.view_rt_max = viewer.rt_max
+                            viewer._updating_from_tic = True
+                            viewer.update_plot()
+                            viewer._updating_from_tic = False
+                except Exception:
+                    viewer._updating_from_tic = False
+
+            viewer.tic_plot.on('plotly_relayout', on_tic_relayout)
 
         # Main visualization area - peak map with spectrum browser overlay
         with ui.card().classes('w-full max-w-6xl p-2'):
