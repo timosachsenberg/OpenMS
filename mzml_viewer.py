@@ -362,10 +362,10 @@ class MzMLViewer:
 
         # Display options
         self.show_centroids = True
-        self.show_bounding_boxes = True
-        self.show_convex_hulls = True
+        self.show_bounding_boxes = False  # Disabled by default for faster rendering
+        self.show_convex_hulls = False    # Disabled by default for faster rendering
         self.show_ids = True
-        self.show_spectrum_marker = True  # Show RT marker for selected spectrum
+        self.show_spectrum_marker = True  # Always show RT/m/z marker for selected spectrum
 
         # Colors
         self.centroid_color = (0, 255, 100, 255)
@@ -2567,46 +2567,8 @@ def create_ui():
 
                     ui.button('Go', on_click=do_goto).props('dense color=primary')
 
-        # Display options
-        with ui.row().classes('w-full justify-center gap-4 mb-2 flex-wrap'):
-            ui.label('Show:').classes('text-gray-400')
-
-            def toggle_centroids():
-                viewer.show_centroids = centroid_cb.value
-                if viewer.df is not None:
-                    viewer.update_plot()
-
-            centroid_cb = ui.checkbox('Centroids', value=True, on_change=toggle_centroids).classes('text-green-400')
-
-            def toggle_bboxes():
-                viewer.show_bounding_boxes = bbox_cb.value
-                if viewer.df is not None:
-                    viewer.update_plot()
-
-            bbox_cb = ui.checkbox('Bounding Boxes', value=True, on_change=toggle_bboxes).classes('text-yellow-400')
-
-            def toggle_hulls():
-                viewer.show_convex_hulls = hull_cb.value
-                if viewer.df is not None:
-                    viewer.update_plot()
-
-            hull_cb = ui.checkbox('Convex Hulls', value=True, on_change=toggle_hulls).classes('text-cyan-400')
-
-            def toggle_ids():
-                viewer.show_ids = ids_cb.value
-                if viewer.df is not None:
-                    viewer.update_plot()
-
-            ids_cb = ui.checkbox('Identifications', value=True, on_change=toggle_ids).classes('text-orange-400')
-
-            def toggle_spectrum_marker():
-                viewer.show_spectrum_marker = spectrum_marker_cb.value
-                if viewer.df is not None:
-                    viewer.update_plot()
-
-            spectrum_marker_cb = ui.checkbox('Spectrum Marker', value=True, on_change=toggle_spectrum_marker).classes('text-pink-400')
-
-            # FAIMS toggle (hidden by default, shown when FAIMS data is detected)
+        # FAIMS toggle (hidden by default, shown when FAIMS data is detected)
+        with ui.row().classes('w-full justify-center mb-2'):
             def toggle_faims_view():
                 viewer.show_faims_view = faims_toggle.value
                 if viewer.faims_container:
@@ -2670,8 +2632,40 @@ def create_ui():
 
             viewer.tic_plot.on('plotly_relayout', on_tic_relayout)
 
-        # Main visualization area - peak map with spectrum browser overlay
-        with ui.card().classes('w-full max-w-6xl p-2'):
+        # Main visualization area - peak map with spectrum browser overlay (collapsible)
+        with ui.expansion('2D Peak Map', icon='grid_on', value=True).classes('w-full max-w-6xl'):
+            # Display options row
+            with ui.row().classes('w-full items-center gap-4 mb-2 flex-wrap'):
+                ui.label('Overlay:').classes('text-xs text-gray-400')
+
+                def toggle_centroids():
+                    viewer.show_centroids = centroid_cb.value
+                    if viewer.df is not None:
+                        viewer.update_plot()
+
+                centroid_cb = ui.checkbox('Centroids', value=True, on_change=toggle_centroids).props('dense').classes('text-green-400')
+
+                def toggle_bboxes():
+                    viewer.show_bounding_boxes = bbox_cb.value
+                    if viewer.df is not None:
+                        viewer.update_plot()
+
+                bbox_cb = ui.checkbox('Bounding Boxes', value=False, on_change=toggle_bboxes).props('dense').classes('text-yellow-400')
+
+                def toggle_hulls():
+                    viewer.show_convex_hulls = hull_cb.value
+                    if viewer.df is not None:
+                        viewer.update_plot()
+
+                hull_cb = ui.checkbox('Convex Hulls', value=False, on_change=toggle_hulls).props('dense').classes('text-cyan-400')
+
+                def toggle_ids():
+                    viewer.show_ids = ids_cb.value
+                    if viewer.df is not None:
+                        viewer.update_plot()
+
+                ids_cb = ui.checkbox('Identifications', value=True, on_change=toggle_ids).props('dense').classes('text-orange-400')
+
             # Breadcrumb trail and coordinate display row
             with ui.row().classes('w-full items-center justify-between mb-1'):
                 with ui.row().classes('items-center gap-2'):
@@ -2679,7 +2673,7 @@ def create_ui():
                     viewer.breadcrumb_label = ui.label('Full view').classes('text-xs text-gray-400')
                 viewer.coord_label = ui.label('RT: --  m/z: --').classes('text-xs text-cyan-400 font-mono')
 
-            ui.label('Peak Map - Scroll to zoom, drag to select region, double-click to reset').classes('text-xs text-gray-500 mb-1')
+            ui.label('Scroll to zoom, drag to select region, double-click to reset').classes('text-xs text-gray-500 mb-1')
 
             # Loading indicator overlay
             with ui.element('div').classes('relative'):
