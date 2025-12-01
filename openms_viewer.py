@@ -539,7 +539,7 @@ class MzMLViewer:
         self.view_3d_status = None  # Status label for 3D view
         self.max_3d_peaks = 5000  # Limit peaks for 3D performance
         self.rt_threshold_3d = 60.0  # Max RT range for 3D (seconds)
-        self.mz_threshold_3d = 20.0  # Max m/z range for 3D
+        self.mz_threshold_3d = 40.0  # Max m/z range for 3D
 
     def _get_cv_from_spectrum(self, spec) -> Optional[float]:
         """Extract FAIMS compensation voltage from spectrum metadata."""
@@ -3107,8 +3107,8 @@ def create_ui():
 
                     ui.button('Go', on_click=do_goto).props('dense color=primary')
 
-        # FAIMS toggle (hidden by default, shown when FAIMS data is detected)
-        with ui.row().classes('w-full justify-center mb-2'):
+        # FAIMS toggle (hidden by default, shown when FAIMS data is detected) and 3D View toggle
+        with ui.row().classes('w-full justify-center gap-4 mb-2'):
             def toggle_faims_view():
                 viewer.show_faims_view = faims_toggle.value
                 if viewer.faims_container:
@@ -3119,6 +3119,17 @@ def create_ui():
             faims_toggle = ui.checkbox('FAIMS Multi-CV View', value=False, on_change=toggle_faims_view).classes('text-purple-400')
             faims_toggle.set_visibility(False)
             viewer.faims_toggle = faims_toggle
+
+            # 3D View toggle
+            def toggle_3d_view():
+                viewer.show_3d_view = view_3d_cb.value
+                if viewer.scene_3d_container:
+                    viewer.scene_3d_container.set_visibility(viewer.show_3d_view)
+                if viewer.show_3d_view and viewer.df is not None:
+                    viewer.update_3d_view()
+
+            view_3d_cb = ui.checkbox('3D Peak View', value=False, on_change=toggle_3d_view).props('dense').classes('text-purple-400')
+            ui.label('(zoom in for detail)').classes('text-xs text-gray-500')
 
         # TIC Plot (clickable to show MS1 spectrum, zoomable to update peak map)
         with ui.card().classes('w-full max-w-6xl'):
@@ -3217,18 +3228,6 @@ def create_ui():
 
                 colormap_options = list(COLORMAPS.keys())
                 ui.select(colormap_options, value='jet', on_change=change_colormap).props('dense outlined').classes('w-28')
-
-                ui.label('|').classes('text-gray-600 mx-2')
-
-                def toggle_3d_view():
-                    viewer.show_3d_view = view_3d_cb.value
-                    if viewer.scene_3d_container:
-                        viewer.scene_3d_container.set_visibility(viewer.show_3d_view)
-                    if viewer.show_3d_view and viewer.df is not None:
-                        viewer.update_3d_view()
-
-                view_3d_cb = ui.checkbox('3D View', value=False, on_change=toggle_3d_view).props('dense').classes('text-purple-400')
-                ui.label('(zoom in for detail)').classes('text-xs text-gray-500')
 
             # Breadcrumb trail and coordinate display row
             with ui.row().classes('w-full items-center justify-between mb-1'):
@@ -3395,24 +3394,6 @@ def create_ui():
 
                     ui.button('← Back', on_click=go_back).props('dense size=sm color=grey').classes('mt-1').tooltip('Go to previous view')
 
-            # 3D View Container (hidden by default)
-            viewer.scene_3d_container = ui.column().classes('w-full mt-2')
-            viewer.scene_3d_container.set_visibility(False)
-            with viewer.scene_3d_container:
-                with ui.row().classes('w-full items-center gap-2 mb-1'):
-                    ui.label('3D Peak View').classes('text-sm font-semibold text-purple-400')
-                    ui.label('(drag to rotate, scroll to zoom)').classes('text-xs text-gray-500')
-                    viewer.view_3d_status = ui.label('').classes('text-xs text-gray-400 ml-4')
-
-                with ui.card().classes('w-full').style('background: #1a1a1f;'):
-                    viewer.scene_3d = ui.scene(
-                        width=viewer.canvas_width,
-                        height=400,
-                        background_color='#1a1a1f'
-                    ).classes('w-full')
-                    # Set initial camera position for good viewing angle
-                    viewer.scene_3d.move_camera(x=8, y=6, z=8, look_at_x=0, look_at_y=1, look_at_z=0)
-
             # 1D Spectrum Browser Plot (directly below peak map, same width)
             with ui.column().classes('w-full mt-2'):
                 # Navigation and info row
@@ -3477,6 +3458,24 @@ def create_ui():
 
             # Store the function reference for later use
             viewer._create_faims_images = create_faims_images
+
+        # 3D View Container (hidden by default, shown when toggle enabled)
+        viewer.scene_3d_container = ui.column().classes('w-full max-w-6xl mt-2')
+        viewer.scene_3d_container.set_visibility(False)
+        with viewer.scene_3d_container:
+            with ui.card().classes('w-full').style('background: #1a1a1f; padding: 1rem;'):
+                with ui.row().classes('w-full items-center gap-2 mb-2'):
+                    ui.label('3D Peak View').classes('text-lg font-semibold text-purple-400')
+                    ui.label('(drag to rotate, scroll to zoom)').classes('text-xs text-gray-500')
+                    viewer.view_3d_status = ui.label('').classes('text-xs text-yellow-400 ml-4')
+
+                viewer.scene_3d = ui.scene(
+                    width=viewer.canvas_width,
+                    height=450,
+                    background_color='#1a1a1f'
+                ).classes('w-full')
+                # Set initial camera position for good viewing angle
+                viewer.scene_3d.move_camera(x=8, y=6, z=8, look_at_x=0, look_at_y=1, look_at_z=0)
 
         # Navigation controls
         with ui.row().classes('justify-center gap-2 mt-2'):
