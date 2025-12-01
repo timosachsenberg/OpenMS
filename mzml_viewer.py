@@ -1662,6 +1662,80 @@ class MzMLViewer:
         except ValueError:
             ui.notify("Invalid range values", type="warning")
 
+    def zoom_at_point(self, x_frac: float, y_frac: float, zoom_in: bool = True):
+        """Zoom centered on a specific point (given as fraction of plot area).
+
+        Args:
+            x_frac: Horizontal position (0=left, 1=right) in plot area
+            y_frac: Vertical position (0=top, 1=bottom) in plot area
+            zoom_in: True to zoom in, False to zoom out
+        """
+        if self.df is None:
+            return
+
+        # Convert fractions to data coordinates
+        rt_point = self.view_rt_min + x_frac * (self.view_rt_max - self.view_rt_min)
+        mz_point = self.view_mz_max - y_frac * (self.view_mz_max - self.view_mz_min)  # Y is inverted
+
+        # Zoom factor
+        factor = 0.7 if zoom_in else 1.4
+
+        # Current ranges
+        rt_range = self.view_rt_max - self.view_rt_min
+        mz_range = self.view_mz_max - self.view_mz_min
+
+        # New ranges
+        new_rt_range = rt_range * factor
+        new_mz_range = mz_range * factor
+
+        # Keep the point under cursor at same position
+        new_rt_min = rt_point - x_frac * new_rt_range
+        new_rt_max = rt_point + (1 - x_frac) * new_rt_range
+        new_mz_min = mz_point - (1 - y_frac) * new_mz_range
+        new_mz_max = mz_point + y_frac * new_mz_range
+
+        # Clamp to data bounds
+        self.view_rt_min = max(self.rt_min, new_rt_min)
+        self.view_rt_max = min(self.rt_max, new_rt_max)
+        self.view_mz_min = max(self.mz_min, new_mz_min)
+        self.view_mz_max = min(self.mz_max, new_mz_max)
+
+        self.update_plot()
+
+    def pan_by_pixels(self, dx: float, dy: float):
+        """Pan the view by pixel amounts.
+
+        Args:
+            dx: Horizontal pixel delta (positive = pan right/increase RT)
+            dy: Vertical pixel delta (positive = pan down/decrease mz)
+        """
+        if self.df is None:
+            return
+
+        # Convert pixels to data units
+        rt_per_pixel = (self.view_rt_max - self.view_rt_min) / self.plot_width
+        mz_per_pixel = (self.view_mz_max - self.view_mz_min) / self.plot_height
+
+        rt_shift = -dx * rt_per_pixel  # Negative because dragging right should decrease RT view
+        mz_shift = dy * mz_per_pixel   # Positive because dragging down should decrease mz view
+
+        # Clamp shifts to stay within bounds
+        if self.view_rt_min + rt_shift < self.rt_min:
+            rt_shift = self.rt_min - self.view_rt_min
+        if self.view_rt_max + rt_shift > self.rt_max:
+            rt_shift = self.rt_max - self.view_rt_max
+        if self.view_mz_min + mz_shift < self.mz_min:
+            mz_shift = self.mz_min - self.view_mz_min
+        if self.view_mz_max + mz_shift > self.mz_max:
+            mz_shift = self.mz_max - self.view_mz_max
+
+        self.view_rt_min += rt_shift
+        self.view_rt_max += rt_shift
+        self.view_mz_min += mz_shift
+        self.view_mz_max += mz_shift
+
+        self.update_plot()
+
 
 def create_ui():
     """Create NiceGUI interface."""
@@ -1889,13 +1963,70 @@ def create_ui():
 
         # Main visualization area - peak map with spectrum browser overlay
         with ui.card().classes('w-full max-w-6xl p-2'):
-            # Peak map
+            ui.label('Peak Map - Scroll to zoom, drag to pan').classes('text-xs text-gray-500 mb-1')
+
+            # Peak map with mouse interaction
             with ui.row().classes('w-full items-start gap-0'):
-                # Peak map image
+                # Peak map image with mouse handlers
                 with ui.column().classes('flex-none'):
                     viewer.image_element = ui.image().classes('w-full').style(
-                        f'width: {viewer.canvas_width}px; height: {viewer.canvas_height}px; background: #141419;'
+                        f'width: {viewer.canvas_width}px; height: {viewer.canvas_height}px; background: #141419; cursor: grab;'
                     )
+
+                    # Mouse wheel zoom handler
+                    def on_wheel(e):
+                        try:
+                            # Get mouse position relative to image
+                            # Account for margins in the rendered image
+                            offset_x = e.args.get('offsetX', 0)
+                            offset_y = e.args.get('offsetY', 0)
+                            delta_y = e.args.get('deltaY', 0)
+
+                            # Convert to plot area coordinates (account for margins)
+                            plot_x = offset_x - viewer.margin_left
+                            plot_y = offset_y - viewer.margin_top
+
+                            # Check if within plot area
+                            if 0 <= plot_x <= viewer.plot_width and 0 <= plot_y <= viewer.plot_height:
+                                x_frac = plot_x / viewer.plot_width
+                                y_frac = plot_y / viewer.plot_height
+                                zoom_in = delta_y < 0  # Scroll up = zoom in
+                                viewer.zoom_at_point(x_frac, y_frac, zoom_in)
+                        except Exception:
+                            pass
+
+                    viewer.image_element.on('wheel.prevent', on_wheel)
+
+                    # Mouse drag pan handlers
+                    drag_state = {'dragging': False, 'last_x': 0, 'last_y': 0}
+
+                    def on_mousedown(e):
+                        drag_state['dragging'] = True
+                        drag_state['last_x'] = e.args.get('clientX', 0)
+                        drag_state['last_y'] = e.args.get('clientY', 0)
+
+                    def on_mousemove(e):
+                        if drag_state['dragging']:
+                            current_x = e.args.get('clientX', 0)
+                            current_y = e.args.get('clientY', 0)
+                            dx = current_x - drag_state['last_x']
+                            dy = current_y - drag_state['last_y']
+
+                            if abs(dx) > 2 or abs(dy) > 2:  # Threshold to avoid tiny movements
+                                viewer.pan_by_pixels(dx, dy)
+                                drag_state['last_x'] = current_x
+                                drag_state['last_y'] = current_y
+
+                    def on_mouseup(e):
+                        drag_state['dragging'] = False
+
+                    def on_mouseleave(e):
+                        drag_state['dragging'] = False
+
+                    viewer.image_element.on('mousedown', on_mousedown)
+                    viewer.image_element.on('mousemove', on_mousemove)
+                    viewer.image_element.on('mouseup', on_mouseup)
+                    viewer.image_element.on('mouseleave', on_mouseleave)
 
             # 1D Spectrum Browser Plot (directly below peak map, same width)
             with ui.column().classes('w-full mt-2'):
