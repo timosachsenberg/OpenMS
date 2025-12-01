@@ -55,6 +55,96 @@ from nicegui import ui, app, run
 _viewer_instance = None
 _cli_files = {'mzml': None, 'featurexml': None, 'idxml': None}
 
+
+async def file_picker_dialog(title: str = "Select File",
+                             start_path: str = None,
+                             extensions: List[str] = None) -> Optional[str]:
+    """Show a file picker dialog and return the selected file path."""
+    import os
+
+    if start_path is None:
+        start_path = os.getcwd()
+
+    current_path = start_path
+    selected_file = None
+
+    with ui.dialog() as dialog, ui.card().classes('w-96'):
+        ui.label(title).classes('text-lg font-bold mb-2')
+
+        # Current path display
+        path_label = ui.label(current_path).classes('text-xs text-gray-400 mb-2 break-all')
+
+        # File list container
+        file_list = ui.column().classes('w-full max-h-80 overflow-auto border rounded p-2')
+
+        # Selected file display
+        selected_label = ui.label('No file selected').classes('text-sm text-cyan-400 mt-2')
+
+        def refresh_file_list():
+            nonlocal current_path
+            file_list.clear()
+            path_label.set_text(current_path)
+
+            try:
+                entries = sorted(os.listdir(current_path))
+            except PermissionError:
+                with file_list:
+                    ui.label('Permission denied').classes('text-red-400')
+                return
+
+            with file_list:
+                # Parent directory
+                if current_path != '/':
+                    def go_up():
+                        nonlocal current_path
+                        current_path = str(Path(current_path).parent)
+                        refresh_file_list()
+
+                    ui.button('📁 ..', on_click=go_up).props('flat dense align=left').classes('w-full justify-start text-yellow-400')
+
+                # Directories first
+                for entry in entries:
+                    if entry.startswith('.'):
+                        continue
+                    full_path = os.path.join(current_path, entry)
+
+                    if os.path.isdir(full_path):
+                        def enter_dir(p=full_path):
+                            nonlocal current_path
+                            current_path = p
+                            refresh_file_list()
+
+                        ui.button(f'📁 {entry}', on_click=enter_dir).props('flat dense align=left').classes('w-full justify-start text-yellow-400')
+
+                # Then files
+                for entry in entries:
+                    if entry.startswith('.'):
+                        continue
+                    full_path = os.path.join(current_path, entry)
+
+                    if os.path.isfile(full_path):
+                        # Filter by extension if specified
+                        if extensions:
+                            ext = Path(entry).suffix.lower()
+                            if ext not in [e.lower() for e in extensions]:
+                                continue
+
+                        def select_file(p=full_path, name=entry):
+                            nonlocal selected_file
+                            selected_file = p
+                            selected_label.set_text(f'Selected: {name}')
+
+                        ui.button(f'📄 {entry}', on_click=select_file).props('flat dense align=left').classes('w-full justify-start text-gray-300 hover:text-white')
+
+        refresh_file_list()
+
+        with ui.row().classes('w-full justify-end gap-2 mt-4'):
+            ui.button('Cancel', on_click=lambda: dialog.submit(None)).props('flat')
+            ui.button('Open', on_click=lambda: dialog.submit(selected_file)).props('color=primary')
+
+    result = await dialog
+    return result
+
 # Ion type colors for spectrum annotation
 ION_COLORS = {
     'b': '#1f77b4',  # Blue
@@ -2584,6 +2674,16 @@ def create_ui():
                     with ui.row().classes('w-full items-end gap-2'):
                         mzml_input = ui.input(placeholder='/path/to/file.mzML').classes('flex-1')
 
+                        async def browse_mzml():
+                            path = await file_picker_dialog(
+                                title="Select mzML File",
+                                extensions=['.mzml', '.mzML']
+                            )
+                            if path:
+                                mzml_input.value = path
+
+                        ui.button('Browse', on_click=browse_mzml).props('dense outline')
+
                         async def load_mzml_path():
                             path = mzml_input.value
                             if not path:
@@ -2644,6 +2744,16 @@ def create_ui():
                     with ui.row().classes('w-full items-end gap-2'):
                         feature_input = ui.input(placeholder='/path/to/features.featureXML').classes('flex-1')
 
+                        async def browse_feature():
+                            path = await file_picker_dialog(
+                                title="Select FeatureXML File",
+                                extensions=['.featurexml', '.featureXML', '.xml']
+                            )
+                            if path:
+                                feature_input.value = path
+
+                        ui.button('Browse', on_click=browse_feature).props('dense outline')
+
                         async def load_feature_path():
                             path = feature_input.value
                             if not path or not Path(path).exists():
@@ -2679,8 +2789,17 @@ def create_ui():
                 with ui.column().classes('flex-1 min-w-64'):
                     ui.label('idXML (Identifications)').classes('text-sm text-gray-400')
                     with ui.row().classes('w-full items-end gap-2'):
-
                         id_input = ui.input(placeholder='/path/to/ids.idXML').classes('flex-1')
+
+                        async def browse_id():
+                            path = await file_picker_dialog(
+                                title="Select idXML File",
+                                extensions=['.idxml', '.idXML', '.xml']
+                            )
+                            if path:
+                                id_input.value = path
+
+                        ui.button('Browse', on_click=browse_id).props('dense outline')
 
                         async def load_id_path():
                             path = id_input.value
