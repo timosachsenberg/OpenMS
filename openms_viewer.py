@@ -33,7 +33,8 @@ import plotly.graph_objects as go
 import datashader as ds
 import datashader.transfer_functions as tf
 import colorcet as cc
-from colorcet import fire
+from matplotlib import cm
+from matplotlib.colors import Colormap
 
 # PIL for drawing overlays and axes
 from PIL import Image, ImageDraw, ImageFont
@@ -387,6 +388,18 @@ def create_annotated_spectrum_plot(
     return fig
 
 
+# Available colormaps for peak map visualization
+COLORMAPS = {
+    'jet': cm.get_cmap('jet'),
+    'hot': cm.get_cmap('hot'),
+    'fire': cc.fire,
+    'viridis': cm.get_cmap('viridis'),
+    'plasma': cm.get_cmap('plasma'),
+    'inferno': cm.get_cmap('inferno'),
+    'magma': cm.get_cmap('magma'),
+}
+
+
 class MzMLViewer:
     """High-performance mzML peak map viewer using datashader with feature and ID overlay."""
 
@@ -456,6 +469,7 @@ class MzMLViewer:
         self.show_convex_hulls = False    # Disabled by default for faster rendering
         self.show_ids = True
         self.show_spectrum_marker = True  # Always show RT/m/z marker for selected spectrum
+        self.colormap = 'jet'  # Default colormap
 
         # Colors
         self.centroid_color = (0, 255, 100, 255)
@@ -1985,7 +1999,7 @@ class MzMLViewer:
         )
 
         agg = ds_canvas.points(view_df, 'rt', 'mz', ds.mean('log_intensity'))
-        img = tf.shade(agg, cmap=fire, how='linear')
+        img = tf.shade(agg, cmap=COLORMAPS[self.colormap], how='linear')
         img = tf.set_background(img, 'black')
 
         plot_img = img.to_pil()
@@ -2044,7 +2058,7 @@ class MzMLViewer:
         )
 
         agg = ds_canvas.points(view_df, 'rt', 'mz', ds.mean('log_intensity'))
-        img = tf.shade(agg, cmap=fire, how='linear')
+        img = tf.shade(agg, cmap=COLORMAPS[self.colormap], how='linear')
         img = tf.set_background(img, 'black')
 
         plot_img = img.to_pil()
@@ -2130,7 +2144,7 @@ class MzMLViewer:
         agg = cvs.points(self.df, 'rt', 'mz', agg=ds.sum('intensity'))
 
         # Apply color map
-        img = tf.shade(agg, cmap=cc.fire, how='log')
+        img = tf.shade(agg, cmap=COLORMAPS[self.colormap], how='log')
         img = tf.set_background(img, 'black')
 
         # Convert to PIL
@@ -3003,6 +3017,18 @@ def create_ui():
                         viewer.update_plot()
 
                 ids_cb = ui.checkbox('Identifications', value=True, on_change=toggle_ids).props('dense').classes('text-orange-400')
+
+                ui.label('|').classes('text-gray-600 mx-2')
+                ui.label('Colormap:').classes('text-xs text-gray-400')
+
+                def change_colormap(e):
+                    viewer.colormap = e.value
+                    if viewer.df is not None:
+                        viewer.update_plot()
+                        viewer.update_minimap()
+
+                colormap_options = list(COLORMAPS.keys())
+                ui.select(colormap_options, value='jet', on_change=change_colormap).props('dense outlined').classes('w-28')
 
             # Breadcrumb trail and coordinate display row
             with ui.row().classes('w-full items-center justify-between mb-1'):
