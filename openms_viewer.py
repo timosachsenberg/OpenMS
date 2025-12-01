@@ -390,6 +390,7 @@ def create_annotated_spectrum_plot(
 
 # Available colormaps for peak map visualization
 COLORMAPS = {
+    'bmy': cc.bmy,  # blue-magenta-yellow (default)
     'jet': cm.get_cmap('jet'),
     'hot': cm.get_cmap('hot'),
     'fire': cc.fire,
@@ -469,7 +470,7 @@ class MzMLViewer:
         self.show_convex_hulls = False    # Disabled by default for faster rendering
         self.show_ids = True
         self.show_spectrum_marker = True  # Always show RT/m/z marker for selected spectrum
-        self.colormap = 'jet'  # Default colormap
+        self.colormap = 'bmy'  # Default colormap (blue-magenta-yellow)
 
         # Colors
         self.centroid_color = (0, 255, 100, 255)
@@ -3231,7 +3232,7 @@ def create_ui():
                         viewer.update_minimap()
 
                 colormap_options = list(COLORMAPS.keys())
-                ui.select(colormap_options, value='jet', on_change=change_colormap).props('dense outlined').classes('w-28')
+                ui.select(colormap_options, value='bmy', on_change=change_colormap).props('dense outlined').classes('w-28')
 
             # Breadcrumb trail and coordinate display row
             with ui.row().classes('w-full items-center justify-between mb-1'):
