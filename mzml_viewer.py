@@ -2633,7 +2633,7 @@ def create_ui():
             viewer.tic_plot.on('plotly_relayout', on_tic_relayout)
 
         # Main visualization area - peak map with spectrum browser overlay (collapsible)
-        with ui.expansion('2D Peak Map', icon='grid_on', value=True).classes('w-full max-w-6xl'):
+        with ui.expansion('2D Peak Map', icon='grid_on', value=False).classes('w-full max-w-6xl'):
             # Display options row
             with ui.row().classes('w-full items-center gap-4 mb-2 flex-wrap'):
                 ui.label('Overlay:').classes('text-xs text-gray-400')
