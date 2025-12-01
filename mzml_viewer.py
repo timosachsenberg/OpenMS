@@ -767,6 +767,16 @@ class MzMLViewer:
         if self.spectrum_nav_label is not None:
             self.spectrum_nav_label.set_text(f"Spectrum {spectrum_idx + 1} of {self.exp.size()}")
 
+        # Update spectrum table selection
+        if self.spectrum_table is not None:
+            # Find the row data for this spectrum
+            matching_rows = [row for row in self.spectrum_data if row['idx'] == spectrum_idx]
+            if matching_rows:
+                self.spectrum_table.selected = matching_rows
+
+        # Update TIC to show spectrum marker
+        self.update_tic_plot()
+
         # Update peak map to show the spectrum marker
         if self.show_spectrum_marker and self.df is not None:
             self.update_plot()
@@ -1067,8 +1077,25 @@ class MzMLViewer:
                 line_color="rgba(255, 255, 0, 0.5)"
             )
 
+        # Add vertical marker for selected spectrum
+        if self.selected_spectrum_idx is not None and self.exp is not None:
+            spec = self.exp[self.selected_spectrum_idx]
+            selected_rt = spec.getRT()
+            ms_level = spec.getMSLevel()
+            marker_color = '#00d4ff' if ms_level == 1 else '#ff6b6b'
+            fig.add_vline(
+                x=selected_rt,
+                line_dash="solid",
+                line_color=marker_color,
+                line_width=2,
+                annotation_text=f"#{self.selected_spectrum_idx}",
+                annotation_position="top",
+                annotation_font_color=marker_color,
+                annotation_font_size=10
+            )
+
         fig.update_layout(
-            title=dict(text="Total Ion Chromatogram (TIC) - Click to view MS1 spectrum", font=dict(size=14)),
+            title=dict(text="Total Ion Chromatogram (TIC) - Click to select spectrum", font=dict(size=14)),
             xaxis_title="RT (s)",
             yaxis_title="Total Intensity",
             template="plotly_dark",
@@ -1114,18 +1141,23 @@ class MzMLViewer:
 
         return best_idx
 
-    def show_ms1_spectrum(self, rt: float):
-        """Display MS1 spectrum at the given retention time using the spectrum browser."""
+    def show_spectrum_at_rt(self, rt: float, ms_level: Optional[int] = None):
+        """Display the closest spectrum at the given retention time using the spectrum browser."""
         if self.exp is None:
             ui.notify("Load mzML file first", type="warning")
             return
 
-        spec_idx = self.find_spectrum_idx_at_rt(rt, ms_level=1)
+        spec_idx = self.find_spectrum_idx_at_rt(rt, ms_level=ms_level)
         if spec_idx is None:
-            ui.notify(f"No MS1 spectrum found near RT={rt:.1f}s", type="warning")
+            level_str = f"MS{ms_level} " if ms_level else ""
+            ui.notify(f"No {level_str}spectrum found near RT={rt:.1f}s", type="warning")
             return
 
         self.show_spectrum_in_browser(spec_idx)
+
+    def show_ms1_spectrum(self, rt: float):
+        """Display MS1 spectrum at the given retention time using the spectrum browser."""
+        self.show_spectrum_at_rt(rt, ms_level=1)
 
     def zoom_to_feature(self, feature_idx: int, padding: float = 0.2):
         """Zoom to a specific feature."""
@@ -1923,14 +1955,15 @@ def create_ui():
             ui.label('TIC - Click to view spectrum, drag to zoom RT range').classes('text-xs text-gray-500 mb-1')
             viewer.tic_plot = ui.plotly(viewer.create_tic_plot()).classes('w-full')
 
-            # Handle click on TIC plot - show spectrum and center peak map
+            # Handle click on TIC plot - show closest spectrum and center peak map
             def on_tic_click(e):
                 try:
                     if e.args and 'points' in e.args and e.args['points']:
                         point = e.args['points'][0]
                         if 'x' in point:
                             rt = point['x']
-                            viewer.show_ms1_spectrum(rt)
+                            # Show closest spectrum (any MS level) - this also highlights in table
+                            viewer.show_spectrum_at_rt(rt)
                             # Also center the peak map on this RT
                             rt_range = viewer.view_rt_max - viewer.view_rt_min
                             viewer.view_rt_min = max(viewer.rt_min, rt - rt_range / 2)
@@ -2170,7 +2203,9 @@ def create_ui():
 
             viewer.spectrum_table = ui.table(
                 columns=spectrum_columns, rows=viewer.spectrum_data, row_key='idx',
-                pagination={'rowsPerPage': 10, 'sortBy': 'idx', 'descending': False}
+                pagination={'rowsPerPage': 10, 'sortBy': 'idx', 'descending': False},
+                selection='single',
+                on_select=lambda e: viewer.show_spectrum_in_browser(e.selection[0]['idx']) if e.selection else None
             ).classes('w-full').on('rowClick', on_spectrum_click)
             viewer.spectrum_table.props('dark flat bordered dense')
 
