@@ -527,7 +527,7 @@ class MzMLViewer:
             # Build info text
             info_text = (
                 f"Loaded: {Path(filepath).name} | "
-                f"Spectra: {len(self.exp):,} | "
+                f"Spectra: {self.exp.size():,} | "
                 f"Peaks: {len(self.df):,}"
             )
             if self.has_faims:
@@ -620,7 +620,7 @@ class MzMLViewer:
             return []
 
         data = []
-        for idx in range(len(self.exp)):
+        for idx in range(self.exp.size()):
             spec = self.exp[idx]
             rt = spec.getRT()
             ms_level = spec.getMSLevel()
@@ -659,7 +659,7 @@ class MzMLViewer:
 
     def show_spectrum_in_browser(self, spectrum_idx: int):
         """Display a spectrum in the 1D browser view."""
-        if self.exp is None or spectrum_idx < 0 or spectrum_idx >= len(self.exp):
+        if self.exp is None or spectrum_idx < 0 or spectrum_idx >= self.exp.size():
             return
 
         self.selected_spectrum_idx = spectrum_idx
@@ -723,7 +723,7 @@ class MzMLViewer:
 
         # Update navigation label
         if self.spectrum_nav_label is not None:
-            self.spectrum_nav_label.set_text(f"Spectrum {spectrum_idx + 1} of {len(self.exp)}")
+            self.spectrum_nav_label.set_text(f"Spectrum {spectrum_idx + 1} of {self.exp.size()}")
 
         # Update info label
         if self.spectrum_browser_info is not None:
@@ -739,7 +739,7 @@ class MzMLViewer:
 
     def navigate_spectrum(self, direction: int):
         """Navigate to prev/next spectrum."""
-        if self.exp is None or len(self.exp) == 0:
+        if self.exp is None or self.exp.size() == 0:
             return
 
         if self.selected_spectrum_idx is None:
@@ -748,19 +748,19 @@ class MzMLViewer:
             new_idx = self.selected_spectrum_idx + direction
 
         # Clamp to valid range
-        new_idx = max(0, min(len(self.exp) - 1, new_idx))
+        new_idx = max(0, min(self.exp.size() - 1, new_idx))
         self.show_spectrum_in_browser(new_idx)
 
     def navigate_spectrum_by_ms_level(self, direction: int, ms_level: int):
         """Navigate to prev/next spectrum of specific MS level."""
-        if self.exp is None or len(self.exp) == 0:
+        if self.exp is None or self.exp.size() == 0:
             return
 
         start_idx = self.selected_spectrum_idx if self.selected_spectrum_idx is not None else 0
 
         if direction > 0:
             # Search forward
-            for i in range(start_idx + 1, len(self.exp)):
+            for i in range(start_idx + 1, self.exp.size()):
                 if self.exp[i].getMSLevel() == ms_level:
                     self.show_spectrum_in_browser(i)
                     return
@@ -1870,7 +1870,7 @@ def create_ui():
 
                     ui.button('>', on_click=lambda: viewer.navigate_spectrum(1)).props('dense size=sm').tooltip('Next')
                     ui.button('MS1 >', on_click=lambda: viewer.navigate_spectrum_by_ms_level(1, 1)).props('dense size=sm color=cyan').tooltip('Next MS1')
-                    ui.button('>|', on_click=lambda: viewer.show_spectrum_in_browser(len(viewer.exp) - 1 if viewer.exp else 0)).props('dense size=sm').tooltip('Last')
+                    ui.button('>|', on_click=lambda: viewer.show_spectrum_in_browser(viewer.exp.size() - 1 if viewer.exp else 0)).props('dense size=sm').tooltip('Last')
 
                     ui.label('|').classes('mx-1 text-gray-600')
                     ui.button('< MS2', on_click=lambda: viewer.navigate_spectrum_by_ms_level(-1, 2)).props('dense size=sm color=orange').tooltip('Prev MS2')
