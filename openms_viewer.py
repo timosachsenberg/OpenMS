@@ -2475,10 +2475,10 @@ class MzMLViewer:
 
             # Get RT and m/z bounds from convex hull
             hulls = feature.getConvexHulls()
-            if hulls:
+            if hulls and len(hulls) > 0:
                 # Get bounds from convex hull points
                 hull_points = hulls[0].getHullPoints()
-                if hull_points:
+                if len(hull_points) > 0:
                     rt_vals = [p[0] for p in hull_points]
                     mz_vals = [p[1] for p in hull_points]
                     rt_min, rt_max = min(rt_vals), max(rt_vals)
@@ -3489,8 +3489,8 @@ def create_ui():
             # Store the function reference for later use
             viewer._create_faims_images = create_faims_images
 
-        # 3D View Container (hidden by default, shown when toggle enabled)
-        viewer.scene_3d_container = ui.column().classes('w-full max-w-6xl mt-2')
+        # 3D View Container (hidden by default, shown when toggle enabled) - centered
+        viewer.scene_3d_container = ui.column().classes('w-full max-w-6xl mt-2 mx-auto')
         viewer.scene_3d_container.set_visibility(False)
         with viewer.scene_3d_container:
             with ui.card().classes('w-full').style('background: #1a1a1f; padding: 0.5rem;'):
