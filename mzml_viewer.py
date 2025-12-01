@@ -32,6 +32,7 @@ import plotly.graph_objects as go
 # Datashader for fast rendering
 import datashader as ds
 import datashader.transfer_functions as tf
+import colorcet as cc
 from colorcet import fire
 
 # PIL for drawing overlays and axes
