@@ -2338,7 +2338,9 @@ def create_ui():
 @click.argument('files', nargs=-1, type=click.Path(exists=True))
 @click.option('--port', '-p', default=8080, help='Port to run the server on')
 @click.option('--host', '-H', default='0.0.0.0', help='Host to bind to')
-def main(files, port, host):
+@click.option('--open/--no-open', '-o/-n', default=True, help='Open browser automatically (default: open)')
+@click.option('--native', is_flag=True, default=False, help='Run as native desktop app (requires: pip install pywebview)')
+def main(files, port, host, open, native):
     """
     mzML Peak Map Viewer - Fast visualization of mass spectrometry data.
 
@@ -2346,8 +2348,9 @@ def main(files, port, host):
 
     \b
     Examples:
-        mzml_viewer.py                              # Start empty
-        mzml_viewer.py sample.mzML                  # Load mzML
+        mzml_viewer.py sample.mzML                  # Open with browser
+        mzml_viewer.py sample.mzML --native         # Open as desktop app
+        mzml_viewer.py sample.mzML --no-open        # Start server only
         mzml_viewer.py sample.mzML features.featureXML
         mzml_viewer.py sample.mzML ids.idXML
         mzml_viewer.py data.mzML features.featureXML ids.idXML
@@ -2356,6 +2359,10 @@ def main(files, port, host):
         .mzML       Mass spectrometry peak data
         .featureXML Detected features with convex hulls
         .idXML      Peptide identifications
+
+    Native mode (--native):
+        Runs as a standalone desktop application using pywebview.
+        Install with: pip install pywebview
     """
     global _cli_files
 
@@ -2385,7 +2392,12 @@ def main(files, port, host):
         else:
             click.echo(f"Unknown file type: {path.name} (skipping)")
 
-    click.echo(f"\nStarting server at http://{host}:{port}")
+    if native:
+        click.echo(f"\nStarting native desktop app...")
+    else:
+        click.echo(f"\nStarting server at http://{host}:{port}")
+        if open:
+            click.echo("Opening browser...")
 
     @ui.page('/')
     def index():
@@ -2396,7 +2408,9 @@ def main(files, port, host):
         host=host,
         port=port,
         reload=False,
-        show=False
+        show=open and not native,
+        native=native,
+        window_size=(1400, 900) if native else None,
     )
 
 
