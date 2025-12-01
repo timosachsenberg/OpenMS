@@ -405,9 +405,9 @@ class MzMLViewer:
         self.faims_info_label = None
 
         # Navigation UI elements
-        self.minimap_image = None  # Small overview image
-        self.minimap_width = 200
-        self.minimap_height = 100
+        self.minimap_image = None  # Overview image
+        self.minimap_width = 400
+        self.minimap_height = 200
         self.breadcrumb_label = None  # Zoom history display
         self.coord_label = None  # RT/m/z coordinate display
 
