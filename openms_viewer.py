@@ -399,6 +399,26 @@ COLORMAPS = {
 }
 
 
+def get_colormap_background(colormap_name: str) -> str:
+    """Get the lowest color from a colormap as a hex string for background."""
+    cmap = COLORMAPS.get(colormap_name)
+    if cmap is None:
+        return 'black'
+
+    # Check if it's a matplotlib colormap (has __call__ method)
+    if hasattr(cmap, '__call__'):
+        # Matplotlib colormap - get color at 0
+        rgba = cmap(0)
+        # Convert to hex
+        r, g, b = int(rgba[0] * 255), int(rgba[1] * 255), int(rgba[2] * 255)
+        return f'#{r:02x}{g:02x}{b:02x}'
+    elif isinstance(cmap, list) and len(cmap) > 0:
+        # Colorcet list - first element is the lowest color
+        return cmap[0]
+    else:
+        return 'black'
+
+
 class MzMLViewer:
     """High-performance mzML peak map viewer using datashader with feature and ID overlay."""
 
@@ -2010,7 +2030,7 @@ class MzMLViewer:
         img = tf.shade(agg, cmap=COLORMAPS[self.colormap], how='linear')
         # Use dynspread to make points more visible (dynamically adjusts based on density)
         img = tf.dynspread(img, threshold=0.5, max_px=3)
-        img = tf.set_background(img, 'black')
+        img = tf.set_background(img, get_colormap_background(self.colormap))
 
         plot_img = img.to_pil()
 
@@ -2070,7 +2090,7 @@ class MzMLViewer:
         agg = ds_canvas.points(view_df, 'rt', 'mz', ds.mean('log_intensity'))
         img = tf.shade(agg, cmap=COLORMAPS[self.colormap], how='linear')
         img = tf.dynspread(img, threshold=0.5, max_px=3)
-        img = tf.set_background(img, 'black')
+        img = tf.set_background(img, get_colormap_background(self.colormap))
 
         plot_img = img.to_pil()
 
@@ -2161,7 +2181,7 @@ class MzMLViewer:
         # Apply color map
         img = tf.shade(agg, cmap=COLORMAPS[self.colormap], how='log')
         img = tf.dynspread(img, threshold=0.5, max_px=2)
-        img = tf.set_background(img, 'black')
+        img = tf.set_background(img, get_colormap_background(self.colormap))
 
         # Convert to PIL
         plot_img = img.to_pil()
