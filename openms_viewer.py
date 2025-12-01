@@ -33,8 +33,6 @@ import plotly.graph_objects as go
 import datashader as ds
 import datashader.transfer_functions as tf
 import colorcet as cc
-from matplotlib import cm
-from matplotlib.colors import Colormap
 
 # PIL for drawing overlays and axes
 from PIL import Image, ImageDraw, ImageFont
@@ -389,14 +387,15 @@ def create_annotated_spectrum_plot(
 
 
 # Available colormaps for peak map visualization
+import matplotlib
 COLORMAPS = {
-    'jet': cm.get_cmap('jet'),
-    'hot': cm.get_cmap('hot'),
+    'jet': matplotlib.colormaps['jet'],
+    'hot': matplotlib.colormaps['hot'],
     'fire': cc.fire,
-    'viridis': cm.get_cmap('viridis'),
-    'plasma': cm.get_cmap('plasma'),
-    'inferno': cm.get_cmap('inferno'),
-    'magma': cm.get_cmap('magma'),
+    'viridis': matplotlib.colormaps['viridis'],
+    'plasma': matplotlib.colormaps['plasma'],
+    'inferno': matplotlib.colormaps['inferno'],
+    'magma': matplotlib.colormaps['magma'],
 }
 
 
@@ -2421,9 +2420,6 @@ class MzMLViewer:
         # Draw features on baseline if available
         if self.feature_map is not None and self.show_centroids:
             self._draw_features_on_3d_baseline(scene_width, scene_depth, rt_range, mz_range)
-
-        # Add axis labels using text
-        self._add_3d_axis_labels(scene_width, scene_depth, scene_height)
 
         # Update status
         if self.view_3d_status:
