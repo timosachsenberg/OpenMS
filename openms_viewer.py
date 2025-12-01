@@ -533,7 +533,7 @@ class MzMLViewer:
 
         # 3D visualization
         self.show_3d_view = False
-        self.scene_3d = None
+        self.plot_3d = None  # Plotly 3D plot element
         self.scene_3d_container = None
         self.view_3d_status = None  # Status label for 3D view
         self.max_3d_peaks = 5000  # Limit peaks for 3D performance
@@ -2338,12 +2338,9 @@ class MzMLViewer:
         return rt_range <= self.rt_threshold_3d and mz_range <= self.mz_threshold_3d
 
     def update_3d_view(self):
-        """Update the 3D visualization with current view data."""
-        if not self.show_3d_view or self.scene_3d is None or self.df is None:
+        """Update the 3D visualization with current view data using pyopenms-viz."""
+        if not self.show_3d_view or self.plot_3d is None or self.df is None:
             return
-
-        # Clear existing objects
-        self.scene_3d.clear()
 
         # Check if region is small enough
         if not self.is_small_region():
@@ -2363,7 +2360,7 @@ class MzMLViewer:
             (self.df['mz'] >= self.view_mz_min) &
             (self.df['mz'] <= self.view_mz_max)
         )
-        view_df = self.df[mask]
+        view_df = self.df[mask].copy()
 
         if len(view_df) == 0:
             if self.view_3d_status:
@@ -2376,110 +2373,94 @@ class MzMLViewer:
             view_df = view_df.nlargest(self.max_3d_peaks, 'intensity')
         num_peaks_shown = len(view_df)
 
-        # Normalize coordinates for 3D scene
-        rt_range = self.view_rt_max - self.view_rt_min
-        mz_range = self.view_mz_max - self.view_mz_min
-        max_intensity = view_df['intensity'].max()
+        try:
+            # Use pyopenms-viz for 3D plotting
+            from pyopenms_viz._plotly.core import PLOTLYPeakMapPlot
 
-        if max_intensity == 0:
-            max_intensity = 1
+            # Rename columns to match pyopenms-viz expectations
+            plot_df = view_df.rename(columns={'rt': 'RT', 'mz': 'mz', 'intensity': 'int'})
 
-        # Scene dimensions (arbitrary units for visualization)
-        scene_width = 8  # RT axis (x)
-        scene_depth = 6  # m/z axis (z)
-        scene_height = 4  # Intensity axis (y)
+            # Create 3D plot
+            plot = PLOTLYPeakMapPlot(
+                plot_df,
+                x='RT',
+                y='mz',
+                z='int',
+                plot_3d=True,
+                title=f'3D Peak Map (RT: {self.view_rt_min:.1f}-{self.view_rt_max:.1f}s, m/z: {self.view_mz_min:.1f}-{self.view_mz_max:.1f})'
+            )
+            plot.plot()
 
-        # Add baseline plane
-        self.scene_3d.box(scene_width, 0.02, scene_depth).move(0, -0.01, 0).material('#222222')
+            # Get the plotly figure
+            fig = plot.fig
 
-        # Grid lines as thin boxes
-        for i in range(5):
-            # RT lines (along z)
-            x = (i / 4) * scene_width - scene_width / 2
-            self.scene_3d.box(0.02, 0.02, scene_depth).move(x, 0, 0).material('#444444')
-            # m/z lines (along x)
-            z = (i / 4) * scene_depth - scene_depth / 2
-            self.scene_3d.box(scene_width, 0.02, 0.02).move(0, 0, z).material('#444444')
+            # Update layout for dark theme
+            fig.update_layout(
+                paper_bgcolor='#1a1a1f',
+                plot_bgcolor='#1a1a1f',
+                font=dict(color='#cccccc'),
+                scene=dict(
+                    xaxis=dict(title='RT (s)', backgroundcolor='#1a1a1f', gridcolor='#333333'),
+                    yaxis=dict(title='m/z', backgroundcolor='#1a1a1f', gridcolor='#333333'),
+                    zaxis=dict(title='Intensity', backgroundcolor='#1a1a1f', gridcolor='#333333'),
+                    bgcolor='#1a1a1f'
+                ),
+                margin=dict(l=0, r=0, t=40, b=0),
+                height=450
+            )
 
-        # Add peak sticks as cylinders
-        stick_radius = 0.02
-        for _, row in view_df.iterrows():
-            # Normalize to scene coordinates
-            x = ((row['rt'] - self.view_rt_min) / rt_range - 0.5) * scene_width
-            z = ((row['mz'] - self.view_mz_min) / mz_range - 0.5) * scene_depth
-            y = (row['intensity'] / max_intensity) * scene_height
+            # Add feature markers if available
+            if self.feature_map is not None and self.show_centroids:
+                self._add_features_to_3d_plot(fig)
 
-            if y > 0.01:  # Only draw if height is meaningful
-                # Draw stick as a cylinder from baseline to peak height
-                self.scene_3d.cylinder(stick_radius, y, stick_radius).move(x, y/2, z).material('#00aaff')
-                # Add sphere at top
-                self.scene_3d.sphere(0.04).move(x, y, z).material('#00ffff')
+            # Update the plotly element
+            self.plot_3d.update_figure(fig)
 
-        # Draw features on baseline if available
-        if self.feature_map is not None and self.show_centroids:
-            self._draw_features_on_3d_baseline(scene_width, scene_depth, rt_range, mz_range)
+            # Update status
+            if self.view_3d_status:
+                if num_peaks_shown < num_peaks_total:
+                    self.view_3d_status.set_text(f'Showing {num_peaks_shown:,} of {num_peaks_total:,} peaks (top intensity)')
+                else:
+                    self.view_3d_status.set_text(f'Showing {num_peaks_shown:,} peaks')
 
-        # Update status
-        if self.view_3d_status:
-            if num_peaks_shown < num_peaks_total:
-                self.view_3d_status.set_text(f'Showing {num_peaks_shown:,} of {num_peaks_total:,} peaks (top intensity)')
-            else:
-                self.view_3d_status.set_text(f'Showing {num_peaks_shown:,} peaks')
+        except Exception as e:
+            if self.view_3d_status:
+                self.view_3d_status.set_text(f'3D plot error: {str(e)[:50]}')
 
-    def _draw_features_on_3d_baseline(self, scene_width: float, scene_depth: float,
-                                       rt_range: float, mz_range: float):
-        """Draw feature outlines on the 3D baseline plane."""
+    def _add_features_to_3d_plot(self, fig):
+        """Add feature markers to the 3D plotly figure."""
+        import plotly.graph_objects as go
+
         if self.feature_map is None:
             return
+
+        feature_rts = []
+        feature_mzs = []
+        feature_labels = []
 
         for i, feature in enumerate(self.feature_map):
             rt = feature.getRT()
             mz = feature.getMZ()
 
             # Check if feature is in current view
-            if not (self.view_rt_min <= rt <= self.view_rt_max and
+            if (self.view_rt_min <= rt <= self.view_rt_max and
                     self.view_mz_min <= mz <= self.view_mz_max):
-                continue
+                feature_rts.append(rt)
+                feature_mzs.append(mz)
+                feature_labels.append(f'Feature {i}: RT={rt:.1f}, m/z={mz:.2f}')
 
-            # Normalize to scene coordinates
-            x = ((rt - self.view_rt_min) / rt_range - 0.5) * scene_width
-            z = ((mz - self.view_mz_min) / mz_range - 0.5) * scene_depth
-
-            color = '#ff66ff' if i == self.selected_feature_idx else '#00ff66'
-
-            # Draw feature centroid as a sphere on baseline
-            self.scene_3d.sphere(0.12).move(x, 0.06, z).material(color)
-
-            # Draw bounding box outline on baseline if enabled
-            if self.show_bounding_boxes:
-                hull = feature.getConvexHulls()
-                if hull:
-                    bb = hull[0].getBoundingBox()
-                    rt_min_f, rt_max_f = bb.minX(), bb.maxX()
-                    mz_min_f, mz_max_f = bb.minY(), bb.maxY()
-
-                    # Normalize to scene coords
-                    x1 = ((rt_min_f - self.view_rt_min) / rt_range - 0.5) * scene_width
-                    x2 = ((rt_max_f - self.view_rt_min) / rt_range - 0.5) * scene_width
-                    z1 = ((mz_min_f - self.view_mz_min) / mz_range - 0.5) * scene_depth
-                    z2 = ((mz_max_f - self.view_mz_min) / mz_range - 0.5) * scene_depth
-
-                    # Draw rectangle on baseline using thin boxes
-                    y_bb = 0.03
-                    box_thickness = 0.03
-                    # Four edges of the rectangle
-                    width_x = abs(x2 - x1)
-                    width_z = abs(z2 - z1)
-                    cx = (x1 + x2) / 2
-                    cz = (z1 + z2) / 2
-                    # Top edge (along x)
-                    self.scene_3d.box(width_x, box_thickness, box_thickness).move(cx, y_bb, z1).material(color)
-                    # Bottom edge
-                    self.scene_3d.box(width_x, box_thickness, box_thickness).move(cx, y_bb, z2).material(color)
-                    # Left edge (along z)
-                    self.scene_3d.box(box_thickness, box_thickness, width_z).move(x1, y_bb, cz).material(color)
-                    # Right edge
-                    self.scene_3d.box(box_thickness, box_thickness, width_z).move(x2, y_bb, cz).material(color)
+        if feature_rts:
+            # Add features as markers on the baseline (z=0)
+            fig.add_trace(go.Scatter3d(
+                x=feature_rts,
+                y=feature_mzs,
+                z=[0] * len(feature_rts),
+                mode='markers',
+                marker=dict(size=8, color='#00ff66', symbol='diamond'),
+                name='Features',
+                text=feature_labels,
+                hoverinfo='text'
+            ))
 
     # ==================== Search and Filter Methods ====================
 
@@ -3448,16 +3429,18 @@ def create_ui():
             with ui.card().classes('w-full').style('background: #1a1a1f; padding: 1rem;'):
                 with ui.row().classes('w-full items-center gap-2 mb-2'):
                     ui.label('3D Peak View').classes('text-lg font-semibold text-purple-400')
-                    ui.label('(drag to rotate, scroll to zoom)').classes('text-xs text-gray-500')
+                    ui.label('(powered by pyopenms-viz)').classes('text-xs text-gray-500')
                     viewer.view_3d_status = ui.label('').classes('text-xs text-yellow-400 ml-4')
 
-                viewer.scene_3d = ui.scene(
-                    width=viewer.canvas_width,
+                # Create empty plotly figure for 3D view
+                empty_fig = go.Figure()
+                empty_fig.update_layout(
+                    paper_bgcolor='#1a1a1f',
+                    plot_bgcolor='#1a1a1f',
                     height=450,
-                    background_color='#1a1a1f'
-                ).classes('w-full')
-                # Set initial camera position for good viewing angle
-                viewer.scene_3d.move_camera(x=8, y=6, z=8, look_at_x=0, look_at_y=1, look_at_z=0)
+                    margin=dict(l=0, r=0, t=0, b=0)
+                )
+                viewer.plot_3d = ui.plotly(empty_fig).classes('w-full')
 
         # Navigation controls
         with ui.row().classes('justify-center gap-2 mt-2'):
