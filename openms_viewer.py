@@ -2390,32 +2390,30 @@ class MzMLViewer:
         scene_height = 4  # Intensity axis (y)
 
         # Add baseline plane
-        with self.scene_3d:
-            # Baseline grid using boxes (thin rectangles)
-            self.scene_3d.box(scene_width, 0.02, scene_depth).move(0, -0.01, 0).material('#222222')
+        self.scene_3d.box(scene_width, 0.02, scene_depth).move(0, -0.01, 0).material('#222222')
 
-            # Grid lines as thin boxes
-            for i in range(5):
-                # RT lines (along z)
-                x = (i / 4) * scene_width - scene_width / 2
-                self.scene_3d.box(0.02, 0.02, scene_depth).move(x, 0, 0).material('#444444')
-                # m/z lines (along x)
-                z = (i / 4) * scene_depth - scene_depth / 2
-                self.scene_3d.box(scene_width, 0.02, 0.02).move(0, 0, z).material('#444444')
+        # Grid lines as thin boxes
+        for i in range(5):
+            # RT lines (along z)
+            x = (i / 4) * scene_width - scene_width / 2
+            self.scene_3d.box(0.02, 0.02, scene_depth).move(x, 0, 0).material('#444444')
+            # m/z lines (along x)
+            z = (i / 4) * scene_depth - scene_depth / 2
+            self.scene_3d.box(scene_width, 0.02, 0.02).move(0, 0, z).material('#444444')
 
-            # Add peak sticks as cylinders
-            stick_radius = 0.02
-            for _, row in view_df.iterrows():
-                # Normalize to scene coordinates
-                x = ((row['rt'] - self.view_rt_min) / rt_range - 0.5) * scene_width
-                z = ((row['mz'] - self.view_mz_min) / mz_range - 0.5) * scene_depth
-                y = (row['intensity'] / max_intensity) * scene_height
+        # Add peak sticks as cylinders
+        stick_radius = 0.02
+        for _, row in view_df.iterrows():
+            # Normalize to scene coordinates
+            x = ((row['rt'] - self.view_rt_min) / rt_range - 0.5) * scene_width
+            z = ((row['mz'] - self.view_mz_min) / mz_range - 0.5) * scene_depth
+            y = (row['intensity'] / max_intensity) * scene_height
 
-                if y > 0.01:  # Only draw if height is meaningful
-                    # Draw stick as a cylinder from baseline to peak height
-                    self.scene_3d.cylinder(stick_radius, y, stick_radius).move(x, y/2, z).material('#00aaff')
-                    # Add sphere at top
-                    self.scene_3d.sphere(0.04).move(x, y, z).material('#00ffff')
+            if y > 0.01:  # Only draw if height is meaningful
+                # Draw stick as a cylinder from baseline to peak height
+                self.scene_3d.cylinder(stick_radius, y, stick_radius).move(x, y/2, z).material('#00aaff')
+                # Add sphere at top
+                self.scene_3d.sphere(0.04).move(x, y, z).material('#00ffff')
 
         # Draw features on baseline if available
         if self.feature_map is not None and self.show_centroids:
@@ -2434,55 +2432,54 @@ class MzMLViewer:
         if self.feature_map is None:
             return
 
-        with self.scene_3d:
-            for i, feature in enumerate(self.feature_map):
-                rt = feature.getRT()
-                mz = feature.getMZ()
+        for i, feature in enumerate(self.feature_map):
+            rt = feature.getRT()
+            mz = feature.getMZ()
 
-                # Check if feature is in current view
-                if not (self.view_rt_min <= rt <= self.view_rt_max and
-                        self.view_mz_min <= mz <= self.view_mz_max):
-                    continue
+            # Check if feature is in current view
+            if not (self.view_rt_min <= rt <= self.view_rt_max and
+                    self.view_mz_min <= mz <= self.view_mz_max):
+                continue
 
-                # Normalize to scene coordinates
-                x = ((rt - self.view_rt_min) / rt_range - 0.5) * scene_width
-                z = ((mz - self.view_mz_min) / mz_range - 0.5) * scene_depth
+            # Normalize to scene coordinates
+            x = ((rt - self.view_rt_min) / rt_range - 0.5) * scene_width
+            z = ((mz - self.view_mz_min) / mz_range - 0.5) * scene_depth
 
-                color = '#ff66ff' if i == self.selected_feature_idx else '#00ff66'
+            color = '#ff66ff' if i == self.selected_feature_idx else '#00ff66'
 
-                # Draw feature centroid as a sphere on baseline
-                self.scene_3d.sphere(0.12).move(x, 0.06, z).material(color)
+            # Draw feature centroid as a sphere on baseline
+            self.scene_3d.sphere(0.12).move(x, 0.06, z).material(color)
 
-                # Draw bounding box outline on baseline if enabled
-                if self.show_bounding_boxes:
-                    hull = feature.getConvexHulls()
-                    if hull:
-                        bb = hull[0].getBoundingBox()
-                        rt_min_f, rt_max_f = bb.minX(), bb.maxX()
-                        mz_min_f, mz_max_f = bb.minY(), bb.maxY()
+            # Draw bounding box outline on baseline if enabled
+            if self.show_bounding_boxes:
+                hull = feature.getConvexHulls()
+                if hull:
+                    bb = hull[0].getBoundingBox()
+                    rt_min_f, rt_max_f = bb.minX(), bb.maxX()
+                    mz_min_f, mz_max_f = bb.minY(), bb.maxY()
 
-                        # Normalize to scene coords
-                        x1 = ((rt_min_f - self.view_rt_min) / rt_range - 0.5) * scene_width
-                        x2 = ((rt_max_f - self.view_rt_min) / rt_range - 0.5) * scene_width
-                        z1 = ((mz_min_f - self.view_mz_min) / mz_range - 0.5) * scene_depth
-                        z2 = ((mz_max_f - self.view_mz_min) / mz_range - 0.5) * scene_depth
+                    # Normalize to scene coords
+                    x1 = ((rt_min_f - self.view_rt_min) / rt_range - 0.5) * scene_width
+                    x2 = ((rt_max_f - self.view_rt_min) / rt_range - 0.5) * scene_width
+                    z1 = ((mz_min_f - self.view_mz_min) / mz_range - 0.5) * scene_depth
+                    z2 = ((mz_max_f - self.view_mz_min) / mz_range - 0.5) * scene_depth
 
-                        # Draw rectangle on baseline using thin boxes
-                        y_bb = 0.03
-                        box_thickness = 0.03
-                        # Four edges of the rectangle
-                        width_x = abs(x2 - x1)
-                        width_z = abs(z2 - z1)
-                        cx = (x1 + x2) / 2
-                        cz = (z1 + z2) / 2
-                        # Top edge (along x)
-                        self.scene_3d.box(width_x, box_thickness, box_thickness).move(cx, y_bb, z1).material(color)
-                        # Bottom edge
-                        self.scene_3d.box(width_x, box_thickness, box_thickness).move(cx, y_bb, z2).material(color)
-                        # Left edge (along z)
-                        self.scene_3d.box(box_thickness, box_thickness, width_z).move(x1, y_bb, cz).material(color)
-                        # Right edge
-                        self.scene_3d.box(box_thickness, box_thickness, width_z).move(x2, y_bb, cz).material(color)
+                    # Draw rectangle on baseline using thin boxes
+                    y_bb = 0.03
+                    box_thickness = 0.03
+                    # Four edges of the rectangle
+                    width_x = abs(x2 - x1)
+                    width_z = abs(z2 - z1)
+                    cx = (x1 + x2) / 2
+                    cz = (z1 + z2) / 2
+                    # Top edge (along x)
+                    self.scene_3d.box(width_x, box_thickness, box_thickness).move(cx, y_bb, z1).material(color)
+                    # Bottom edge
+                    self.scene_3d.box(width_x, box_thickness, box_thickness).move(cx, y_bb, z2).material(color)
+                    # Left edge (along z)
+                    self.scene_3d.box(box_thickness, box_thickness, width_z).move(x1, y_bb, cz).material(color)
+                    # Right edge
+                    self.scene_3d.box(box_thickness, box_thickness, width_z).move(x2, y_bb, cz).material(color)
 
     # ==================== Search and Filter Methods ====================
 
