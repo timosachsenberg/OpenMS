@@ -2009,6 +2009,8 @@ class MzMLViewer:
 
         agg = ds_canvas.points(view_df, 'rt', 'mz', ds.mean('log_intensity'))
         img = tf.shade(agg, cmap=COLORMAPS[self.colormap], how='linear')
+        # Use dynspread to make points more visible (dynamically adjusts based on density)
+        img = tf.dynspread(img, threshold=0.5, max_px=3)
         img = tf.set_background(img, 'black')
 
         plot_img = img.to_pil()
@@ -2068,6 +2070,7 @@ class MzMLViewer:
 
         agg = ds_canvas.points(view_df, 'rt', 'mz', ds.mean('log_intensity'))
         img = tf.shade(agg, cmap=COLORMAPS[self.colormap], how='linear')
+        img = tf.dynspread(img, threshold=0.5, max_px=3)
         img = tf.set_background(img, 'black')
 
         plot_img = img.to_pil()
@@ -2158,6 +2161,7 @@ class MzMLViewer:
 
         # Apply color map
         img = tf.shade(agg, cmap=COLORMAPS[self.colormap], how='log')
+        img = tf.dynspread(img, threshold=0.5, max_px=2)
         img = tf.set_background(img, 'black')
 
         # Convert to PIL
