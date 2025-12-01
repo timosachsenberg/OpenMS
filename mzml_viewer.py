@@ -48,7 +48,7 @@ from pyopenms import (
 )
 
 # NiceGUI for the web interface
-from nicegui import ui, app
+from nicegui import ui, app, run
 
 
 # Global viewer instance for CLI file loading
@@ -457,8 +457,125 @@ class MzMLViewer:
 
         return None
 
+    def load_mzml_sync(self, filepath: str) -> bool:
+        """Load mzML file synchronously without UI updates (for background thread)."""
+        try:
+            self.exp = MSExperiment()
+            MzMLFile().load(filepath, self.exp)
+
+            n_spectra = self.exp.size()
+            total_peaks = sum(spec.size() for spec in self.exp)
+
+            if total_peaks == 0:
+                return False
+
+            # First pass: detect FAIMS CVs
+            cv_set = set()
+            for spec in self.exp:
+                if spec.getMSLevel() == 1:
+                    cv = self._get_cv_from_spectrum(spec)
+                    if cv is not None:
+                        cv_set.add(cv)
+
+            self.has_faims = len(cv_set) > 1
+            self.faims_cvs = sorted(cv_set) if self.has_faims else []
+
+            # Data structures for peak extraction
+            rts = np.empty(total_peaks, dtype=np.float32)
+            mzs = np.empty(total_peaks, dtype=np.float32)
+            intensities = np.empty(total_peaks, dtype=np.float32)
+            cvs = np.empty(total_peaks, dtype=np.float32) if self.has_faims else None
+
+            # Also compute TIC (overall and per-CV)
+            tic_rts = []
+            tic_intensities = []
+            faims_tic_data = {cv: {'rt': [], 'int': []} for cv in self.faims_cvs} if self.has_faims else {}
+
+            idx = 0
+            for spec in self.exp:
+                if spec.getMSLevel() != 1:
+                    continue
+                rt = spec.getRT()
+                mz_array, int_array = spec.get_peaks()
+                n = len(mz_array)
+
+                cv = self._get_cv_from_spectrum(spec) if self.has_faims else None
+
+                if n > 0:
+                    rts[idx:idx+n] = rt
+                    mzs[idx:idx+n] = mz_array
+                    intensities[idx:idx+n] = int_array
+                    if self.has_faims and cv is not None:
+                        cvs[idx:idx+n] = cv
+                    idx += n
+
+                    # TIC: sum of all intensities for this spectrum
+                    tic_sum = float(np.sum(int_array))
+                    tic_rts.append(rt)
+                    tic_intensities.append(tic_sum)
+
+                    # Per-CV TIC
+                    if self.has_faims and cv is not None:
+                        faims_tic_data[cv]['rt'].append(rt)
+                        faims_tic_data[cv]['int'].append(tic_sum)
+
+            rts = rts[:idx]
+            mzs = mzs[:idx]
+            intensities = intensities[:idx]
+            if self.has_faims:
+                cvs = cvs[:idx]
+
+            # Store TIC data
+            self.tic_rt = np.array(tic_rts, dtype=np.float32)
+            self.tic_intensity = np.array(tic_intensities, dtype=np.float32)
+
+            # Store per-CV TIC data
+            self.faims_tic = {}
+            for cv in self.faims_cvs:
+                self.faims_tic[cv] = (
+                    np.array(faims_tic_data[cv]['rt'], dtype=np.float32),
+                    np.array(faims_tic_data[cv]['int'], dtype=np.float32)
+                )
+
+            # Extract spectrum metadata for browser
+            self.spectrum_data = self._extract_spectrum_data()
+
+            # Create main DataFrame
+            self.df = pd.DataFrame({
+                'rt': rts,
+                'mz': mzs,
+                'intensity': intensities
+            })
+            if self.has_faims:
+                self.df['cv'] = cvs
+            self.df['log_intensity'] = np.log1p(self.df['intensity'])
+
+            # Create per-CV DataFrames for FAIMS view
+            self.faims_data = {}
+            if self.has_faims:
+                for cv in self.faims_cvs:
+                    cv_df = self.df[self.df['cv'] == cv].copy()
+                    self.faims_data[cv] = cv_df
+
+            self.rt_min = float(self.df['rt'].min())
+            self.rt_max = float(self.df['rt'].max())
+            self.mz_min = float(self.df['mz'].min())
+            self.mz_max = float(self.df['mz'].max())
+
+            self.view_rt_min = self.rt_min
+            self.view_rt_max = self.rt_max
+            self.view_mz_min = self.mz_min
+            self.view_mz_max = self.mz_max
+
+            self.current_file = filepath
+            return True
+
+        except Exception as e:
+            print(f"Error loading mzML: {e}")
+            return False
+
     def load_mzml(self, filepath: str) -> bool:
-        """Load mzML file and extract peak data."""
+        """Load mzML file and extract peak data (with UI updates)."""
         try:
             filename = Path(filepath).name
             self.set_loading(True, f"Reading {filename}...")
@@ -908,8 +1025,21 @@ class MzMLViewer:
 
         ui.notify(f"No more MS{ms_level} spectra in that direction", type="info")
 
+    def load_featuremap_sync(self, filepath: str) -> bool:
+        """Load featureXML file synchronously without UI updates."""
+        try:
+            self.feature_map = FeatureMap()
+            FeatureXMLFile().load(filepath, self.feature_map)
+            self.features_file = filepath
+            self.selected_feature_idx = None
+            self.feature_data = self._extract_feature_data()
+            return True
+        except Exception as e:
+            print(f"Error loading features: {e}")
+            return False
+
     def load_featuremap(self, filepath: str) -> bool:
-        """Load featureXML file."""
+        """Load featureXML file (with UI updates)."""
         try:
             self.set_loading(True, f"Loading features...")
             if self.status_label:
@@ -990,8 +1120,22 @@ class MzMLViewer:
 
         return data
 
+    def load_idxml_sync(self, filepath: str) -> bool:
+        """Load idXML file synchronously without UI updates."""
+        try:
+            self.protein_ids = []
+            self.peptide_ids = []
+            IdXMLFile().load(filepath, self.protein_ids, self.peptide_ids)
+            self.id_file = filepath
+            self.selected_id_idx = None
+            self.id_data = self._extract_id_data()
+            return True
+        except Exception as e:
+            print(f"Error loading IDs: {e}")
+            return False
+
     def load_idxml(self, filepath: str) -> bool:
-        """Load idXML file with peptide identifications."""
+        """Load idXML file with peptide identifications (with UI updates)."""
         try:
             self.set_loading(True, f"Loading identifications...")
             if self.status_label:
@@ -2442,12 +2586,55 @@ def create_ui():
 
                         async def load_mzml_path():
                             path = mzml_input.value
-                            if path and Path(path).exists():
-                                if viewer.load_mzml(path):
+                            if not path:
+                                ui.notify("Please enter a file path", type="warning")
+                                return
+                            if not Path(path).exists():
+                                ui.notify("File not found", type="warning")
+                                return
+
+                            # Show loading state
+                            viewer.set_loading(True, f"Loading {Path(path).name}...")
+                            if viewer.status_label:
+                                viewer.status_label.set_text(f"Loading {Path(path).name}...")
+
+                            try:
+                                # Run heavy I/O in background thread to keep UI responsive
+                                success = await run.io_bound(viewer.load_mzml_sync, path)
+                                if success:
+                                    # Update all UI elements after successful load
                                     viewer.update_plot()
                                     viewer.update_tic_plot()
-                            else:
-                                ui.notify("File not found", type="warning")
+
+                                    # Update info labels
+                                    info_text = f"Loaded: {Path(path).name} | Spectra: {viewer.exp.size():,} | Peaks: {len(viewer.df):,}"
+                                    if viewer.has_faims:
+                                        info_text += f" | FAIMS: {len(viewer.faims_cvs)} CVs"
+                                    if viewer.info_label:
+                                        viewer.info_label.set_text(info_text)
+
+                                    # Update spectrum table
+                                    if viewer.spectrum_table is not None:
+                                        viewer.spectrum_table.update_rows(viewer.spectrum_data)
+
+                                    # Update FAIMS UI
+                                    if viewer.has_faims:
+                                        if viewer.faims_info_label:
+                                            cv_str = ", ".join([f"{cv:.1f}V" for cv in viewer.faims_cvs])
+                                            viewer.faims_info_label.set_text(f"FAIMS CVs: {cv_str}")
+                                            viewer.faims_info_label.set_visibility(True)
+                                        if viewer.faims_toggle:
+                                            viewer.faims_toggle.set_visibility(True)
+
+                                    ui.notify(f"Loaded {len(viewer.df):,} peaks", type="positive")
+                                else:
+                                    ui.notify("No peaks found in file", type="warning")
+                            except Exception as ex:
+                                ui.notify(f"Error loading file: {ex}", type="negative")
+                            finally:
+                                viewer.set_loading(False)
+                                if viewer.status_label:
+                                    viewer.status_label.set_text("Ready")
 
                         ui.button('Load', on_click=load_mzml_path).props('color=primary dense')
 
@@ -2459,11 +2646,26 @@ def create_ui():
 
                         async def load_feature_path():
                             path = feature_input.value
-                            if path and Path(path).exists():
-                                if viewer.load_featuremap(path):
-                                    viewer.update_plot()
-                            else:
+                            if not path or not Path(path).exists():
                                 ui.notify("File not found", type="warning")
+                                return
+
+                            viewer.set_loading(True, f"Loading features...")
+                            try:
+                                success = await run.io_bound(viewer.load_featuremap_sync, path)
+                                if success:
+                                    viewer.update_plot()
+                                    if viewer.feature_info_label:
+                                        viewer.feature_info_label.set_text(f"Features: {viewer.feature_map.size():,}")
+                                    if viewer.feature_table is not None:
+                                        viewer.feature_table.update_rows(viewer.feature_data)
+                                    ui.notify(f"Loaded {viewer.feature_map.size():,} features", type="positive")
+                            except Exception as ex:
+                                ui.notify(f"Error loading features: {ex}", type="negative")
+                            finally:
+                                viewer.set_loading(False)
+                                if viewer.status_label:
+                                    viewer.status_label.set_text("Ready")
 
                         ui.button('Load', on_click=load_feature_path).props('color=primary dense')
 
@@ -2482,11 +2684,26 @@ def create_ui():
 
                         async def load_id_path():
                             path = id_input.value
-                            if path and Path(path).exists():
-                                if viewer.load_idxml(path):
-                                    viewer.update_plot()
-                            else:
+                            if not path or not Path(path).exists():
                                 ui.notify("File not found", type="warning")
+                                return
+
+                            viewer.set_loading(True, f"Loading identifications...")
+                            try:
+                                success = await run.io_bound(viewer.load_idxml_sync, path)
+                                if success:
+                                    viewer.update_plot()
+                                    if viewer.id_info_label:
+                                        viewer.id_info_label.set_text(f"IDs: {len(viewer.peptide_ids):,}")
+                                    if viewer.id_table is not None:
+                                        viewer.id_table.update_rows(viewer.id_data)
+                                    ui.notify(f"Loaded {len(viewer.peptide_ids):,} peptide IDs", type="positive")
+                            except Exception as ex:
+                                ui.notify(f"Error loading IDs: {ex}", type="negative")
+                            finally:
+                                viewer.set_loading(False)
+                                if viewer.status_label:
+                                    viewer.status_label.set_text("Ready")
 
                         ui.button('Load', on_click=load_id_path).props('color=primary dense')
 
