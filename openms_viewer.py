@@ -390,7 +390,6 @@ def create_annotated_spectrum_plot(
 
 # Available colormaps for peak map visualization
 COLORMAPS = {
-    'bmy': cc.bmy,  # blue-magenta-yellow (default)
     'jet': cm.get_cmap('jet'),
     'hot': cm.get_cmap('hot'),
     'fire': cc.fire,
@@ -470,7 +469,7 @@ class MzMLViewer:
         self.show_convex_hulls = False    # Disabled by default for faster rendering
         self.show_ids = True
         self.show_spectrum_marker = True  # Always show RT/m/z marker for selected spectrum
-        self.colormap = 'bmy'  # Default colormap (blue-magenta-yellow)
+        self.colormap = 'jet'  # Default colormap
 
         # Colors
         self.centroid_color = (0, 255, 100, 255)
@@ -539,8 +538,8 @@ class MzMLViewer:
         self.scene_3d_container = None
         self.view_3d_status = None  # Status label for 3D view
         self.max_3d_peaks = 5000  # Limit peaks for 3D performance
-        self.rt_threshold_3d = 60.0  # Max RT range for 3D (seconds)
-        self.mz_threshold_3d = 40.0  # Max m/z range for 3D
+        self.rt_threshold_3d = 120.0  # Max RT range for 3D (seconds)
+        self.mz_threshold_3d = 50.0  # Max m/z range for 3D
 
     def _get_cv_from_spectrum(self, spec) -> Optional[float]:
         """Extract FAIMS compensation voltage from spectrum metadata."""
@@ -3134,7 +3133,7 @@ def create_ui():
                     viewer.update_3d_view()
 
             view_3d_cb = ui.checkbox('3D Peak View', value=False, on_change=toggle_3d_view).props('dense').classes('text-purple-400')
-            ui.label('(zoom in for detail)').classes('text-xs text-gray-500')
+            ui.label('(RT<120s, m/z<50)').classes('text-xs text-gray-500')
 
         # TIC Plot (clickable to show MS1 spectrum, zoomable to update peak map)
         with ui.card().classes('w-full max-w-6xl'):
@@ -3232,7 +3231,7 @@ def create_ui():
                         viewer.update_minimap()
 
                 colormap_options = list(COLORMAPS.keys())
-                ui.select(colormap_options, value='bmy', on_change=change_colormap).props('dense outlined').classes('w-28')
+                ui.select(colormap_options, value='jet', on_change=change_colormap).props('dense outlined').classes('w-28')
 
             # Breadcrumb trail and coordinate display row
             with ui.row().classes('w-full items-center justify-between mb-1'):
