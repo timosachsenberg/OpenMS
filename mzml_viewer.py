@@ -358,11 +358,7 @@ class MzMLViewer:
         self.mz_range_label = None
         self.feature_table = None
         self.id_table = None
-        self.spectrum_plot = None
-        self.spectrum_info_label = None
         self.tic_plot = None
-        self.ms1_spectrum_plot = None
-        self.ms1_spectrum_info_label = None
 
         # Spectrum browser UI elements
         self.spectrum_table = None
@@ -661,7 +657,7 @@ class MzMLViewer:
         return data
 
     def show_spectrum_in_browser(self, spectrum_idx: int):
-        """Display a spectrum in the 1D browser view."""
+        """Display a spectrum in the 1D browser view. Shows annotations if matching ID exists."""
         if self.exp is None or spectrum_idx < 0 or spectrum_idx >= self.exp.size():
             return
 
@@ -676,49 +672,92 @@ class MzMLViewer:
             ui.notify("Spectrum is empty", type="warning")
             return
 
-        # Normalize intensities
-        max_int = int_array.max() if len(int_array) > 0 else 1
-        int_norm = (int_array / max_int) * 100
+        # Check if there's a matching peptide ID for annotation
+        matching_id_idx = self.find_matching_id_for_spectrum(spectrum_idx)
 
-        # Create figure
-        fig = go.Figure()
+        if matching_id_idx is not None:
+            # Use annotated spectrum display
+            pep_id = self.peptide_ids[matching_id_idx]
+            hits = pep_id.getHits()
+            if hits:
+                best_hit = hits[0]
+                sequence_str = best_hit.getSequence().toString()
+                charge = best_hit.getCharge()
+                precursors = spec.getPrecursors()
+                prec_mz = precursors[0].getMZ() if precursors else pep_id.getMZ()
 
-        # Color based on MS level
-        color = '#00d4ff' if ms_level == 1 else '#ff6b6b'
+                # Create annotated spectrum plot
+                fig = create_annotated_spectrum_plot(
+                    mz_array, int_array,
+                    sequence_str, charge, prec_mz
+                )
 
-        # Add spectrum as bars
-        fig.add_trace(go.Bar(
-            x=mz_array,
-            y=int_norm,
-            marker_color=color,
-            width=0.5,
-            opacity=0.8,
-            hovertemplate='m/z: %{x:.4f}<br>Intensity: %{y:.1f}%<extra></extra>'
-        ))
+                # Update title to include spectrum index
+                title = f"Spectrum #{spectrum_idx} | {sequence_str} (z={charge}+) | RT={rt:.2f}s"
+                fig.update_layout(title=dict(text=title, font=dict(size=14)), height=350)
 
-        # Title with spectrum info
-        title = f"Spectrum #{spectrum_idx} | MS{ms_level} | RT={rt:.2f}s | {len(mz_array):,} peaks"
+                # Update info label with ID info
+                if self.spectrum_browser_info is not None:
+                    self.spectrum_browser_info.set_text(
+                        f"RT: {rt:.2f}s | ID: {sequence_str} | Charge: {charge}+ | Precursor: {prec_mz:.4f}"
+                    )
+            else:
+                # No hits, fall back to regular display
+                matching_id_idx = None
 
-        # Add precursor line for MS2+
-        if ms_level > 1:
-            precursors = spec.getPrecursors()
-            if precursors:
-                prec_mz = precursors[0].getMZ()
-                fig.add_vline(x=prec_mz, line_dash="dash", line_color="orange",
-                              annotation_text=f"Precursor ({prec_mz:.2f})")
-                title += f" | Precursor: {prec_mz:.4f}"
+        if matching_id_idx is None:
+            # Regular spectrum display (no annotation)
+            # Normalize intensities
+            max_int = int_array.max() if len(int_array) > 0 else 1
+            int_norm = (int_array / max_int) * 100
 
-        fig.update_layout(
-            title=dict(text=title, font=dict(size=14)),
-            xaxis_title="m/z",
-            yaxis_title="Relative Intensity (%)",
-            template="plotly_dark",
-            height=350,
-            margin=dict(l=60, r=20, t=50, b=50),
-            showlegend=False
-        )
+            # Create figure
+            fig = go.Figure()
 
-        fig.update_yaxes(range=[0, 105])
+            # Color based on MS level
+            color = '#00d4ff' if ms_level == 1 else '#ff6b6b'
+
+            # Add spectrum as bars
+            fig.add_trace(go.Bar(
+                x=mz_array,
+                y=int_norm,
+                marker_color=color,
+                width=0.5,
+                opacity=0.8,
+                hovertemplate='m/z: %{x:.4f}<br>Intensity: %{y:.1f}%<extra></extra>'
+            ))
+
+            # Title with spectrum info
+            title = f"Spectrum #{spectrum_idx} | MS{ms_level} | RT={rt:.2f}s | {len(mz_array):,} peaks"
+
+            # Add precursor line for MS2+
+            if ms_level > 1:
+                precursors = spec.getPrecursors()
+                if precursors:
+                    prec_mz = precursors[0].getMZ()
+                    fig.add_vline(x=prec_mz, line_dash="dash", line_color="orange",
+                                  annotation_text=f"Precursor ({prec_mz:.2f})")
+                    title += f" | Precursor: {prec_mz:.4f}"
+
+            fig.update_layout(
+                title=dict(text=title, font=dict(size=14)),
+                xaxis_title="m/z",
+                yaxis_title="Relative Intensity (%)",
+                template="plotly_dark",
+                height=350,
+                margin=dict(l=60, r=20, t=50, b=50),
+                showlegend=False
+            )
+
+            fig.update_yaxes(range=[0, 105])
+
+            # Update info label
+            if self.spectrum_browser_info is not None:
+                tic = float(np.sum(int_array))
+                mz_range = f"{mz_array.min():.2f} - {mz_array.max():.2f}" if len(mz_array) > 0 else "-"
+                self.spectrum_browser_info.set_text(
+                    f"RT: {rt:.2f}s | MS Level: {ms_level} | Peaks: {len(mz_array):,} | TIC: {tic:.2e} | m/z: {mz_range}"
+                )
 
         # Update plot
         if self.spectrum_browser_plot is not None:
@@ -727,14 +766,6 @@ class MzMLViewer:
         # Update navigation label
         if self.spectrum_nav_label is not None:
             self.spectrum_nav_label.set_text(f"Spectrum {spectrum_idx + 1} of {self.exp.size()}")
-
-        # Update info label
-        if self.spectrum_browser_info is not None:
-            tic = float(np.sum(int_array))
-            mz_range = f"{mz_array.min():.2f} - {mz_array.max():.2f}" if len(mz_array) > 0 else "-"
-            self.spectrum_browser_info.set_text(
-                f"RT: {rt:.2f}s | MS Level: {ms_level} | Peaks: {len(mz_array):,} | TIC: {tic:.2e} | m/z: {mz_range}"
-            )
 
         # Update peak map to show the spectrum marker
         if self.show_spectrum_marker and self.df is not None:
@@ -899,10 +930,6 @@ class MzMLViewer:
             self.id_info_label.set_text("IDs: None")
         if self.id_table is not None:
             self.id_table.update_rows([])
-        if self.spectrum_plot is not None:
-            self.spectrum_plot.update_figure(go.Figure())
-        if self.spectrum_info_label is not None:
-            self.spectrum_info_label.set_text("Click an identification to view its annotated MS2 spectrum")
         ui.notify("Identifications cleared", type="info")
 
     def find_ms2_spectrum(self, rt: float, precursor_mz: float, rt_tolerance: float = 5.0, mz_tolerance: float = 0.5) -> Optional[MSSpectrum]:
@@ -933,56 +960,77 @@ class MzMLViewer:
 
         return best_spec
 
-    def show_annotated_spectrum(self, id_idx: int):
-        """Show annotated MS2 spectrum for the selected peptide ID."""
-        if not self.peptide_ids or id_idx >= len(self.peptide_ids):
-            return
+    def find_matching_id_for_spectrum(self, spectrum_idx: int, rt_tolerance: float = 5.0, mz_tolerance: float = 0.5) -> Optional[int]:
+        """Find peptide ID matching the given spectrum. Returns ID index or None."""
+        if self.exp is None or not self.peptide_ids:
+            return None
 
-        if self.exp is None:
-            ui.notify("Load mzML file first to view spectra", type="warning")
-            return
+        if spectrum_idx < 0 or spectrum_idx >= self.exp.size():
+            return None
+
+        spec = self.exp[spectrum_idx]
+
+        # Only MS2 spectra can have peptide IDs
+        if spec.getMSLevel() != 2:
+            return None
+
+        spec_rt = spec.getRT()
+        precursors = spec.getPrecursors()
+        if not precursors:
+            return None
+
+        spec_prec_mz = precursors[0].getMZ()
+
+        # Find best matching ID
+        best_id_idx = None
+        best_rt_diff = float('inf')
+
+        for i, pep_id in enumerate(self.peptide_ids):
+            id_rt = pep_id.getRT()
+            id_mz = pep_id.getMZ()
+
+            if abs(id_rt - spec_rt) <= rt_tolerance and abs(id_mz - spec_prec_mz) <= mz_tolerance:
+                rt_diff = abs(id_rt - spec_rt)
+                if rt_diff < best_rt_diff:
+                    best_rt_diff = rt_diff
+                    best_id_idx = i
+
+        return best_id_idx
+
+    def find_spectrum_for_id(self, id_idx: int, rt_tolerance: float = 5.0, mz_tolerance: float = 0.5) -> Optional[int]:
+        """Find spectrum index matching the given peptide ID. Returns spectrum index or None."""
+        if self.exp is None or not self.peptide_ids:
+            return None
+
+        if id_idx < 0 or id_idx >= len(self.peptide_ids):
+            return None
 
         pep_id = self.peptide_ids[id_idx]
-        rt = pep_id.getRT()
-        mz = pep_id.getMZ()
+        id_rt = pep_id.getRT()
+        id_mz = pep_id.getMZ()
 
-        hits = pep_id.getHits()
-        if not hits:
-            ui.notify("No peptide hits for this identification", type="warning")
-            return
+        best_spec_idx = None
+        best_rt_diff = float('inf')
 
-        best_hit = hits[0]
-        sequence_str = best_hit.getSequence().toString()
-        charge = best_hit.getCharge()
+        for i in range(self.exp.size()):
+            spec = self.exp[i]
+            if spec.getMSLevel() != 2:
+                continue
 
-        # Find matching MS2 spectrum
-        ms2_spec = self.find_ms2_spectrum(rt, mz)
+            spec_rt = spec.getRT()
+            if abs(spec_rt - id_rt) > rt_tolerance:
+                continue
 
-        if ms2_spec is None:
-            ui.notify(f"No MS2 spectrum found near RT={rt:.1f}s, m/z={mz:.2f}", type="warning")
-            return
+            precursors = spec.getPrecursors()
+            if precursors:
+                prec_mz = precursors[0].getMZ()
+                if abs(prec_mz - id_mz) <= mz_tolerance:
+                    rt_diff = abs(spec_rt - id_rt)
+                    if rt_diff < best_rt_diff:
+                        best_rt_diff = rt_diff
+                        best_spec_idx = i
 
-        # Get spectrum data
-        mz_array, int_array = ms2_spec.get_peaks()
-
-        if len(mz_array) == 0:
-            ui.notify("MS2 spectrum is empty", type="warning")
-            return
-
-        # Create annotated spectrum plot
-        fig = create_annotated_spectrum_plot(
-            mz_array, int_array,
-            sequence_str, charge, mz
-        )
-
-        # Update the plot
-        if self.spectrum_plot is not None:
-            self.spectrum_plot.update_figure(fig)
-
-        if self.spectrum_info_label is not None:
-            self.spectrum_info_label.set_text(
-                f"Spectrum: {sequence_str} | RT: {rt:.2f}s | Precursor m/z: {mz:.4f} | Charge: {charge}+"
-            )
+        return best_spec_idx
 
     def create_tic_plot(self) -> go.Figure:
         """Create TIC (Total Ion Chromatogram) plot."""
@@ -1045,86 +1093,39 @@ class MzMLViewer:
             fig = self.create_tic_plot()
             self.tic_plot.update_figure(fig)
 
-    def find_ms1_spectrum_at_rt(self, target_rt: float) -> Optional[MSSpectrum]:
-        """Find the MS1 spectrum closest to the given RT."""
+    def find_spectrum_idx_at_rt(self, target_rt: float, ms_level: Optional[int] = None) -> Optional[int]:
+        """Find the spectrum index closest to the given RT, optionally filtered by MS level."""
         if self.exp is None:
             return None
 
-        best_spec = None
+        best_idx = None
         best_rt_diff = float('inf')
 
-        for spec in self.exp:
-            if spec.getMSLevel() != 1:
+        for i in range(self.exp.size()):
+            spec = self.exp[i]
+            if ms_level is not None and spec.getMSLevel() != ms_level:
                 continue
 
             spec_rt = spec.getRT()
             rt_diff = abs(spec_rt - target_rt)
             if rt_diff < best_rt_diff:
                 best_rt_diff = rt_diff
-                best_spec = spec
+                best_idx = i
 
-        return best_spec
+        return best_idx
 
     def show_ms1_spectrum(self, rt: float):
-        """Display MS1 spectrum at the given retention time."""
+        """Display MS1 spectrum at the given retention time using the spectrum browser."""
         if self.exp is None:
             ui.notify("Load mzML file first", type="warning")
             return
 
-        spec = self.find_ms1_spectrum_at_rt(rt)
-        if spec is None:
+        spec_idx = self.find_spectrum_idx_at_rt(rt, ms_level=1)
+        if spec_idx is None:
             ui.notify(f"No MS1 spectrum found near RT={rt:.1f}s", type="warning")
             return
 
-        mz_array, int_array = spec.get_peaks()
-        actual_rt = spec.getRT()
-
-        if len(mz_array) == 0:
-            ui.notify("Spectrum is empty", type="warning")
-            return
-
-        # Normalize intensities
-        max_int = int_array.max() if len(int_array) > 0 else 1
-        int_norm = (int_array / max_int) * 100
-
-        # Create figure
-        fig = go.Figure()
-
-        # Add spectrum as bars
-        fig.add_trace(go.Bar(
-            x=mz_array,
-            y=int_norm,
-            marker_color='#00ff64',
-            width=0.5,
-            opacity=0.8,
-            hovertemplate='m/z: %{x:.4f}<br>Intensity: %{y:.1f}%<extra></extra>'
-        ))
-
-        fig.update_layout(
-            title=dict(
-                text=f"MS1 Spectrum at RT={actual_rt:.2f}s ({len(mz_array):,} peaks)",
-                font=dict(size=14)
-            ),
-            xaxis_title="m/z",
-            yaxis_title="Relative Intensity (%)",
-            template="plotly_dark",
-            height=300,
-            margin=dict(l=60, r=20, t=50, b=50),
-            showlegend=False
-        )
-
-        fig.update_xaxes(range=[self.view_mz_min, self.view_mz_max] if self.view_mz_min else [0, 2000])
-        fig.update_yaxes(range=[0, 105])
-
-        # Update plot
-        if self.ms1_spectrum_plot is not None:
-            self.ms1_spectrum_plot.update_figure(fig)
-
-        if self.ms1_spectrum_info_label is not None:
-            tic_val = float(np.sum(int_array))
-            self.ms1_spectrum_info_label.set_text(
-                f"RT: {actual_rt:.2f}s | Peaks: {len(mz_array):,} | TIC: {tic_val:.2e}"
-            )
+        self.show_spectrum_in_browser(spec_idx)
 
     def zoom_to_feature(self, feature_idx: int, padding: float = 0.2):
         """Zoom to a specific feature."""
@@ -1192,7 +1193,14 @@ class MzMLViewer:
         self.view_mz_max = min(self.mz_max, mz + mz_window)
 
         self.update_plot()
-        self.show_annotated_spectrum(id_idx)
+
+        # Find matching spectrum and show it with annotations
+        spec_idx = self.find_spectrum_for_id(id_idx)
+        if spec_idx is not None:
+            self.show_spectrum_in_browser(spec_idx)
+        else:
+            ui.notify(f"No matching MS2 spectrum found for this ID", type="warning")
+
         ui.notify(f"Zoomed to ID {id_idx + 1}", type="info")
 
     def _data_to_plot_pixel(self, rt: float, mz: float) -> Tuple[int, int]:
@@ -2165,21 +2173,6 @@ def create_ui():
                 pagination={'rowsPerPage': 10, 'sortBy': 'idx', 'descending': False}
             ).classes('w-full').on('rowClick', on_spectrum_click)
             viewer.spectrum_table.props('dark flat bordered dense')
-
-        # MS1 Spectrum Viewer (from TIC click) - now in expansion
-        with ui.expansion('TIC Spectrum Viewer', icon='show_chart').classes('w-full max-w-6xl mt-2'):
-            viewer.ms1_spectrum_info_label = ui.label(
-                'Click on the TIC plot above to display an MS1 spectrum'
-            ).classes('text-sm text-gray-400 mb-2')
-            viewer.ms1_spectrum_plot = ui.plotly(go.Figure()).classes('w-full')
-
-        # Annotated MS2 Spectrum Viewer
-        with ui.card().classes('w-full max-w-6xl mt-4'):
-            ui.label('Annotated MS2 Spectrum').classes('text-xl font-semibold mb-2')
-            viewer.spectrum_info_label = ui.label(
-                'Click an identification to view its annotated MS2 spectrum'
-            ).classes('text-sm text-gray-400 mb-2')
-            viewer.spectrum_plot = ui.plotly(go.Figure()).classes('w-full')
 
         # Feature Table
         with ui.expansion('Features', icon='scatter_plot').classes('w-full max-w-6xl mt-2'):
