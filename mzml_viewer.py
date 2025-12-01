@@ -425,6 +425,7 @@ class MzMLViewer:
 
         # Loading state
         self.loading_indicator = None
+        self.loading_label = None  # Label for progress text
         self.is_loading = False
 
     def _get_cv_from_spectrum(self, spec) -> Optional[float]:
@@ -459,22 +460,25 @@ class MzMLViewer:
     def load_mzml(self, filepath: str) -> bool:
         """Load mzML file and extract peak data."""
         try:
-            self.set_loading(True, f"Loading {Path(filepath).name}...")
+            filename = Path(filepath).name
+            self.set_loading(True, f"Reading {filename}...")
             if self.status_label:
-                self.status_label.set_text(f"Loading {Path(filepath).name}...")
+                self.status_label.set_text(f"Reading {filename}...")
             ui.notify(f"Loading {filepath}...", type="info")
 
             self.exp = MSExperiment()
             MzMLFile().load(filepath, self.exp)
 
-            if self.status_label:
-                self.status_label.set_text("Extracting peaks...")
+            n_spectra = self.exp.size()
+            self.update_loading_progress(f"Loaded {n_spectra:,} spectra, counting peaks...")
 
             total_peaks = sum(spec.size() for spec in self.exp)
 
             if total_peaks == 0:
                 ui.notify("No peaks found in file!", type="warning")
                 return False
+
+            self.update_loading_progress(f"Found {total_peaks:,} peaks, detecting FAIMS...")
 
             # First pass: detect FAIMS CVs
             cv_set = set()
@@ -486,6 +490,8 @@ class MzMLViewer:
 
             self.has_faims = len(cv_set) > 1
             self.faims_cvs = sorted(cv_set) if self.has_faims else []
+
+            self.update_loading_progress(f"Extracting {total_peaks:,} peaks...")
 
             # Data structures for peak extraction
             rts = np.empty(total_peaks, dtype=np.float32)
@@ -499,7 +505,14 @@ class MzMLViewer:
             faims_tic_data = {cv: {'rt': [], 'int': []} for cv in self.faims_cvs} if self.has_faims else {}
 
             idx = 0
+            spec_count = 0
+            progress_interval = max(1, n_spectra // 20)  # Update progress ~20 times
             for spec in self.exp:
+                spec_count += 1
+                if spec_count % progress_interval == 0:
+                    pct = int(100 * spec_count / n_spectra)
+                    self.update_loading_progress(f"Extracting peaks... {pct}% ({idx:,} peaks)")
+
                 if spec.getMSLevel() != 1:
                     continue
                 rt = spec.getRT()
@@ -526,6 +539,8 @@ class MzMLViewer:
                         faims_tic_data[cv]['rt'].append(rt)
                         faims_tic_data[cv]['int'].append(tic_sum)
 
+            self.update_loading_progress(f"Building data structures...")
+
             rts = rts[:idx]
             mzs = mzs[:idx]
             intensities = intensities[:idx]
@@ -544,8 +559,12 @@ class MzMLViewer:
                     np.array(faims_tic_data[cv]['int'], dtype=np.float32)
                 )
 
+            self.update_loading_progress(f"Extracting spectrum metadata...")
+
             # Extract spectrum metadata for browser
             self.spectrum_data = self._extract_spectrum_data()
+
+            self.update_loading_progress(f"Creating DataFrame ({idx:,} peaks)...")
 
             # Create main DataFrame
             self.df = pd.DataFrame({
@@ -556,6 +575,8 @@ class MzMLViewer:
             if self.has_faims:
                 self.df['cv'] = cvs
             self.df['log_intensity'] = np.log1p(self.df['intensity'])
+
+            self.update_loading_progress(f"Finalizing...")
 
             # Create per-CV DataFrames for FAIMS view
             self.faims_data = {}
@@ -1617,8 +1638,17 @@ class MzMLViewer:
         if self.loading_indicator:
             if loading:
                 self.loading_indicator.style('display: flex;')
+                if self.loading_label:
+                    self.loading_label.set_text(message)
             else:
                 self.loading_indicator.style('display: none;')
+
+    def update_loading_progress(self, message: str):
+        """Update the loading progress message."""
+        if self.loading_label:
+            self.loading_label.set_text(message)
+        if self.status_label:
+            self.status_label.set_text(message)
 
     def _draw_axes(self, canvas: Image.Image) -> Image.Image:
         """Draw axes on canvas."""
@@ -2683,7 +2713,7 @@ def create_ui():
                 with viewer.loading_indicator:
                     with ui.column().classes('items-center gap-2'):
                         ui.spinner('dots', size='xl', color='cyan')
-                        ui.label('Loading...').classes('text-cyan-400 text-sm')
+                        viewer.loading_label = ui.label('Loading...').classes('text-cyan-400 text-sm font-mono')
 
             # Peak map with mouse interaction and minimap
             with ui.row().classes('w-full items-start gap-2'):
