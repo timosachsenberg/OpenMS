@@ -418,6 +418,15 @@ class MzMLViewer:
         # UI update flags
         self._updating_from_tic = False  # Prevent circular TIC updates
 
+        # Hover state for visual feedback
+        self.hover_feature_idx = None  # Feature being hovered in table
+        self.hover_id_idx = None  # ID being hovered in table
+        self._hover_update_pending = False  # Debounce hover updates
+
+        # Loading state
+        self.loading_indicator = None
+        self.is_loading = False
+
     def _get_cv_from_spectrum(self, spec) -> Optional[float]:
         """Extract FAIMS compensation voltage from spectrum metadata."""
         # Try common CV metadata names
@@ -450,6 +459,7 @@ class MzMLViewer:
     def load_mzml(self, filepath: str) -> bool:
         """Load mzML file and extract peak data."""
         try:
+            self.set_loading(True, f"Loading {Path(filepath).name}...")
             if self.status_label:
                 self.status_label.set_text(f"Loading {Path(filepath).name}...")
             ui.notify(f"Loading {filepath}...", type="info")
@@ -608,9 +618,11 @@ class MzMLViewer:
             if self.has_faims:
                 ui.notify(f"FAIMS data detected: {len(self.faims_cvs)} compensation voltages", type="info")
 
+            self.set_loading(False)
             return True
 
         except Exception as e:
+            self.set_loading(False)
             if self.status_label:
                 self.status_label.set_text(f"Error: {e}")
             ui.notify(f"Error loading file: {e}", type="negative")
@@ -878,6 +890,7 @@ class MzMLViewer:
     def load_featuremap(self, filepath: str) -> bool:
         """Load featureXML file."""
         try:
+            self.set_loading(True, f"Loading features...")
             if self.status_label:
                 self.status_label.set_text(f"Loading features from {Path(filepath).name}...")
             ui.notify(f"Loading {filepath}...", type="info")
@@ -899,9 +912,11 @@ class MzMLViewer:
             if self.feature_table is not None:
                 self.feature_table.update_rows(self.feature_data)
 
+            self.set_loading(False)
             return True
 
         except Exception as e:
+            self.set_loading(False)
             if self.status_label:
                 self.status_label.set_text(f"Error: {e}")
             ui.notify(f"Error loading features: {e}", type="negative")
@@ -957,6 +972,7 @@ class MzMLViewer:
     def load_idxml(self, filepath: str) -> bool:
         """Load idXML file with peptide identifications."""
         try:
+            self.set_loading(True, f"Loading identifications...")
             if self.status_label:
                 self.status_label.set_text(f"Loading IDs from {Path(filepath).name}...")
             ui.notify(f"Loading {filepath}...", type="info")
@@ -979,9 +995,11 @@ class MzMLViewer:
             if self.id_table is not None:
                 self.id_table.update_rows(self.id_data)
 
+            self.set_loading(False)
             return True
 
         except Exception as e:
+            self.set_loading(False)
             if self.status_label:
                 self.status_label.set_text(f"Error: {e}")
             ui.notify(f"Error loading IDs: {e}", type="negative")
@@ -1392,38 +1410,71 @@ class MzMLViewer:
         return img
 
     def _draw_spectrum_marker_on_plot(self, img: Image.Image) -> Image.Image:
-        """Draw a horizontal line at the selected spectrum's RT."""
+        """Draw a crosshair at the selected spectrum's RT and precursor m/z (for MS2)."""
         if self.selected_spectrum_idx is None or self.exp is None:
             return img
 
         spec = self.exp[self.selected_spectrum_idx]
         rt = spec.getRT()
+        ms_level = spec.getMSLevel()
 
-        # Check if RT is in view
-        if rt < self.view_rt_min or rt > self.view_rt_max:
+        # Get precursor m/z for MS2 spectra
+        precursor_mz = None
+        if ms_level == 2:
+            precursors = spec.getPrecursors()
+            if precursors:
+                precursor_mz = precursors[0].getMZ()
+
+        # Check if RT is in view (still render if precursor_mz is in view)
+        rt_in_view = self.view_rt_min <= rt <= self.view_rt_max
+        mz_in_view = precursor_mz is not None and self.view_mz_min <= precursor_mz <= self.view_mz_max
+
+        if not rt_in_view and not mz_in_view:
             return img
 
         img = img.convert('RGBA')
         overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
 
-        # Calculate x position for the RT
-        x, _ = self._data_to_plot_pixel(rt, self.view_mz_min)
+        # Colors: cyan for MS1, red for MS2
+        line_color = (0, 212, 255, 200) if ms_level == 1 else (255, 107, 107, 200)
+        crosshair_color = (255, 200, 50, 180)  # Yellow-orange for crosshair intersection
 
-        # Draw vertical line across the full height
-        ms_level = spec.getMSLevel()
-        line_color = (0, 212, 255, 200) if ms_level == 1 else (255, 107, 107, 200)  # cyan for MS1, red for MS2
-
-        draw.line([(x, 0), (x, self.plot_height)], fill=line_color, width=2)
-
-        # Draw small label at top
         try:
             font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 10)
         except:
             font = ImageFont.load_default()
 
-        label = f"MS{ms_level} #{self.selected_spectrum_idx}"
-        draw.text((x + 4, 4), label, fill=line_color, font=font)
+        # Calculate x position for the RT
+        x, _ = self._data_to_plot_pixel(rt, self.view_mz_min)
+
+        # Draw vertical line at RT (if in view)
+        if rt_in_view:
+            draw.line([(x, 0), (x, self.plot_height)], fill=line_color, width=2)
+
+            # Draw label at top
+            label = f"MS{ms_level} #{self.selected_spectrum_idx}"
+            draw.text((x + 4, 4), label, fill=line_color, font=font)
+
+        # For MS2 spectra, draw horizontal line at precursor m/z to create crosshair
+        if precursor_mz is not None and mz_in_view:
+            _, y = self._data_to_plot_pixel(rt, precursor_mz)
+            draw.line([(0, y), (self.plot_width, y)], fill=line_color, width=2)
+
+            # Draw precursor m/z label on the right
+            mz_label = f"Prec: {precursor_mz:.4f}"
+            bbox = draw.textbbox((0, 0), mz_label, font=font)
+            label_width = bbox[2] - bbox[0]
+            draw.text((self.plot_width - label_width - 4, y - 14), mz_label, fill=line_color, font=font)
+
+            # Draw crosshair intersection marker (if both RT and m/z are in view)
+            if rt_in_view:
+                # Draw a small circle/crosshair at intersection
+                r = 6
+                draw.ellipse([(x - r, y - r), (x + r, y + r)], outline=crosshair_color, width=2)
+                # Inner cross for visibility
+                draw.line([(x - r - 2, y), (x + r + 2, y)], fill=crosshair_color, width=1)
+                draw.line([(x, y - r - 2), (x, y + r + 2)], fill=crosshair_color, width=1)
 
         img = Image.alpha_composite(img, overlay)
         return img
@@ -1459,6 +1510,115 @@ class MzMLViewer:
 
         img = Image.alpha_composite(img, overlay)
         return img
+
+    def _draw_hover_overlay(self, img: Image.Image) -> Image.Image:
+        """Draw hover highlights for features and IDs."""
+        if self.hover_feature_idx is None and self.hover_id_idx is None:
+            return img
+
+        img = img.convert('RGBA')
+        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        hover_color = (100, 255, 200, 180)  # Bright cyan-green for hover
+
+        # Draw hover highlight for feature
+        if self.hover_feature_idx is not None and self.feature_map is not None:
+            try:
+                feature = self.feature_map[self.hover_feature_idx]
+                rt = feature.getRT()
+                mz = feature.getMZ()
+
+                # Get bounding box
+                convex_hulls = feature.getConvexHulls()
+                if convex_hulls:
+                    hull = convex_hulls[0]
+                    hull_points = hull.getHullPoints()
+                    if hull_points:
+                        rt_vals = [p.getX() for p in hull_points]
+                        mz_vals = [p.getY() for p in hull_points]
+                        rt_min_f, rt_max_f = min(rt_vals), max(rt_vals)
+                        mz_min_f, mz_max_f = min(mz_vals), max(mz_vals)
+                    else:
+                        rt_min_f, rt_max_f = rt - 5, rt + 5
+                        mz_min_f, mz_max_f = mz - 0.5, mz + 0.5
+                else:
+                    rt_min_f, rt_max_f = rt - 5, rt + 5
+                    mz_min_f, mz_max_f = mz - 0.5, mz + 0.5
+
+                # Draw bounding box preview
+                x1, y1 = self._data_to_plot_pixel(rt_min_f, mz_max_f)
+                x2, y2 = self._data_to_plot_pixel(rt_max_f, mz_min_f)
+
+                # Clamp to plot area
+                x1 = max(0, min(self.plot_width, x1))
+                x2 = max(0, min(self.plot_width, x2))
+                y1 = max(0, min(self.plot_height, y1))
+                y2 = max(0, min(self.plot_height, y2))
+
+                if x1 != x2 and y1 != y2:
+                    # Draw dashed-style bounding box (corners + center cross)
+                    draw.rectangle([(x1, y1), (x2, y2)], outline=hover_color, width=3)
+
+                    # Draw centroid marker
+                    cx, cy = self._data_to_plot_pixel(rt, mz)
+                    r = 8
+                    draw.ellipse([(cx - r, cy - r), (cx + r, cy + r)], outline=hover_color, width=3)
+
+            except (IndexError, RuntimeError):
+                pass
+
+        # Draw hover highlight for ID
+        if self.hover_id_idx is not None and self.peptide_ids:
+            try:
+                pep_id = self.peptide_ids[self.hover_id_idx]
+                rt = pep_id.getRT()
+                mz = pep_id.getMZ()
+
+                if self._is_in_view(rt, mz):
+                    cx, cy = self._data_to_plot_pixel(rt, mz)
+
+                    # Draw pulsing ring effect
+                    for r in [10, 14, 18]:
+                        alpha = int(180 * (18 - r) / 8)  # Fade out
+                        ring_color = (100, 255, 200, alpha)
+                        draw.ellipse([(cx - r, cy - r), (cx + r, cy + r)], outline=ring_color, width=2)
+
+            except (IndexError, RuntimeError):
+                pass
+
+        img = Image.alpha_composite(img, overlay)
+        return img
+
+    def set_hover_feature(self, idx: Optional[int]):
+        """Set the feature being hovered."""
+        if idx != self.hover_feature_idx:
+            self.hover_feature_idx = idx
+            self.hover_id_idx = None  # Clear other hover
+            self.update_plot()
+
+    def set_hover_id(self, idx: Optional[int]):
+        """Set the ID being hovered."""
+        if idx != self.hover_id_idx:
+            self.hover_id_idx = idx
+            self.hover_feature_idx = None  # Clear other hover
+            self.update_plot()
+
+    def clear_hover(self):
+        """Clear all hover states."""
+        if self.hover_feature_idx is not None or self.hover_id_idx is not None:
+            self.hover_feature_idx = None
+            self.hover_id_idx = None
+            self.update_plot()
+
+    def set_loading(self, loading: bool, message: str = "Loading..."):
+        """Set loading state and update indicator."""
+        self.is_loading = loading
+        if self.loading_indicator:
+            if loading:
+                self.loading_indicator.style('display: flex;')
+            else:
+                self.loading_indicator.style('display: none;')
 
     def _draw_axes(self, canvas: Image.Image) -> Image.Image:
         """Draw axes on canvas."""
@@ -1574,6 +1734,9 @@ class MzMLViewer:
 
         if self.show_spectrum_marker:
             plot_img = self._draw_spectrum_marker_on_plot(plot_img)
+
+        # Draw hover highlights (last so they appear on top)
+        plot_img = self._draw_hover_overlay(plot_img)
 
         canvas = Image.new('RGBA', (self.canvas_width, self.canvas_height), (20, 20, 25, 255))
         plot_img_rgba = plot_img.convert('RGBA')
@@ -1870,6 +2033,197 @@ class MzMLViewer:
         rt, mz = self.pixel_to_data_coords(pixel_x, pixel_y)
         self.coord_label.set_text(f"RT: {rt:.2f}s  m/z: {mz:.4f}")
 
+    # ==================== Search and Filter Methods ====================
+
+    def search_global(self, query: str) -> List[Dict[str, Any]]:
+        """
+        Search across spectra, IDs, and features.
+        Returns list of results with type, description, and action.
+        """
+        results = []
+        query = query.strip()
+        if not query:
+            return results
+
+        query_lower = query.lower()
+
+        # Try to parse as spectrum number (e.g., "#123" or "123")
+        spec_match = query.replace('#', '').strip()
+        if spec_match.isdigit():
+            spec_idx = int(spec_match)
+            if self.exp and 0 <= spec_idx < self.exp.size():
+                spec = self.exp[spec_idx]
+                results.append({
+                    'type': 'spectrum',
+                    'icon': 'analytics',
+                    'label': f"Spectrum #{spec_idx} (MS{spec.getMSLevel()}, RT={spec.getRT():.1f}s)",
+                    'action': lambda idx=spec_idx: self.show_spectrum_in_browser(idx)
+                })
+
+        # Try to parse as m/z value (e.g., "500.25" or "mz:500.25")
+        mz_query = query_lower.replace('mz:', '').replace('m/z:', '').strip()
+        try:
+            mz_val = float(mz_query)
+            if 50 < mz_val < 10000:  # Reasonable m/z range
+                # Find spectra with precursor near this m/z
+                if self.exp:
+                    for i in range(min(self.exp.size(), 1000)):  # Limit search
+                        spec = self.exp[i]
+                        if spec.getMSLevel() > 1:
+                            precs = spec.getPrecursors()
+                            if precs and abs(precs[0].getMZ() - mz_val) < 0.5:
+                                results.append({
+                                    'type': 'spectrum',
+                                    'icon': 'analytics',
+                                    'label': f"MS2 #{i} precursor m/z={precs[0].getMZ():.4f}",
+                                    'action': lambda idx=i: self.show_spectrum_in_browser(idx)
+                                })
+                                if len(results) >= 10:
+                                    break
+                # Find IDs near this m/z
+                for i, pid in enumerate(self.peptide_ids[:100]):
+                    if abs(pid.getMZ() - mz_val) < 0.5:
+                        hits = pid.getHits()
+                        seq = hits[0].getSequence().toString() if hits else "?"
+                        results.append({
+                            'type': 'id',
+                            'icon': 'biotech',
+                            'label': f"ID: {seq} (m/z={pid.getMZ():.4f})",
+                            'action': lambda idx=i: self.zoom_to_id(idx)
+                        })
+                        if len(results) >= 15:
+                            break
+        except ValueError:
+            pass
+
+        # Try to parse as RT value (e.g., "rt:100" or "100s")
+        rt_query = query_lower.replace('rt:', '').replace('s', '').strip()
+        try:
+            rt_val = float(rt_query)
+            if self.rt_min <= rt_val <= self.rt_max:
+                results.append({
+                    'type': 'navigate',
+                    'icon': 'place',
+                    'label': f"Go to RT={rt_val:.1f}s",
+                    'action': lambda rt=rt_val: self.go_to_rt(rt)
+                })
+        except ValueError:
+            pass
+
+        # Search peptide sequences
+        if len(query) >= 2:
+            for i, pid in enumerate(self.peptide_ids[:500]):
+                hits = pid.getHits()
+                if hits:
+                    seq = hits[0].getSequence().toString()
+                    if query_lower in seq.lower():
+                        results.append({
+                            'type': 'id',
+                            'icon': 'biotech',
+                            'label': f"{seq} (RT={pid.getRT():.1f}s, m/z={pid.getMZ():.2f})",
+                            'action': lambda idx=i: self.zoom_to_id(idx)
+                        })
+                        if len(results) >= 20:
+                            break
+
+        return results[:20]  # Limit total results
+
+    def go_to_rt(self, rt: float):
+        """Center view on given RT value."""
+        if self.df is None:
+            return
+        self.push_zoom_history()
+        rt_range = self.view_rt_max - self.view_rt_min
+        self.view_rt_min = max(self.rt_min, rt - rt_range / 2)
+        self.view_rt_max = min(self.rt_max, rt + rt_range / 2)
+        self.push_zoom_history()
+        self.update_plot()
+        # Also show closest spectrum
+        self.show_spectrum_at_rt(rt)
+
+    def go_to_mz(self, mz: float):
+        """Center view on given m/z value."""
+        if self.df is None:
+            return
+        self.push_zoom_history()
+        mz_range = self.view_mz_max - self.view_mz_min
+        self.view_mz_min = max(self.mz_min, mz - mz_range / 2)
+        self.view_mz_max = min(self.mz_max, mz + mz_range / 2)
+        self.push_zoom_history()
+        self.update_plot()
+
+    def go_to_location(self, rt: Optional[float] = None, mz: Optional[float] = None, spectrum_idx: Optional[int] = None):
+        """Navigate to a specific location."""
+        if spectrum_idx is not None and self.exp and 0 <= spectrum_idx < self.exp.size():
+            self.show_spectrum_in_browser(spectrum_idx)
+            spec = self.exp[spectrum_idx]
+            rt = spec.getRT()
+
+        if self.df is None:
+            return
+
+        self.push_zoom_history()
+
+        if rt is not None:
+            rt_range = self.view_rt_max - self.view_rt_min
+            self.view_rt_min = max(self.rt_min, rt - rt_range / 2)
+            self.view_rt_max = min(self.rt_max, rt + rt_range / 2)
+
+        if mz is not None:
+            mz_range = self.view_mz_max - self.view_mz_min
+            self.view_mz_min = max(self.mz_min, mz - mz_range / 2)
+            self.view_mz_max = min(self.mz_max, mz + mz_range / 2)
+
+        self.push_zoom_history()
+        self.update_plot()
+
+    def filter_spectrum_data(self, ms_level: Optional[int] = None, rt_min: Optional[float] = None,
+                             rt_max: Optional[float] = None, min_peaks: Optional[int] = None,
+                             min_tic: Optional[float] = None) -> List[Dict]:
+        """Filter spectrum data based on criteria."""
+        filtered = []
+        for row in self.spectrum_data:
+            if ms_level is not None and row['ms_level'] != ms_level:
+                continue
+            if rt_min is not None and row['rt'] < rt_min:
+                continue
+            if rt_max is not None and row['rt'] > rt_max:
+                continue
+            if min_peaks is not None and row['n_peaks'] < min_peaks:
+                continue
+            if min_tic is not None and row['tic'] < min_tic:
+                continue
+            filtered.append(row)
+        return filtered
+
+    def filter_id_data(self, sequence_pattern: Optional[str] = None, min_score: Optional[float] = None,
+                       charge: Optional[int] = None) -> List[Dict]:
+        """Filter ID data based on criteria."""
+        filtered = []
+        for row in self.id_data:
+            if sequence_pattern and sequence_pattern.lower() not in row['sequence'].lower():
+                continue
+            if min_score is not None and row['score'] < min_score:
+                continue
+            if charge is not None and row['charge'] != charge:
+                continue
+            filtered.append(row)
+        return filtered
+
+    def filter_feature_data(self, min_intensity: Optional[float] = None,
+                            min_quality: Optional[float] = None, charge: Optional[int] = None) -> List[Dict]:
+        """Filter feature data based on criteria."""
+        filtered = []
+        for row in self.feature_data:
+            if min_intensity is not None and row['intensity'] < min_intensity:
+                continue
+            if min_quality is not None and row['quality'] < min_quality:
+                continue
+            if charge is not None and row['charge'] != charge:
+                continue
+            filtered.append(row)
+        return filtered
+
     def reset_view(self):
         """Reset to full view."""
         if self.df is None:
@@ -2154,6 +2508,65 @@ def create_ui():
             viewer.rt_range_label = ui.label('RT: -- - -- s').classes('text-blue-300')
             viewer.mz_range_label = ui.label('m/z: -- - --').classes('text-blue-300')
 
+        # Search and Go To section
+        with ui.card().classes('w-full max-w-4xl mb-2 p-2'):
+            with ui.row().classes('w-full items-center gap-4'):
+                # Global search
+                with ui.column().classes('flex-grow'):
+                    ui.label('Search').classes('text-xs text-gray-400')
+                    search_input = ui.input(placeholder='Peptide sequence, m/z, RT, or spectrum #...').classes('w-full').props('dense outlined')
+
+                    # Search results container
+                    search_results_container = ui.column().classes('w-full')
+                    search_results_container.set_visibility(False)
+
+                    def on_search(e):
+                        query = search_input.value
+                        search_results_container.clear()
+                        if not query or len(query) < 1:
+                            search_results_container.set_visibility(False)
+                            return
+
+                        results = viewer.search_global(query)
+                        if results:
+                            search_results_container.set_visibility(True)
+                            with search_results_container:
+                                with ui.card().classes('w-full p-1 mt-1').style('max-height: 200px; overflow-y: auto;'):
+                                    for result in results:
+                                        def make_click_handler(action):
+                                            def handler():
+                                                action()
+                                                search_results_container.set_visibility(False)
+                                                search_input.value = ''
+                                            return handler
+
+                                        with ui.row().classes('w-full items-center p-1 hover:bg-gray-700 cursor-pointer rounded').on('click', make_click_handler(result['action'])):
+                                            ui.icon(result['icon'], size='xs').classes('text-gray-400 mr-2')
+                                            ui.label(result['label']).classes('text-sm')
+                        else:
+                            search_results_container.set_visibility(False)
+
+                    search_input.on('keyup', on_search)
+
+                # Divider
+                ui.label('|').classes('text-gray-600')
+
+                # Go To controls
+                with ui.row().classes('items-end gap-2'):
+                    goto_rt = ui.number(label='RT (s)', format='%.1f').props('dense outlined').classes('w-24')
+                    goto_mz = ui.number(label='m/z', format='%.2f').props('dense outlined').classes('w-24')
+                    goto_spec = ui.number(label='Spectrum #', format='%.0f').props('dense outlined').classes('w-24')
+
+                    def do_goto():
+                        rt = goto_rt.value if goto_rt.value else None
+                        mz = goto_mz.value if goto_mz.value else None
+                        spec = int(goto_spec.value) if goto_spec.value else None
+                        if rt is not None or mz is not None or spec is not None:
+                            viewer.go_to_location(rt=rt, mz=mz, spectrum_idx=spec)
+                            ui.notify(f"Navigated to location", type="info")
+
+                    ui.button('Go', on_click=do_goto).props('dense color=primary')
+
         # Display options
         with ui.row().classes('w-full justify-center gap-4 mb-2 flex-wrap'):
             ui.label('Show:').classes('text-gray-400')
@@ -2267,6 +2680,16 @@ def create_ui():
                 viewer.coord_label = ui.label('RT: --  m/z: --').classes('text-xs text-cyan-400 font-mono')
 
             ui.label('Peak Map - Scroll to zoom, drag to select region, double-click to reset').classes('text-xs text-gray-500 mb-1')
+
+            # Loading indicator overlay
+            with ui.element('div').classes('relative'):
+                viewer.loading_indicator = ui.element('div').classes(
+                    'absolute inset-0 flex items-center justify-center bg-black/60 z-50'
+                ).style('display: none;')
+                with viewer.loading_indicator:
+                    with ui.column().classes('items-center gap-2'):
+                        ui.spinner('dots', size='xl', color='cyan')
+                        ui.label('Loading...').classes('text-cyan-400 text-sm').bind_text(viewer.loading_indicator, 'loading_text')
 
             # Peak map with mouse interaction and minimap
             with ui.row().classes('w-full items-start gap-2'):
@@ -2493,6 +2916,40 @@ def create_ui():
         with ui.expansion('Spectrum Table', icon='list', value=True).classes('w-full max-w-6xl mt-2'):
             ui.label('Click a row to view the spectrum in the 1D viewer above').classes('text-sm text-gray-400 mb-2')
 
+            # Filters row
+            with ui.row().classes('w-full items-end gap-2 mb-2 flex-wrap'):
+                ui.label('Filter:').classes('text-xs text-gray-400')
+                spec_ms_filter = ui.select(['All', 'MS1', 'MS2'], value='All', label='MS Level').props('dense outlined').classes('w-20')
+                spec_rt_min = ui.number(label='RT Min', format='%.0f').props('dense outlined').classes('w-20')
+                spec_rt_max = ui.number(label='RT Max', format='%.0f').props('dense outlined').classes('w-20')
+                spec_min_peaks = ui.number(label='Min Peaks', format='%.0f').props('dense outlined').classes('w-24')
+
+                def apply_spectrum_filter():
+                    ms_level = None
+                    if spec_ms_filter.value == 'MS1':
+                        ms_level = 1
+                    elif spec_ms_filter.value == 'MS2':
+                        ms_level = 2
+
+                    filtered = viewer.filter_spectrum_data(
+                        ms_level=ms_level,
+                        rt_min=spec_rt_min.value if spec_rt_min.value else None,
+                        rt_max=spec_rt_max.value if spec_rt_max.value else None,
+                        min_peaks=int(spec_min_peaks.value) if spec_min_peaks.value else None
+                    )
+                    viewer.spectrum_table.update_rows(filtered)
+                    ui.notify(f"Showing {len(filtered)} spectra", type="info")
+
+                def reset_spectrum_filter():
+                    spec_ms_filter.value = 'All'
+                    spec_rt_min.value = None
+                    spec_rt_max.value = None
+                    spec_min_peaks.value = None
+                    viewer.spectrum_table.update_rows(viewer.spectrum_data)
+
+                ui.button('Apply', on_click=apply_spectrum_filter).props('dense size=sm color=primary')
+                ui.button('Reset', on_click=reset_spectrum_filter).props('dense size=sm color=grey')
+
             spectrum_columns = [
                 {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
                 {'name': 'rt', 'label': 'RT (s)', 'field': 'rt', 'sortable': True, 'align': 'right'},
@@ -2521,6 +2978,38 @@ def create_ui():
         with ui.expansion('Features', icon='scatter_plot').classes('w-full max-w-6xl mt-2'):
             ui.label('Click a row to zoom to that feature').classes('text-sm text-gray-400 mb-2')
 
+            # Feature filters row
+            with ui.row().classes('w-full items-end gap-2 mb-2 flex-wrap'):
+                ui.label('Filter:').classes('text-xs text-gray-400')
+                feat_min_intensity = ui.number(label='Min Intensity', format='%.0f').props('dense outlined').classes('w-28')
+                feat_min_quality = ui.number(label='Min Quality', format='%.2f').props('dense outlined').classes('w-24')
+                feat_charge = ui.select(['All', '1', '2', '3', '4', '5+'], value='All', label='Charge').props('dense outlined').classes('w-20')
+
+                def apply_feature_filter():
+                    charge_val = None
+                    if feat_charge.value and feat_charge.value != 'All':
+                        if feat_charge.value == '5+':
+                            charge_val = 5  # Will match 5 or greater
+                        else:
+                            charge_val = int(feat_charge.value)
+
+                    filtered = viewer.filter_feature_data(
+                        min_intensity=feat_min_intensity.value if feat_min_intensity.value else None,
+                        min_quality=feat_min_quality.value if feat_min_quality.value else None,
+                        charge=charge_val
+                    )
+                    viewer.feature_table.update_rows(filtered)
+                    ui.notify(f"Showing {len(filtered)} features", type="info")
+
+                def reset_feature_filter():
+                    feat_min_intensity.value = None
+                    feat_min_quality.value = None
+                    feat_charge.value = 'All'
+                    viewer.feature_table.update_rows(viewer.feature_data)
+
+                ui.button('Apply', on_click=apply_feature_filter).props('dense size=sm color=primary')
+                ui.button('Reset', on_click=reset_feature_filter).props('dense size=sm color=grey')
+
             feature_columns = [
                 {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
                 {'name': 'rt', 'label': 'RT (s)', 'field': 'rt', 'sortable': True, 'align': 'right'},
@@ -2535,15 +3024,61 @@ def create_ui():
                 if row and 'idx' in row:
                     viewer.zoom_to_feature(row['idx'])
 
+            def on_feature_hover(e):
+                """Handle feature row hover for visual feedback."""
+                try:
+                    row = e.args[1] if len(e.args) > 1 else None
+                    if row and 'idx' in row:
+                        viewer.set_hover_feature(row['idx'])
+                except Exception:
+                    pass
+
+            def on_feature_leave(e):
+                """Clear feature hover state."""
+                viewer.clear_hover()
+
             viewer.feature_table = ui.table(
                 columns=feature_columns, rows=[], row_key='idx',
                 pagination={'rowsPerPage': 8, 'sortBy': 'intensity', 'descending': True}
-            ).classes('w-full').on('rowClick', on_feature_click)
+            ).classes('w-full hover-highlight').on('rowClick', on_feature_click)
+            viewer.feature_table.on('row-dblclick', on_feature_hover)  # Use dblclick as hover proxy
             viewer.feature_table.props('dark flat bordered dense')
 
         # ID Table
         with ui.expansion('Identifications', icon='biotech').classes('w-full max-w-6xl mt-2'):
             ui.label('Click a row to zoom and view annotated spectrum').classes('text-sm text-gray-400 mb-2')
+
+            # ID filters row
+            with ui.row().classes('w-full items-end gap-2 mb-2 flex-wrap'):
+                ui.label('Filter:').classes('text-xs text-gray-400')
+                id_seq_pattern = ui.input(label='Sequence', placeholder='e.g. PEPTIDE').props('dense outlined').classes('w-32')
+                id_min_score = ui.number(label='Min Score', format='%.2f').props('dense outlined').classes('w-24')
+                id_charge = ui.select(['All', '1', '2', '3', '4', '5+'], value='All', label='Charge').props('dense outlined').classes('w-20')
+
+                def apply_id_filter():
+                    charge_val = None
+                    if id_charge.value and id_charge.value != 'All':
+                        if id_charge.value == '5+':
+                            charge_val = 5  # Will match 5 or greater
+                        else:
+                            charge_val = int(id_charge.value)
+
+                    filtered = viewer.filter_id_data(
+                        sequence_pattern=id_seq_pattern.value if id_seq_pattern.value else None,
+                        min_score=id_min_score.value if id_min_score.value else None,
+                        charge=charge_val
+                    )
+                    viewer.id_table.update_rows(filtered)
+                    ui.notify(f"Showing {len(filtered)} identifications", type="info")
+
+                def reset_id_filter():
+                    id_seq_pattern.value = ''
+                    id_min_score.value = None
+                    id_charge.value = 'All'
+                    viewer.id_table.update_rows(viewer.id_data)
+
+                ui.button('Apply', on_click=apply_id_filter).props('dense size=sm color=primary')
+                ui.button('Reset', on_click=reset_id_filter).props('dense size=sm color=grey')
 
             id_columns = [
                 {'name': 'idx', 'label': '#', 'field': 'idx', 'sortable': True, 'align': 'left'},
@@ -2559,10 +3094,20 @@ def create_ui():
                 if row and 'idx' in row:
                     viewer.zoom_to_id(row['idx'])
 
+            def on_id_hover(e):
+                """Handle ID row hover for visual feedback."""
+                try:
+                    row = e.args[1] if len(e.args) > 1 else None
+                    if row and 'idx' in row:
+                        viewer.set_hover_id(row['idx'])
+                except Exception:
+                    pass
+
             viewer.id_table = ui.table(
                 columns=id_columns, rows=[], row_key='idx',
                 pagination={'rowsPerPage': 8, 'sortBy': 'score', 'descending': True}
-            ).classes('w-full').on('rowClick', on_id_click)
+            ).classes('w-full hover-highlight').on('rowClick', on_id_click)
+            viewer.id_table.on('row-dblclick', on_id_hover)  # Use dblclick as preview
             viewer.id_table.props('dark flat bordered dense')
 
         # Custom range
