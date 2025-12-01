@@ -2440,20 +2440,39 @@ def create_ui():
                     with ui.row().classes('w-full items-end gap-2'):
                         async def handle_mzml_upload(e):
                             # Handle different NiceGUI upload API versions
-                            if hasattr(e, 'content'):
-                                content = e.content.read()
-                                filename = e.name
-                            elif hasattr(e, 'files') and e.files:
-                                f = e.files[0]
-                                content = f.content.read() if hasattr(f.content, 'read') else f.content
-                                filename = f.name
-                            else:
-                                ui.notify("Upload failed - unknown format", type="negative")
-                                return
-                            temp_path = Path('/tmp') / filename
-                            temp_path.write_bytes(content)
-                            if viewer.load_mzml(str(temp_path)):
-                                viewer.update_plot()
+                            try:
+                                content = None
+                                filename = None
+
+                                if hasattr(e, 'content') and e.content is not None:
+                                    content = e.content.read()
+                                    filename = e.name
+                                elif hasattr(e, 'files') and e.files:
+                                    f = e.files[0]
+                                    content = f.content.read() if hasattr(f.content, 'read') else f.content
+                                    filename = f.name
+                                else:
+                                    # Debug: show available attributes
+                                    attrs = [a for a in dir(e) if not a.startswith('_')]
+                                    print(f"Upload event attributes: {attrs}")
+                                    print(f"Event type: {type(e)}")
+                                    for attr in attrs:
+                                        try:
+                                            val = getattr(e, attr)
+                                            print(f"  {attr}: {type(val)} = {val}")
+                                        except:
+                                            pass
+                                    ui.notify(f"Debug: attrs={attrs[:5]}...", type="warning")
+                                    return
+
+                                temp_path = Path('/tmp') / filename
+                                temp_path.write_bytes(content)
+                                if viewer.load_mzml(str(temp_path)):
+                                    viewer.update_plot()
+                            except Exception as ex:
+                                import traceback
+                                traceback.print_exc()
+                                ui.notify(f"Upload error: {ex}", type="negative")
 
                         ui.upload(label='Upload mzML', on_upload=handle_mzml_upload,
                                   auto_upload=True).props('accept=.mzML,.mzml').classes('w-40')
