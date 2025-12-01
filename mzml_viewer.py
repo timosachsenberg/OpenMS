@@ -403,6 +403,17 @@ class MzMLViewer:
         self.faims_toggle = None
         self.faims_info_label = None
 
+        # Navigation UI elements
+        self.minimap_image = None  # Small overview image
+        self.minimap_width = 200
+        self.minimap_height = 100
+        self.breadcrumb_label = None  # Zoom history display
+        self.coord_label = None  # RT/m/z coordinate display
+
+        # Zoom history for breadcrumb trail
+        self.zoom_history = []  # List of (rt_min, rt_max, mz_min, mz_max, label) tuples
+        self.max_zoom_history = 10  # Max history entries
+
         # UI update flags
         self._updating_from_tic = False  # Prevent circular TIC updates
 
@@ -1671,22 +1682,213 @@ class MzMLViewer:
         if self.status_label:
             self.status_label.set_text("Ready")
 
+        # Update minimap
+        self.update_minimap()
+
+        # Update breadcrumb
+        self.update_breadcrumb()
+
+    def render_minimap(self) -> Optional[str]:
+        """Render the minimap showing full data extent with view rectangle overlay."""
+        if self.df is None or len(self.df) == 0:
+            return None
+
+        # Create minimap canvas (no margins for simplicity)
+        cvs = ds.Canvas(plot_width=self.minimap_width, plot_height=self.minimap_height,
+                        x_range=(self.rt_min, self.rt_max),
+                        y_range=(self.mz_min, self.mz_max))
+
+        # Aggregate using log of count for better visualization
+        agg = cvs.points(self.df, 'rt', 'mz', agg=ds.sum('intensity'))
+
+        # Apply color map
+        img = tf.shade(agg, cmap=cc.fire, how='log')
+        img = tf.set_background(img, 'black')
+
+        # Convert to PIL
+        plot_img = img.to_pil()
+
+        # Draw view rectangle
+        if (self.view_rt_min is not None and self.view_rt_max is not None and
+            self.view_mz_min is not None and self.view_mz_max is not None):
+
+            draw = ImageDraw.Draw(plot_img)
+
+            # Convert data coords to pixel coords
+            rt_range = self.rt_max - self.rt_min
+            mz_range = self.mz_max - self.mz_min
+
+            if rt_range > 0 and mz_range > 0:
+                x1 = int((self.view_rt_min - self.rt_min) / rt_range * self.minimap_width)
+                x2 = int((self.view_rt_max - self.rt_min) / rt_range * self.minimap_width)
+                y1 = int((self.mz_max - self.view_mz_max) / mz_range * self.minimap_height)
+                y2 = int((self.mz_max - self.view_mz_min) / mz_range * self.minimap_height)
+
+                # Clamp to minimap bounds
+                x1, x2 = max(0, x1), min(self.minimap_width - 1, x2)
+                y1, y2 = max(0, y1), min(self.minimap_height - 1, y2)
+
+                # Draw rectangle outline (yellow)
+                draw.rectangle([x1, y1, x2, y2], outline=(255, 255, 0, 255), width=2)
+
+        # Convert to base64
+        buffer = io.BytesIO()
+        plot_img.save(buffer, format='PNG')
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+    def update_minimap(self):
+        """Update the minimap display."""
+        if self.minimap_image is None:
+            return
+
+        img_data = self.render_minimap()
+        if img_data:
+            self.minimap_image.set_source(f"data:image/png;base64,{img_data}")
+
+    def minimap_click_to_view(self, x_frac: float, y_frac: float):
+        """Center the main view on the clicked position in minimap."""
+        if self.df is None:
+            return
+
+        # Convert minimap fractions to data coordinates
+        rt_click = self.rt_min + x_frac * (self.rt_max - self.rt_min)
+        mz_click = self.mz_max - y_frac * (self.mz_max - self.mz_min)
+
+        # Center current view on this point
+        rt_half_range = (self.view_rt_max - self.view_rt_min) / 2
+        mz_half_range = (self.view_mz_max - self.view_mz_min) / 2
+
+        new_rt_min = rt_click - rt_half_range
+        new_rt_max = rt_click + rt_half_range
+        new_mz_min = mz_click - mz_half_range
+        new_mz_max = mz_click + mz_half_range
+
+        # Clamp to data bounds
+        if new_rt_min < self.rt_min:
+            new_rt_max += (self.rt_min - new_rt_min)
+            new_rt_min = self.rt_min
+        if new_rt_max > self.rt_max:
+            new_rt_min -= (new_rt_max - self.rt_max)
+            new_rt_max = self.rt_max
+
+        if new_mz_min < self.mz_min:
+            new_mz_max += (self.mz_min - new_mz_min)
+            new_mz_min = self.mz_min
+        if new_mz_max > self.mz_max:
+            new_mz_min -= (new_mz_max - self.mz_max)
+            new_mz_max = self.mz_max
+
+        # Final clamp
+        self.view_rt_min = max(self.rt_min, new_rt_min)
+        self.view_rt_max = min(self.rt_max, new_rt_max)
+        self.view_mz_min = max(self.mz_min, new_mz_min)
+        self.view_mz_max = min(self.mz_max, new_mz_max)
+
+        self.update_plot()
+
+    def push_zoom_history(self):
+        """Save current view state to zoom history."""
+        if self.view_rt_min is None:
+            return
+
+        # Create label for this view state
+        rt_range = self.view_rt_max - self.view_rt_min
+        mz_range = self.view_mz_max - self.view_mz_min
+        full_rt = self.rt_max - self.rt_min
+        full_mz = self.mz_max - self.mz_min
+
+        # Check if this is approximately full view
+        if rt_range >= full_rt * 0.95 and mz_range >= full_mz * 0.95:
+            label = "Full"
+        else:
+            label = f"RT {self.view_rt_min:.0f}-{self.view_rt_max:.0f}"
+
+        state = (self.view_rt_min, self.view_rt_max, self.view_mz_min, self.view_mz_max, label)
+
+        # Don't add if same as last entry
+        if self.zoom_history and self.zoom_history[-1][:4] == state[:4]:
+            return
+
+        self.zoom_history.append(state)
+
+        # Limit history size
+        if len(self.zoom_history) > self.max_zoom_history:
+            self.zoom_history = self.zoom_history[-self.max_zoom_history:]
+
+    def go_to_zoom_history(self, index: int):
+        """Jump to a specific point in zoom history."""
+        if index < 0 or index >= len(self.zoom_history):
+            return
+
+        state = self.zoom_history[index]
+        self.view_rt_min, self.view_rt_max, self.view_mz_min, self.view_mz_max, _ = state
+
+        # Truncate history to this point (forward history is lost)
+        self.zoom_history = self.zoom_history[:index + 1]
+
+        self.update_plot()
+
+    def update_breadcrumb(self):
+        """Update the breadcrumb trail display."""
+        if self.breadcrumb_label is None:
+            return
+
+        if not self.zoom_history:
+            self.breadcrumb_label.set_text("Full view")
+            return
+
+        # Build breadcrumb string
+        parts = []
+        for i, (_, _, _, _, label) in enumerate(self.zoom_history):
+            parts.append(label)
+
+        breadcrumb_text = " → ".join(parts)
+        self.breadcrumb_label.set_text(breadcrumb_text)
+
+    def pixel_to_data_coords(self, pixel_x: int, pixel_y: int) -> Tuple[float, float]:
+        """Convert pixel coordinates to RT/m/z data coordinates."""
+        # Account for margins
+        plot_x = pixel_x - self.margin_left
+        plot_y = pixel_y - self.margin_top
+
+        # Clamp to plot area
+        plot_x = max(0, min(self.plot_width, plot_x))
+        plot_y = max(0, min(self.plot_height, plot_y))
+
+        # Convert to data coordinates
+        rt = self.view_rt_min + (plot_x / self.plot_width) * (self.view_rt_max - self.view_rt_min)
+        mz = self.view_mz_max - (plot_y / self.plot_height) * (self.view_mz_max - self.view_mz_min)
+
+        return rt, mz
+
+    def update_coord_display(self, pixel_x: int, pixel_y: int):
+        """Update the coordinate display label."""
+        if self.coord_label is None or self.df is None:
+            return
+
+        rt, mz = self.pixel_to_data_coords(pixel_x, pixel_y)
+        self.coord_label.set_text(f"RT: {rt:.2f}s  m/z: {mz:.4f}")
+
     def reset_view(self):
         """Reset to full view."""
         if self.df is None:
             return
+        # Clear zoom history on reset
+        self.zoom_history = []
         self.view_rt_min = self.rt_min
         self.view_rt_max = self.rt_max
         self.view_mz_min = self.mz_min
         self.view_mz_max = self.mz_max
         self.selected_feature_idx = None
         self.selected_id_idx = None
+        self.push_zoom_history()  # Add full view as first entry
         self.update_plot()
 
     def zoom_in(self, factor=0.5):
         """Zoom in."""
         if self.df is None:
             return
+        self.push_zoom_history()  # Save current state before zoom
         rt_center = (self.view_rt_min + self.view_rt_max) / 2
         mz_center = (self.view_mz_min + self.view_mz_max) / 2
         rt_range = (self.view_rt_max - self.view_rt_min) * factor / 2
@@ -1696,12 +1898,14 @@ class MzMLViewer:
         self.view_rt_max = rt_center + rt_range
         self.view_mz_min = mz_center - mz_range
         self.view_mz_max = mz_center + mz_range
+        self.push_zoom_history()  # Save new state
         self.update_plot()
 
     def zoom_out(self, factor=2.0):
         """Zoom out."""
         if self.df is None:
             return
+        self.push_zoom_history()  # Save current state before zoom
         rt_center = (self.view_rt_min + self.view_rt_max) / 2
         mz_center = (self.view_mz_min + self.view_mz_max) / 2
         rt_range = (self.view_rt_max - self.view_rt_min) * factor / 2
@@ -1711,6 +1915,7 @@ class MzMLViewer:
         self.view_rt_max = min(self.rt_max, rt_center + rt_range)
         self.view_mz_min = max(self.mz_min, mz_center - mz_range)
         self.view_mz_max = min(self.mz_max, mz_center + mz_range)
+        self.push_zoom_history()  # Save new state
         self.update_plot()
 
     def pan(self, rt_frac=0, mz_frac=0):
@@ -1758,6 +1963,9 @@ class MzMLViewer:
         """
         if self.df is None:
             return
+
+        # Save current state to zoom history
+        self.push_zoom_history()
 
         # Convert fractions to data coordinates
         rt_point = self.view_rt_min + x_frac * (self.view_rt_max - self.view_rt_min)
@@ -2050,10 +2258,17 @@ def create_ui():
 
         # Main visualization area - peak map with spectrum browser overlay
         with ui.card().classes('w-full max-w-6xl p-2'):
+            # Breadcrumb trail and coordinate display row
+            with ui.row().classes('w-full items-center justify-between mb-1'):
+                with ui.row().classes('items-center gap-2'):
+                    ui.icon('navigation', size='xs').classes('text-gray-400')
+                    viewer.breadcrumb_label = ui.label('Full view').classes('text-xs text-gray-400')
+                viewer.coord_label = ui.label('RT: --  m/z: --').classes('text-xs text-cyan-400 font-mono')
+
             ui.label('Peak Map - Scroll to zoom, drag to select region, double-click to reset').classes('text-xs text-gray-500 mb-1')
 
-            # Peak map with mouse interaction
-            with ui.row().classes('w-full items-start gap-0'):
+            # Peak map with mouse interaction and minimap
+            with ui.row().classes('w-full items-start gap-2'):
                 # Peak map image with mouse handlers
                 with ui.column().classes('flex-none'):
                     viewer.image_element = ui.image().classes('w-full').style(
@@ -2120,6 +2335,9 @@ def create_ui():
                             dy = abs(end_plot_y - start_plot_y)
 
                             if dx > 10 and dy > 10:
+                                # Save current state to zoom history before changing
+                                viewer.push_zoom_history()
+
                                 # Convert to data coordinates
                                 rt_range = viewer.view_rt_max - viewer.view_rt_min
                                 mz_range = viewer.view_mz_max - viewer.view_mz_min
@@ -2139,18 +2357,61 @@ def create_ui():
                                 viewer.view_rt_max = new_rt_max
                                 viewer.view_mz_min = new_mz_min
                                 viewer.view_mz_max = new_mz_max
-                                viewer.update_plot()
 
-                    def on_mouseleave(e):
-                        drag_state['dragging'] = False
+                                # Save new state to zoom history
+                                viewer.push_zoom_history()
+                                viewer.update_plot()
 
                     def on_dblclick(e):
                         viewer.reset_view()
 
+                    # Mousemove handler for coordinate display
+                    def on_mousemove(e):
+                        try:
+                            offset_x = e.args.get('offsetX', 0)
+                            offset_y = e.args.get('offsetY', 0)
+                            viewer.update_coord_display(offset_x, offset_y)
+                        except Exception:
+                            pass
+
+                    def on_mouseleave_coord(e):
+                        drag_state['dragging'] = False
+                        if viewer.coord_label:
+                            viewer.coord_label.set_text('RT: --  m/z: --')
+
                     viewer.image_element.on('mousedown', on_mousedown)
                     viewer.image_element.on('mouseup', on_mouseup)
-                    viewer.image_element.on('mouseleave', on_mouseleave)
+                    viewer.image_element.on('mouseleave', on_mouseleave_coord)
+                    viewer.image_element.on('mousemove', on_mousemove)
                     viewer.image_element.on('dblclick', on_dblclick)
+
+                # Minimap panel (to the right of peak map)
+                with ui.column().classes('flex-none'):
+                    ui.label('Overview').classes('text-xs text-gray-400 mb-1')
+                    viewer.minimap_image = ui.image().style(
+                        f'width: {viewer.minimap_width}px; height: {viewer.minimap_height}px; '
+                        f'background: #141419; cursor: pointer; border: 1px solid #333;'
+                    )
+
+                    # Minimap click handler
+                    def on_minimap_click(e):
+                        try:
+                            offset_x = e.args.get('offsetX', 0)
+                            offset_y = e.args.get('offsetY', 0)
+                            x_frac = offset_x / viewer.minimap_width
+                            y_frac = offset_y / viewer.minimap_height
+                            viewer.minimap_click_to_view(x_frac, y_frac)
+                        except Exception:
+                            pass
+
+                    viewer.minimap_image.on('click', on_minimap_click)
+
+                    # Back button for zoom history
+                    def go_back():
+                        if len(viewer.zoom_history) > 1:
+                            viewer.go_to_zoom_history(len(viewer.zoom_history) - 2)
+
+                    ui.button('← Back', on_click=go_back).props('dense size=sm color=grey').classes('mt-1').tooltip('Go to previous view')
 
             # 1D Spectrum Browser Plot (directly below peak map, same width)
             with ui.column().classes('w-full mt-2'):
