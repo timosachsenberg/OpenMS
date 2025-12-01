@@ -29,6 +29,7 @@ dependencies = [
     "colorcet>=3.0.0",
     "pillow>=10.0.0",
     "pyopenms>=3.0.0",
+    "pyopenms-viz>=0.1.0",
     "click>=8.0.0",
     "plotly>=5.0.0",
 ]
