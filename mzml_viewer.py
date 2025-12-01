@@ -169,14 +169,30 @@ def create_annotated_spectrum_plot(
     # Create figure
     fig = go.Figure()
 
-    # Add experimental spectrum as gray bars
-    fig.add_trace(go.Bar(
+    # Add experimental spectrum as vertical lines (stem plot) - doesn't get thicker when zooming
+    x_stems = []
+    y_stems = []
+    for mz, intensity in zip(exp_mz, exp_int_norm):
+        x_stems.extend([mz, mz, None])
+        y_stems.extend([0, intensity, None])
+
+    fig.add_trace(go.Scatter(
+        x=x_stems,
+        y=y_stems,
+        mode='lines',
+        line=dict(color='gray', width=1),
+        name='Experimental',
+        hoverinfo='skip',
+        opacity=0.6
+    ))
+
+    # Add hover points for experimental peaks
+    fig.add_trace(go.Scatter(
         x=exp_mz,
         y=exp_int_norm,
-        marker_color='gray',
-        name='Experimental',
-        width=0.5,
-        opacity=0.6,
+        mode='markers',
+        marker=dict(color='gray', size=2),
+        showlegend=False,
         hovertemplate='m/z: %{x:.4f}<br>Intensity: %{y:.1f}%<extra></extra>'
     ))
 
@@ -186,43 +202,59 @@ def create_annotated_spectrum_plot(
         theo_ions = generate_theoretical_spectrum(seq, charge)
 
         # Match theoretical to experimental and annotate
-        annotations = []
-        matched_mz = []
-        matched_int = []
-        matched_labels = []
-        matched_colors = []
+        matched_peaks = {'b': [], 'y': []}  # Group by ion type
 
         for ion_type, ions in [('b', theo_ions['b']), ('y', theo_ions['y'])]:
-            color = ION_COLORS[ion_type]
             for theo_mz, ion_name in ions:
                 # Find closest experimental peak
                 if len(exp_mz) > 0:
                     diffs = np.abs(exp_mz - theo_mz)
                     min_idx = np.argmin(diffs)
                     if diffs[min_idx] <= tolerance_da:
-                        matched_mz.append(exp_mz[min_idx])
-                        matched_int.append(exp_int_norm[min_idx])
-                        matched_labels.append(ion_name)
-                        matched_colors.append(color)
+                        matched_peaks[ion_type].append({
+                            'mz': exp_mz[min_idx],
+                            'intensity': exp_int_norm[min_idx],
+                            'label': ion_name
+                        })
 
-        # Add matched peaks as colored bars
-        if matched_mz:
-            for i, (mz, intensity, label, color) in enumerate(zip(matched_mz, matched_int, matched_labels, matched_colors)):
-                fig.add_trace(go.Bar(
-                    x=[mz],
-                    y=[intensity],
-                    marker_color=color,
-                    name=label if i < 10 else None,  # Only show first 10 in legend
-                    showlegend=(i < 10),
-                    width=1.0,
-                    hovertemplate=f'{label}<br>m/z: {mz:.4f}<br>Intensity: {intensity:.1f}%<extra></extra>'
+        # Add matched peaks as colored lines grouped by ion type
+        for ion_type, peaks in matched_peaks.items():
+            if not peaks:
+                continue
+            color = ION_COLORS[ion_type]
+
+            # Create stem plot for this ion type
+            x_ions = []
+            y_ions = []
+            for peak in peaks:
+                x_ions.extend([peak['mz'], peak['mz'], None])
+                y_ions.extend([0, peak['intensity'], None])
+
+            fig.add_trace(go.Scatter(
+                x=x_ions,
+                y=y_ions,
+                mode='lines',
+                line=dict(color=color, width=2),
+                name=f'{ion_type}-ions',
+                hoverinfo='skip'
+            ))
+
+            # Add hover points and annotations for matched peaks
+            for peak in peaks:
+                fig.add_trace(go.Scatter(
+                    x=[peak['mz']],
+                    y=[peak['intensity']],
+                    mode='markers',
+                    marker=dict(color=color, size=4),
+                    showlegend=False,
+                    hovertemplate=f"{peak['label']}<br>m/z: {peak['mz']:.4f}<br>Intensity: {peak['intensity']:.1f}%<extra></extra>"
                 ))
 
                 # Add text annotation
                 fig.add_annotation(
-                    x=mz,
-                    y=intensity + 3,
-                    text=label,
+                    x=peak['mz'],
+                    y=peak['intensity'] + 3,
+                    text=peak['label'],
                     showarrow=False,
                     font=dict(size=9, color=color),
                     textangle=-45
@@ -255,8 +287,7 @@ def create_annotated_spectrum_plot(
             xanchor="right",
             x=1,
             font=dict(size=10)
-        ),
-        barmode='overlay'
+        )
     )
 
     fig.update_xaxes(range=[0, max(exp_mz) * 1.05] if len(exp_mz) > 0 else [0, 2000])
@@ -717,13 +748,28 @@ class MzMLViewer:
             # Color based on MS level
             color = '#00d4ff' if ms_level == 1 else '#ff6b6b'
 
-            # Add spectrum as bars
-            fig.add_trace(go.Bar(
+            # Add spectrum as vertical lines (stem plot) - doesn't get thicker when zooming
+            # Create x, y arrays for stem plot: each peak is [mz, mz, None], [0, intensity, None]
+            x_stems = []
+            y_stems = []
+            for mz, intensity in zip(mz_array, int_norm):
+                x_stems.extend([mz, mz, None])
+                y_stems.extend([0, intensity, None])
+
+            fig.add_trace(go.Scatter(
+                x=x_stems,
+                y=y_stems,
+                mode='lines',
+                line=dict(color=color, width=1),
+                hoverinfo='skip'
+            ))
+
+            # Add hover points at peak tops
+            fig.add_trace(go.Scatter(
                 x=mz_array,
                 y=int_norm,
-                marker_color=color,
-                width=0.5,
-                opacity=0.8,
+                mode='markers',
+                marker=dict(color=color, size=3),
                 hovertemplate='m/z: %{x:.4f}<br>Intensity: %{y:.1f}%<extra></extra>'
             ))
 
