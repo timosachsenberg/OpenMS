@@ -3083,15 +3083,20 @@ def create_ui():
             faims_toggle.set_visibility(False)
             viewer.faims_toggle = faims_toggle
 
-            # 3D View toggle
+            # 3D View button
             def toggle_3d_view():
-                viewer.show_3d_view = view_3d_cb.value
+                viewer.show_3d_view = not viewer.show_3d_view
                 if viewer.scene_3d_container:
                     viewer.scene_3d_container.set_visibility(viewer.show_3d_view)
                 if viewer.show_3d_view and viewer.df is not None:
                     viewer.update_3d_view()
+                # Update button appearance
+                if viewer.show_3d_view:
+                    view_3d_btn.props('color=purple')
+                else:
+                    view_3d_btn.props('color=grey')
 
-            view_3d_cb = ui.checkbox('3D Peak View', value=False, on_change=toggle_3d_view).props('dense').classes('text-purple-400')
+            view_3d_btn = ui.button('3D Peak View', on_click=toggle_3d_view).props('dense color=grey').classes('text-sm')
             ui.label('(RT<120s, m/z<50)').classes('text-xs text-gray-500')
 
         # TIC Plot (clickable to show MS1 spectrum, zoomable to update peak map)
