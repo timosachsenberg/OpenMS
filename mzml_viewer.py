@@ -2439,8 +2439,18 @@ def create_ui():
                     ui.label('mzML File (Peak Data)').classes('text-sm text-gray-400')
                     with ui.row().classes('w-full items-end gap-2'):
                         async def handle_mzml_upload(e):
-                            content = e.content.read()
-                            temp_path = Path('/tmp') / e.name
+                            # Handle different NiceGUI upload API versions
+                            if hasattr(e, 'content'):
+                                content = e.content.read()
+                                filename = e.name
+                            elif hasattr(e, 'files') and e.files:
+                                f = e.files[0]
+                                content = f.content.read() if hasattr(f.content, 'read') else f.content
+                                filename = f.name
+                            else:
+                                ui.notify("Upload failed - unknown format", type="negative")
+                                return
+                            temp_path = Path('/tmp') / filename
                             temp_path.write_bytes(content)
                             if viewer.load_mzml(str(temp_path)):
                                 viewer.update_plot()
@@ -2465,8 +2475,18 @@ def create_ui():
                     ui.label('FeatureXML (Features)').classes('text-sm text-gray-400')
                     with ui.row().classes('w-full items-end gap-2'):
                         async def handle_feature_upload(e):
-                            content = e.content.read()
-                            temp_path = Path('/tmp') / e.name
+                            # Handle different NiceGUI upload API versions
+                            if hasattr(e, 'content'):
+                                content = e.content.read()
+                                filename = e.name
+                            elif hasattr(e, 'files') and e.files:
+                                f = e.files[0]
+                                content = f.content.read() if hasattr(f.content, 'read') else f.content
+                                filename = f.name
+                            else:
+                                ui.notify("Upload failed - unknown format", type="negative")
+                                return
+                            temp_path = Path('/tmp') / filename
                             temp_path.write_bytes(content)
                             if viewer.load_featuremap(str(temp_path)):
                                 viewer.update_plot()
@@ -2497,8 +2517,18 @@ def create_ui():
                     ui.label('idXML (Identifications)').classes('text-sm text-gray-400')
                     with ui.row().classes('w-full items-end gap-2'):
                         async def handle_id_upload(e):
-                            content = e.content.read()
-                            temp_path = Path('/tmp') / e.name
+                            # Handle different NiceGUI upload API versions
+                            if hasattr(e, 'content'):
+                                content = e.content.read()
+                                filename = e.name
+                            elif hasattr(e, 'files') and e.files:
+                                f = e.files[0]
+                                content = f.content.read() if hasattr(f.content, 'read') else f.content
+                                filename = f.name
+                            else:
+                                ui.notify("Upload failed - unknown format", type="negative")
+                                return
+                            temp_path = Path('/tmp') / filename
                             temp_path.write_bytes(content)
                             if viewer.load_idxml(str(temp_path)):
                                 viewer.update_plot()
