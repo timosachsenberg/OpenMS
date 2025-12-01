@@ -2380,21 +2380,21 @@ class MzMLViewer:
             # Rename columns to match pyopenms-viz expectations
             plot_df = view_df.rename(columns={'rt': 'RT', 'mz': 'mz', 'intensity': 'int'})
 
-            # Create 3D plot
+            # Create 3D plot (no title - header shows info)
             plot = PLOTLYPeakMapPlot(
                 plot_df,
                 x='RT',
                 y='mz',
                 z='int',
                 plot_3d=True,
-                title=f'3D Peak Map (RT: {self.view_rt_min:.1f}-{self.view_rt_max:.1f}s, m/z: {self.view_mz_min:.1f}-{self.view_mz_max:.1f})'
+                title=''
             )
             plot.plot()
 
             # Get the plotly figure
             fig = plot.fig
 
-            # Update layout for dark theme
+            # Update layout for dark theme - maximize space usage
             fig.update_layout(
                 paper_bgcolor='#1a1a1f',
                 plot_bgcolor='#1a1a1f',
@@ -2403,10 +2403,15 @@ class MzMLViewer:
                     xaxis=dict(title='RT (s)', backgroundcolor='#1a1a1f', gridcolor='#333333'),
                     yaxis=dict(title='m/z', backgroundcolor='#1a1a1f', gridcolor='#333333'),
                     zaxis=dict(title='Intensity', backgroundcolor='#1a1a1f', gridcolor='#333333'),
-                    bgcolor='#1a1a1f'
+                    bgcolor='#1a1a1f',
+                    aspectmode='manual',
+                    aspectratio=dict(x=1.5, y=1, z=0.8)
                 ),
-                margin=dict(l=0, r=0, t=40, b=0),
-                height=450
+                margin=dict(l=0, r=0, t=0, b=0),
+                height=500,
+                showlegend=True,
+                legend=dict(x=0, y=1, bgcolor='rgba(26,26,31,0.8)'),
+                modebar=dict(orientation='v', bgcolor='rgba(0,0,0,0)')
             )
 
             # Add feature markers if available
@@ -2428,38 +2433,75 @@ class MzMLViewer:
                 self.view_3d_status.set_text(f'3D plot error: {str(e)[:50]}')
 
     def _add_features_to_3d_plot(self, fig):
-        """Add feature markers to the 3D plotly figure."""
+        """Add feature bounding boxes to the 3D plotly figure."""
         import plotly.graph_objects as go
 
         if self.feature_map is None:
             return
 
-        feature_rts = []
-        feature_mzs = []
-        feature_labels = []
+        # Collect all box edges for a single trace (more efficient)
+        box_x = []
+        box_y = []
+        box_z = []
 
         for i, feature in enumerate(self.feature_map):
             rt = feature.getRT()
             mz = feature.getMZ()
 
             # Check if feature is in current view
-            if (self.view_rt_min <= rt <= self.view_rt_max and
+            if not (self.view_rt_min <= rt <= self.view_rt_max and
                     self.view_mz_min <= mz <= self.view_mz_max):
-                feature_rts.append(rt)
-                feature_mzs.append(mz)
-                feature_labels.append(f'Feature {i}: RT={rt:.1f}, m/z={mz:.2f}')
+                continue
 
-        if feature_rts:
-            # Add features as markers on the baseline (z=0)
+            # Get RT and m/z bounds from convex hull
+            hulls = feature.getConvexHulls()
+            if hulls:
+                # Get bounds from convex hull points
+                hull_points = hulls[0].getHullPoints()
+                if hull_points:
+                    rt_vals = [p[0] for p in hull_points]
+                    mz_vals = [p[1] for p in hull_points]
+                    rt_min, rt_max = min(rt_vals), max(rt_vals)
+                    mz_min, mz_max = min(mz_vals), max(mz_vals)
+                else:
+                    # Fallback to small box around centroid
+                    rt_min, rt_max = rt - 5, rt + 5
+                    mz_min, mz_max = mz - 0.5, mz + 0.5
+            else:
+                # Fallback to small box around centroid
+                rt_min, rt_max = rt - 5, rt + 5
+                mz_min, mz_max = mz - 0.5, mz + 0.5
+
+            # Draw box edges on the baseline (z=0)
+            # Bottom rectangle (4 edges)
+            z_base = 0
+            # Edge 1: rt_min to rt_max at mz_min
+            box_x.extend([rt_min, rt_max, None])
+            box_y.extend([mz_min, mz_min, None])
+            box_z.extend([z_base, z_base, None])
+            # Edge 2: rt_max at mz_min to mz_max
+            box_x.extend([rt_max, rt_max, None])
+            box_y.extend([mz_min, mz_max, None])
+            box_z.extend([z_base, z_base, None])
+            # Edge 3: rt_max to rt_min at mz_max
+            box_x.extend([rt_max, rt_min, None])
+            box_y.extend([mz_max, mz_max, None])
+            box_z.extend([z_base, z_base, None])
+            # Edge 4: rt_min at mz_max to mz_min
+            box_x.extend([rt_min, rt_min, None])
+            box_y.extend([mz_max, mz_min, None])
+            box_z.extend([z_base, z_base, None])
+
+        if box_x:
+            # Add all bounding boxes as a single trace
             fig.add_trace(go.Scatter3d(
-                x=feature_rts,
-                y=feature_mzs,
-                z=[0] * len(feature_rts),
-                mode='markers',
-                marker=dict(size=8, color='#00ff66', symbol='diamond'),
+                x=box_x,
+                y=box_y,
+                z=box_z,
+                mode='lines',
+                line=dict(color='#00ff66', width=3),
                 name='Features',
-                text=feature_labels,
-                hoverinfo='text'
+                hoverinfo='skip'
             ))
 
     # ==================== Search and Filter Methods ====================
@@ -3431,21 +3473,22 @@ def create_ui():
         viewer.scene_3d_container = ui.column().classes('w-full max-w-6xl mt-2')
         viewer.scene_3d_container.set_visibility(False)
         with viewer.scene_3d_container:
-            with ui.card().classes('w-full').style('background: #1a1a1f; padding: 1rem;'):
-                with ui.row().classes('w-full items-center gap-2 mb-2'):
-                    ui.label('3D Peak View').classes('text-lg font-semibold text-purple-400')
-                    ui.label('(powered by pyopenms-viz)').classes('text-xs text-gray-500')
-                    viewer.view_3d_status = ui.label('').classes('text-xs text-yellow-400 ml-4')
+            with ui.card().classes('w-full').style('background: #1a1a1f; padding: 0.5rem;'):
+                with ui.row().classes('w-full items-center justify-between'):
+                    with ui.row().classes('items-center gap-2'):
+                        ui.label('3D Peak View').classes('text-sm font-semibold text-purple-400')
+                        ui.label('(pyopenms-viz)').classes('text-xs text-gray-600')
+                    viewer.view_3d_status = ui.label('').classes('text-xs text-yellow-400')
 
                 # Create empty plotly figure for 3D view
                 empty_fig = go.Figure()
                 empty_fig.update_layout(
                     paper_bgcolor='#1a1a1f',
                     plot_bgcolor='#1a1a1f',
-                    height=450,
+                    height=500,
                     margin=dict(l=0, r=0, t=0, b=0)
                 )
-                viewer.plot_3d = ui.plotly(empty_fig).classes('w-full')
+                viewer.plot_3d = ui.plotly(empty_fig).classes('w-full').style('margin-top: -10px;')
 
         # Navigation controls
         with ui.row().classes('justify-center gap-2 mt-2'):
