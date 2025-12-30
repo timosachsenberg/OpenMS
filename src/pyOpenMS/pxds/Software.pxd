@@ -4,8 +4,10 @@ from Types cimport *
 cdef extern from "<OpenMS/METADATA/Software.h>" namespace "OpenMS":
 
     cdef cppclass Software:
+        # wrap-hash:
+        #  std
 
-        Software() except + nogil 
+        Software() except + nogil
         Software(Software &) except + nogil 
 
         String getName() except + nogil  # wrap-doc:Returns the name of the software
