@@ -411,7 +411,7 @@ QT_QMAKE_VERSION_INFO = '''${QT_QMAKE_VERSION_INFO}'''
       foreach(nr RANGE 1 ${PY_NUM_MODULES})
         Python_add_library(pyopenms_${nr} MODULE "${PYOPENMS_BUILD_DIR}/pyopenms/_pyopenms_${nr}.cpp" WITH_SOABI)
         target_link_libraries(pyopenms_${nr} PRIVATE OpenMS Python::NumPy)
-        target_compile_definitions(pyopenms_${nr} PRIVATE NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION)
+        target_compile_definitions(pyopenms_${nr} PRIVATE NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION $<$<BOOL:${WITH_PARQUET}>:WITH_PARQUET=1>)
         target_include_directories(pyopenms_${nr} SYSTEM PRIVATE
           ${AUTOWRAP_INCLUDE_DIR}
           ${PYOPENMS_BUILD_DIR}/extra_includes
@@ -455,7 +455,7 @@ QT_QMAKE_VERSION_INFO = '''${QT_QMAKE_VERSION_INFO}'''
   else()
       Python_add_library(pyopenms_compile MODULE "${PYOPENMS_BUILD_DIR}/pyopenms/_pyopenms.cpp")
       target_link_libraries(pyopenms_compile PRIVATE OpenMS Python::NumPy)
-      target_compile_definitions(pyopenms_compile PRIVATE NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION)
+      target_compile_definitions(pyopenms_compile PRIVATE NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION $<$<BOOL:${WITH_PARQUET}>:WITH_PARQUET=1>)
       target_include_directories(pyopenms_compile SYSTEM PRIVATE
         ${AUTOWRAP_INCLUDE_DIR}
         ${PYOPENMS_BUILD_DIR}/extra_includes
