@@ -109,6 +109,7 @@ endif()
 if (WITH_PARQUET)
   list(APPEND sources_list QuantmsIO.cpp)
   list(APPEND sources_list ArrowExport.cpp)
+  list(APPEND sources_list ConsensusMapArrowExport.cpp)
 endif()
 
 ### add path to the filenames
