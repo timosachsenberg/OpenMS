@@ -1158,11 +1158,13 @@ dev = [
     { name = "numpy", version = "2.4.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pandas" },
     { name = "py-build-cmake" },
+    { name = "pyarrow" },
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
 test = [
     { name = "pandas" },
+    { name = "pyarrow" },
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
@@ -1198,11 +1200,13 @@ dev = [
     { name = "numpy", specifier = ">=2.0" },
     { name = "pandas" },
     { name = "py-build-cmake", specifier = ">=0.3.0" },
+    { name = "pyarrow" },
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
 test = [
     { name = "pandas" },
+    { name = "pyarrow" },
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
