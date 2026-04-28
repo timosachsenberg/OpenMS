@@ -899,10 +899,10 @@ START_SECTION(PSMSchema field types and nullability)
   TEST_EQUAL(s->field(23)->type()->id(), arrow::Type::LIST)
   TEST_EQUAL(s->field(23)->nullable(), true)
   TEST_EQUAL(s->field(23)->type()->Equals(PSMSchema::metavaluesType()), true)
-  // run_identifier: utf8, nullable (default)
+  // run_identifier: utf8, non-null (writers always populate it; siblings are also non-null)
   TEST_EQUAL(s->field(24)->name(), "run_identifier")
   TEST_EQUAL(s->field(24)->type()->id(), arrow::Type::STRING)
-  TEST_EQUAL(s->field(24)->nullable(), true)
+  TEST_EQUAL(s->field(24)->nullable(), false)
 }
 END_SECTION
 

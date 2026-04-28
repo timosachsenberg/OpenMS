@@ -403,7 +403,7 @@ namespace OpenMS
       arrow::field(PEPTIDE_IDENTIFICATION_INDEX, arrow::int32()),
       arrow::field(PSM_METAVALUES, metavaluesType()),
       arrow::field(SPECTRUM_METAVALUES, metavaluesType()),
-      arrow::field(RUN_IDENTIFIER, arrow::utf8()),
+      arrow::field(RUN_IDENTIFIER, arrow::utf8(), /*nullable=*/false),
       arrow::field(MZ_ARRAY, arrow::list(arrow::float32())),
       arrow::field(INTENSITY_ARRAY, arrow::list(arrow::float32())),
       arrow::field(CHARGE_ARRAY, arrow::list(arrow::int32())),
