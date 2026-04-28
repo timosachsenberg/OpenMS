@@ -271,10 +271,12 @@ protected:
     logger.setLogType(ProgressLogger::CMD);
     logger.startProgress(0, 1, "Loading...");
 
+    // Strip trailing separators only for type detection; downstream APIs
+    // (File::absolutePath, ensureLastChar) handle them on the original 'in'.
     String in_for_type = in;
     while (in_for_type.hasSuffix("/") || in_for_type.hasSuffix("\\"))
     {
-      in_for_type = in_for_type.prefix(in_for_type.size() - 1);
+      in_for_type = in_for_type.chop(1);
     }
     if (File::isDirectory(in) && !FileTypes::isDirectoryType(FileHandler::getTypeByFileName(in_for_type)))
     {
