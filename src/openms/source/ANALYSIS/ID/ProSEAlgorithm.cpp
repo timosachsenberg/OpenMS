@@ -59,6 +59,20 @@ using namespace std;
 
 namespace OpenMS
 {
+  namespace
+  {
+    /// ProSE's parameters with the ProSE-only @c annotate: section removed, ready to hand to a
+    /// FragmentIndex. PSM annotation is a ProSEAlgorithm concept (it stamps the annotations on the
+    /// finished PSMs, see annotate_psm_); FragmentIndex performs no annotation. Forwarding
+    /// annotate:* would make FragmentIndex::checkDefaults validate — and reject — annotation
+    /// values it does not implement (e.g. @c fragment_annotation), so strip the section first.
+    Param forFragmentIndex(Param params)
+    {
+      params.removeAll("annotate:");
+      return params;
+    }
+  }
+
   ProSEAlgorithm::ProSEAlgorithm() :
     DefaultParamHandler("ProSEAlgorithm"),
     ProgressLogger()
@@ -852,7 +866,7 @@ namespace OpenMS
 
     // build fragment index
     startProgress(0, 1, "Building fragment index...");
-    auto this_params = getParameters();
+    auto this_params = forFragmentIndex(getParameters());
     ctx.fragment_index.setParameters(this_params);
     ctx.fragment_index.build(ctx.db);
     endProgress();
@@ -1043,7 +1057,7 @@ namespace OpenMS
       ctx.db = std::move(full_db);
       ctx.release_fragment_index_after_scoring = true; // single-use ctx (M1)
       startProgress(0, 1, "Building fragment index...");
-      ctx.fragment_index.setParameters(getParameters());
+      ctx.fragment_index.setParameters(forFragmentIndex(getParameters()));
       ctx.fragment_index.build(ctx.db);
       endProgress();
       return search(spectra, ctx, protein_ids, peptide_ids);
@@ -1092,7 +1106,7 @@ namespace OpenMS
     {
       std::vector<FASTAFile::FASTAEntry> cal_db = buildCalibrationSample_(full_db);
       FragmentIndex cal_fi;
-      cal_fi.setParameters(getParameters());
+      cal_fi.setParameters(forFragmentIndex(getParameters()));
       cal_fi.build(cal_db);
 
       CalibrationResult_ cal = runCalibrationPass_(spectra, cal_fi, cal_db);
@@ -1153,7 +1167,7 @@ namespace OpenMS
       std::vector<FASTAFile::FASTAEntry> chunk_db(full_db.begin() + start, full_db.begin() + end);
       FragmentIndex chunk_fi;
       {
-        Param fi_params = getParameters();
+        Param fi_params = forFragmentIndex(getParameters());
         // Apply calibrated tolerances (if calibration succeeded above). Asymmetric
         // lower/upper preserved — collapsing to max() would re-open the tight side
         // of the calibrated window and admit spurious decoy candidates.
@@ -1774,7 +1788,7 @@ namespace OpenMS
         // Build a strided-sample calibration FI once, reused across files.
         std::vector<FASTAFile::FASTAEntry> cal_db = buildCalibrationSample_(full_db);
         FragmentIndex cal_fi;
-        cal_fi.setParameters(getParameters());
+        cal_fi.setParameters(forFragmentIndex(getParameters()));
         cal_fi.build(cal_db);
 
         for (Size i = 0; i < in_spectra_files.size(); ++i)
@@ -1861,7 +1875,7 @@ namespace OpenMS
 
         std::vector<FASTAFile::FASTAEntry> chunk_db(full_db.begin() + start, full_db.begin() + end);
         FragmentIndex chunk_fi;
-        chunk_fi.setParameters(getParameters());
+        chunk_fi.setParameters(forFragmentIndex(getParameters()));
         chunk_fi.build(chunk_db);
 
         // Score ALL files against this chunk's index.
@@ -2010,7 +2024,7 @@ namespace OpenMS
         // prepareContext.
         ctx.db = std::move(full_db);
         startProgress(0, 1, "Building fragment index...");
-        ctx.fragment_index.setParameters(getParameters());
+        ctx.fragment_index.setParameters(forFragmentIndex(getParameters()));
         ctx.fragment_index.build(ctx.db);
         endProgress();
       }

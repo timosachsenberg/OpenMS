@@ -2362,15 +2362,10 @@ init_hits.hits_.erase(it_zero, init_hits.hits_.end());
     //defaults from the searchEngine that are not needed for this class, but otherwise we would generate a warning
     defaults_.setValue("decoys", "false", "Should decoys be generated?");
     defaults_.setValidStrings("decoys", {"true","false"} );
-    defaults_.setValue("annotate:PSM",  std::vector<std::string>{"ALL"}, "Annotations added to each PSM.");
-    defaults_.setValidStrings("annotate:PSM",
-                              std::vector<std::string>{
-                                "ALL",
-                                Constants::UserParam::FRAGMENT_ERROR_MEDIAN_PPM_USERPARAM,
-                                Constants::UserParam::PRECURSOR_ERROR_PPM_USERPARAM,
-                                Constants::UserParam::MATCHED_PREFIX_IONS_FRACTION,
-                                Constants::UserParam::MATCHED_SUFFIX_IONS_FRACTION}
-    );
+    // NOTE: FragmentIndex intentionally declares no "annotate:PSM" parameter. PSM annotation is a
+    // ProSEAlgorithm concept; FragmentIndex performs none. ProSEAlgorithm strips the annotate:*
+    // section before forwarding its parameters here, so this index never needs to declare or
+    // validate annotation values (which previously drifted out of sync and rejected valid inputs).
     defaults_.setValue("report:top_hits", 1, "Maximum number of top scoring hits per spectrum that are reported.");
     defaults_.setSectionDescription("report", "Reporting Options");
     defaults_.setValue("peptide:motif", "", "If set, only peptides that contain this motif (provided as RegEx) will be considered.");
