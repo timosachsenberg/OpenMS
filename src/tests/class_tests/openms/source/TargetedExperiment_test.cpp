@@ -247,27 +247,44 @@ START_SECTION((const Protein& getProteinByRef(const std::string& ref) const))
   // can return a dangling pointer into freed vector storage.
   {
     TargetedExperiment te2;
-    TargetedExperiment::Compound c1; c1.id = "c1";
+    TargetedExperiment::Compound c1;
+    c1.id = "c1";
     te2.addCompound(c1);
     TEST_EQUAL(te2.getCompoundByRef("c1").id, "c1") // builds the compound cache
 
     // addCompound after a lookup must invalidate the cache, else "c2" is not found
-    TargetedExperiment::Compound c2; c2.id = "c2";
+    TargetedExperiment::Compound c2;
+    c2.id = "c2";
     te2.addCompound(c2);
     TEST_EQUAL(te2.getCompoundByRef("c2").id, "c2")
 
     // setCompounds replacing the contents must drop the now-removed "c1" on rebuild
-    TargetedExperiment::Compound c3; c3.id = "c3";
+    TargetedExperiment::Compound c3;
+    c3.id = "c3";
     std::vector<TargetedExperiment::Compound> only_c3(1, c3);
     te2.setCompounds(only_c3);
     TEST_EQUAL(te2.getCompoundByRef("c3").id, "c3")
     TEST_EXCEPTION(Exception::ElementNotFound, te2.getCompoundByRef("c1"))
 
+    // peptides: replacement must rebuild the cache without stale entries
+    TargetedExperiment::Peptide pep1;
+    pep1.id = "pep1";
+    te2.addPeptide(pep1);
+    TEST_EQUAL(te2.getPeptideByRef("pep1").id, "pep1") // builds the peptide cache
+    TargetedExperiment::Peptide pep2;
+    pep2.id = "pep2";
+    std::vector<TargetedExperiment::Peptide> only_pep2(1, pep2);
+    te2.setPeptides(only_pep2);
+    TEST_EQUAL(te2.getPeptideByRef("pep2").id, "pep2")
+    TEST_EXCEPTION(Exception::ElementNotFound, te2.getPeptideByRef("pep1"))
+
     // proteins: rebuild after replacement must also drop stale entries (clear())
-    TargetedExperiment::Protein p1; p1.id = "p1";
+    TargetedExperiment::Protein p1;
+    p1.id = "p1";
     te2.addProtein(p1);
     TEST_EQUAL(te2.getProteinByRef("p1").id, "p1") // builds the protein cache
-    TargetedExperiment::Protein p2; p2.id = "p2";
+    TargetedExperiment::Protein p2;
+    p2.id = "p2";
     std::vector<TargetedExperiment::Protein> only_p2(1, p2);
     te2.setProteins(only_p2);
     TEST_EQUAL(te2.getProteinByRef("p2").id, "p2")
@@ -548,5 +565,3 @@ END_SECTION
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
 END_TEST
-
-

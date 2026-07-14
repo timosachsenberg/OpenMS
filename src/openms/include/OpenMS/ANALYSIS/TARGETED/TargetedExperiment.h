@@ -176,6 +176,14 @@ public:
 
     const std::vector<Protein> & getProteins() const;
 
+    /**
+      @brief Return the protein identified by @p ref
+
+      @param[in] ref Protein identifier
+      @return The referenced protein
+
+      @throws Exception::ElementNotFound if @p ref is unknown
+    */
     const Protein & getProteinByRef(const std::string & ref) const;
 
     bool hasProtein(const std::string & ref) const;
@@ -196,10 +204,26 @@ public:
 
     bool hasPeptide(const std::string & ref) const;
 
+    /**
+      @brief Return the peptide identified by @p ref
+
+      @param[in] ref Peptide identifier
+      @return The referenced peptide
+
+      @throws Exception::ElementNotFound if @p ref is unknown
+    */
     const Peptide & getPeptideByRef(const std::string & ref) const;
 
     bool hasCompound(const std::string & ref) const;
 
+    /**
+      @brief Return the compound identified by @p ref
+
+      @param[in] ref Compound identifier
+      @return The referenced compound
+
+      @throws Exception::ElementNotFound if @p ref is unknown
+    */
     const Compound & getCompoundByRef(const std::string & ref) const;
 
     void addPeptide(const Peptide & rhs);
@@ -320,4 +344,3 @@ protected:
 
 
 } // namespace OpenMS
-

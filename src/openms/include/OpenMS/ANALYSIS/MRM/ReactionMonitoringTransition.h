@@ -134,9 +134,14 @@ public:
 
     void addPredictionTerm(const CVTerm & prediction);
 
-    /** @brief Obtain the Prediction object 
-     *
-     * @note You first need to check whether the object is accessible using hasPrediction() 
+    /**
+      @brief Return the Prediction object
+
+      @return The prediction object
+
+      @throws Exception::MissingInformation if no Prediction object is set
+
+      @see hasPrediction()
     */
     const Prediction & getPrediction() const;
 
@@ -458,4 +463,3 @@ namespace std
     }
   };
 } // namespace std
-
