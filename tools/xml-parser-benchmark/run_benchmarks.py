@@ -38,13 +38,17 @@ def measured(command, environment, timeout):
         stdout.seek(0)
         stderr.seek(0)
         output, errors = stdout.read().decode(), stderr.read().decode()
+        process_data = dict(process_seconds=time.perf_counter() - begin,
+                            max_rss_bytes=usage.ru_maxrss * (1 if sys.platform == 'darwin' else 1024),
+                            user_seconds=usage.ru_utime, system_seconds=usage.ru_stime,
+                            removed_stale_kmp='XML_BENCHMARK_REMOVED_STALE_KMP' in errors)
         if process.returncode:
-            raise RuntimeError(f'{command} exited {process.returncode}\n{output}\n{errors}')
+            return dict(ok=False, exit_code=process.returncode,
+                        phase='main' if 'XML_BENCHMARK_MAIN_STARTED' in errors else 'startup',
+                        stdout=output[-8192:], stderr=errors[-8192:], **process_data)
         lines = [line for line in output.splitlines() if line.startswith('{')]
         result = json.loads(lines[-1])
-        result.update(process_seconds=time.perf_counter() - begin,
-                      max_rss_bytes=usage.ru_maxrss * (1 if sys.platform == 'darwin' else 1024),
-                      user_seconds=usage.ru_utime, system_seconds=usage.ru_stime)
+        result.update(ok=True, **process_data)
         return result
 
 
@@ -89,6 +93,7 @@ def main():
     parser.add_argument('--repetitions', type=int, default=5)
     parser.add_argument('--queries', type=int, default=2048)
     parser.add_argument('--timeout', type=int, default=600)
+    parser.add_argument('--startup-retries', type=int, default=1)
     parser.add_argument('--output', required=True, type=Path)
     arguments = parser.parse_args()
     backends = dict(item.split('=', 1) for item in arguments.backend)
@@ -96,14 +101,17 @@ def main():
     if arguments.repetitions < 1 or any(value < 1 for value in workers):
         parser.error('Repetitions and worker counts must be positive')
     inputs = {str(path.resolve()): dict(bytes=path.stat().st_size, sha256=sha256(path)) for path in arguments.input}
-    library_files = {label: {str(path.resolve()): sha256(path) for path in Path(directory).glob('*OpenMS*')
+    library_files = {label: {str(path.resolve()): sha256(path) for path in Path(directory).glob('lib*')
                             if path.is_file()} for label, directory in backends.items()}
+    launcher = arguments.binary.resolve().with_name('xml_benchmark_launcher')
+    if not launcher.is_file():
+        parser.error('Build xml_benchmark_launcher next to the benchmark binary')
     report = dict(platform=platform.platform(), machine=platform.machine(), python=sys.version,
                   cpu_count=os.cpu_count(), binary=str(arguments.binary.resolve()),
                   binary_sha256=sha256(arguments.binary), backends=backends, libraries=library_files, inputs=inputs,
                   parameters=vars(arguments) | {'binary': str(arguments.binary),
                     'input': [str(path) for path in arguments.input], 'output': str(arguments.output)},
-                  records=[], summary=[])
+                  launcher_sha256=sha256(launcher), records=[], failures=[], summary=[])
     matrix = [(backend, filename, mode, worker, repetition)
               for backend in backends for filename in inputs
               for mode in arguments.modes.split(',') for worker in workers
@@ -116,8 +124,21 @@ def main():
         environment = dict(os.environ, OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1')
         variable = 'DYLD_LIBRARY_PATH' if sys.platform == 'darwin' else 'LD_LIBRARY_PATH'
         environment[variable] = str(Path(backends[backend]).resolve()) + os.pathsep + environment.get(variable, '')
-        command = [str(arguments.binary.resolve()), mode, filename, str(worker), str(arguments.queries)]
-        row = measured(command, environment, arguments.timeout)
+        command = [str(launcher), str(arguments.binary.resolve()), mode, filename, str(worker), str(arguments.queries)]
+        for attempt in range(arguments.startup_retries + 1):
+            row = measured(command, environment, arguments.timeout)
+            if row['ok']:
+                break
+            row.update(backend=backend, input=filename, mode=mode, workers=worker,
+                       repetition=repetition, attempt=attempt)
+            report['failures'].append(row)
+            arguments.output.write_text(json.dumps(report, indent=2) + '\n')
+            print(f'FAILED {backend} {Path(filename).name} {mode} x{worker}: '
+                  f'{row["phase"]}, exit {row["exit_code"]}', flush=True)
+            if row['phase'] != 'startup':
+                break
+        if not row['ok']:
+            continue
         if not row.get('openms_library') or Path(row['openms_library']).resolve().parent != Path(backends[backend]).resolve():
             raise RuntimeError(f'Wrong OpenMS library loaded for {backend}: {row.get("openms_library")}')
         row.update(backend=backend, input=filename, repetition=repetition)

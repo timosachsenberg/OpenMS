@@ -7,10 +7,11 @@ import tempfile
 import unittest
 
 BINARY = sys.argv.pop(1)
+LAUNCHER = str(Path(BINARY).with_name('xml_benchmark_launcher'))
 
 
 def invoke(*args):
-    result = subprocess.run([BINARY, *map(str, args)], check=True, capture_output=True, text=True)
+    result = subprocess.run([LAUNCHER, BINARY, *map(str, args)], check=True, capture_output=True, text=True)
     lines = [line for line in result.stdout.splitlines() if line.startswith('{')]
     return json.loads(lines[-1]) if lines else None
 
@@ -36,8 +37,29 @@ class BenchmarkTest(unittest.TestCase):
             path = Path(directory) / 'broken.mzML'
             path.write_text('<mzML><broken></mzML>')
             for mode in ('stream', 'indexed'):
-                result = subprocess.run([BINARY, mode, str(path), '2', '3'], capture_output=True)
+                result = subprocess.run([LAUNCHER, BINARY, mode, str(path), '2', '3'], capture_output=True)
                 self.assertNotEqual(result.returncode, 0)
+
+    def test_stale_registration_cleanup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'registration.mzML'
+            invoke('generate', path, 1, 3, 'plain')
+            code = '''import os, sys
+p = '/tmp/__KMP_REGISTERED_LIB_' + str(os.getpid())
+try:
+    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+except FileExistsError:
+    sys.exit(77)
+os.close(fd)
+os.utime(p, (0, 0))
+os.execv(sys.argv[1], sys.argv[1:])
+'''
+            result = subprocess.run([sys.executable, '-c', code, LAUNCHER, BINARY,
+                                     'stream', str(path), '1', '1'], capture_output=True, text=True)
+            if result.returncode == 77:
+                self.skipTest('Own PID already has an existing runtime registration file')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('XML_BENCHMARK_REMOVED_STALE_KMP', result.stderr)
 
 
 if __name__ == '__main__':

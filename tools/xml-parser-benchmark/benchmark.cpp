@@ -247,6 +247,7 @@ namespace
 
 int main(int argc, char** argv)
 {
+  std::cerr << "XML_BENCHMARK_MAIN_STARTED\n";
   try
   {
     if (argc < 3) { throw std::runtime_error("Usage: xml_parser_benchmark MODE FILE [WORKERS|SPECTRA] [QUERIES|POINTS] [ZLIB]"); }
