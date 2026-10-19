@@ -103,7 +103,8 @@ START_SECTION(Indexed decoder supports a binary text node larger than 10 MB)
   const auto array = [](const std::string& kind, const std::string& payload)
   {
     return "<binaryDataArray><cvParam accession='MS:1000523' name='64-bit float'/>"
-           "<cvParam accession='" + kind + "'/><binary>" + payload + "</binary></binaryDataArray>";
+           "<cvParam accession='" + kind + "' name='" + (kind == "MS:1000514" ? "m/z array" : "intensity array") +
+           "'/><cvParam accession='MS:1000576' name='no compression'/><binary>" + payload + "</binary></binaryDataArray>";
   };
   const std::string xml = "<spectrum id='large' defaultArrayLength='1'><binaryDataArrayList count='2'>" +
     array("MS:1000514", large_payload) + array("MS:1000515", "AAAAAAAAAAA=") + "</binaryDataArrayList></spectrum>";
@@ -111,8 +112,11 @@ START_SECTION(Indexed decoder supports a binary text node larger than 10 MB)
   MSSpectrum spectrum;
   decoder.domParseSpectrum(xml, spectrum);
   TEST_EQUAL(spectrum.size(), 1)
-  TEST_EQUAL(spectrum[0].getMZ(), 0.0)
-  TEST_EQUAL(spectrum[0].getIntensity(), 0.0)
+  if (!spectrum.empty())
+  {
+    TEST_EQUAL(spectrum[0].getMZ(), 0.0)
+    TEST_EQUAL(spectrum[0].getIntensity(), 0.0)
+  }
 END_SECTION
 START_SECTION(Indexed decoder retains the entity amplification guard under HUGE)
   std::string dtd = "<!DOCTYPE spectrum [<!ENTITY e0 '0123456789'>";
