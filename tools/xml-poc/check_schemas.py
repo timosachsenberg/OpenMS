@@ -4,13 +4,17 @@ import argparse
 import ctypes
 import json
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--library', default='/opt/homebrew/opt/libxml2/lib/libxml2.dylib')
 parser.add_argument('--xerces-probe', type=Path, help='Compile xerces_schema_probe.cpp and pass its executable')
+parser.add_argument('--allow-known-differences', action='store_true', help='Accept only the two documented anyURI disagreements with their recorded outcomes')
 parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parents[2])
 args = parser.parse_args()
+if args.allow_known_differences and not args.xerces_probe:
+    parser.error("--allow-known-differences requires --xerces-probe")
 lib = ctypes.CDLL(args.library)
 lib.xmlSchemaNewParserCtxt.argtypes = [ctypes.c_char_p]
 lib.xmlSchemaNewParserCtxt.restype = ctypes.c_void_p
@@ -44,10 +48,43 @@ corpus += [
     ('TrafoXML_1_1.xsd', 'TransformationXMLFile_4.trafoXML', True),
     ('mzML_idx_1_10.xsd', 'MzMLFile_4_indexed.mzML', True),
 ]
+# Additional instances are observational: their historical schema versions can
+# differ from the bundled current grammar. Xerces is the baseline oracle; do
+# not label an old fixture schema-valid solely because OpenMS can read it.
+patterns = {
+    '*.idXML': 'IdXML_1_5.xsd', '*.mzData': 'mzData_1_05.xsd',
+    '*.mzXML': 'mzXML_idx_3.1.xsd', '*.mzid': 'mzIdentML1.3.0.xsd',
+    '*.pepXML': 'pepXML_v114.xsd', '*.pepxml': 'pepXML_v114.xsd',
+    '*.protXML': 'protXML_v6.xsd', '*.traML': 'TraML1.0.0.xsd',
+    '*.mzML': 'mzML_1_10.xsd', '*.ini': 'Param_1_8_0.xsd',
+    'ParamXMLFile*.xml': 'Param_1_8_0.xsd',
+}
+seen = {filename for _, filename, _ in corpus}
+for pattern, default_schema in patterns.items():
+    for path in sorted(data.glob(pattern)):
+        if path.name in seen:
+            continue
+        schema_name = default_schema
+        try:
+            root = next(ET.iterparse(path, events=('start',)))[1]
+            root_name = root.tag.rsplit('}', 1)[-1]
+            if root_name == 'indexedmzML':
+                schema_name = 'mzML_idx_1_10.xsd'
+            elif root_name == 'MzIdentML':
+                version = root.get('version', '1.3.0')
+                candidate = f'mzIdentML{version}.xsd'
+                if (args.root / 'share/OpenMS/SCHEMAS' / candidate).exists():
+                    schema_name = candidate
+        except (ET.ParseError, StopIteration):
+            pass
+        corpus.append((schema_name, path.name, None))
+        seen.add(path.name)
+corpus.extend([('tools/xml-poc/fixtures/anyuri.xsd', 'tools/xml-poc/fixtures/anyuri-windows.xml', None),
+               ('tools/xml-poc/fixtures/anyuri.xsd', 'tools/xml-poc/fixtures/anyuri-normalized.xml', True)])
 validations = []
 for schema_name, filename, expected in corpus:
-    schema_path = data / schema_name if schema_name == 'XMLValidator.xsd' else args.root / 'share/OpenMS/SCHEMAS' / schema_name
-    path = data / filename
+    schema_path = args.root / schema_name if '/' in schema_name else data / schema_name if schema_name == 'XMLValidator.xsd' else args.root / 'share/OpenMS/SCHEMAS' / schema_name
+    path = args.root / filename if '/' in filename else data / filename
     ctx = lib.xmlSchemaNewParserCtxt(bytes(schema_path))
     schema = lib.xmlSchemaParse(ctx)
     if not schema:
@@ -59,6 +96,15 @@ for schema_name, filename, expected in corpus:
     lib.xmlSchemaFreeValidCtxt(valid_ctx)
     lib.xmlSchemaFree(schema)
     lib.xmlSchemaFreeParserCtxt(ctx)
-print(json.dumps({'library': args.library, 'schemas': results, 'validation': validations}, indent=2))
-raise SystemExit(any(not r['compiled'] for r in results) or any((v['status'] == 0) != v['expected_valid'] for v in validations)
-                 or any((v['status'] == 0) != (v['xerces_status'] == 0) for v in validations if v['xerces_status'] is not None))
+mismatches = [v for v in validations if v['xerces_status'] is not None and (v['status'] == 0) != (v['xerces_status'] == 0)]
+known = {
+    'TargetedSpectraExtractor_13C1_spectra0to100.mzML': 'Windows file:// drive/backslash xs:anyURI lexical handling',
+    'tools/xml-poc/fixtures/anyuri-windows.xml': 'Minimal reproducer of the same xs:anyURI difference',
+}
+for mismatch in mismatches:
+    mismatch['known_reason'] = known.get(mismatch['file']) if mismatch['status'] == 1824 and mismatch['xerces_status'] == 0 else None
+summary = {'schema_count': len(results), 'instance_count': len(validations), 'libxml_valid': sum(v['status'] == 0 for v in validations),
+           'xerces_valid': sum(v['xerces_status'] == 0 for v in validations), 'mismatches': mismatches}
+print(json.dumps({'library': args.library, 'summary': summary, 'schemas': results, 'validation': validations}, indent=2))
+raise SystemExit(any(not r['compiled'] or r['xerces_compiled'] is False for r in results) or any((v['status'] == 0) != v['expected_valid'] for v in validations if v['expected_valid'] is not None)
+                 or any(not (args.allow_known_differences and v['known_reason']) for v in mismatches))

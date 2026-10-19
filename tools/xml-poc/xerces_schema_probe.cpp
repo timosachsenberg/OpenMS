@@ -35,6 +35,9 @@ int main(int argc, char** argv)
       if (grammar && !errors.failed)
       {
         parser->setFeature(xercesc::XMLUni::fgXercesUseCachedGrammarInParse, true);
+        // Compare the explicitly supplied bundled grammar. Older fixtures may
+        // reference remote schema versions that are outside the bundled corpus.
+        parser->setFeature(xercesc::XMLUni::fgXercesLoadSchema, false);
         if (argc == 3) { parser->parse(argv[2]); }
         result = errors.failed ? 1 : 0;
       }
