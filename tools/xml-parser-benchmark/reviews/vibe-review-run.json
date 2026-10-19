@@ -1,0 +1,28 @@
+{
+  "reviewer": "vibe",
+  "version": "2.26.1",
+  "runtime": "supported Python CLI, legacy harness",
+  "mode": "safe custom agent, all tools disabled; same installed default model alias with thinking off",
+  "started_utc": "2026-10-19T17:15:49.683981+00:00",
+  "elapsed_seconds": 54.85447311401367,
+  "returncode": 0,
+  "input_sha256": "d581ad98fda63f6a8fc22da0f1fabcb444c4612374928b526c0a766334cc7e14",
+  "input_bytes": 212224,
+  "scope": "Same full212224byte frozen input as Claude/Kimi; earlier high-thinking attempts timed out without a final answer. Private reasoning output excluded from publication.",
+  "requested_model_name": "mistral-vibe-cli-latest",
+  "requested_model_alias": "mistral-medium-3.5",
+  "requested_thinking": "off",
+  "published_findings_sha256": "7ba36d843dc8e560a5fc80ac8db7751b70252aa8edd8d19bf9551b0c82289df3",
+  "profile_sha256": "071176d579da539bbea935a50548a84c6c2a1d6dfa4096198fe63d76f39f5a96",
+  "all_returned_entry_types": [
+    [
+      "message",
+      "user"
+    ],
+    [
+      "message",
+      "assistant"
+    ]
+  ],
+  "profile_discovery": "per-process VIBE_AGENT_PATHS; project trust remains disabled"
+}

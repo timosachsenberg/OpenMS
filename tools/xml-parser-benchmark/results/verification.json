@@ -1,0 +1,38 @@
+{
+  "measurement_counts": {
+    "macos": 2560,
+    "linux": 4480
+  },
+  "repetitions_per_cell": 5,
+  "measurement_failures": 0,
+  "cross_platform_input_bytes_and_sha256_match": true,
+  "cross_platform_decoded_identities_match": true,
+  "class_tests_per_platform": {
+    "xerces": 25,
+    "libxml2": 26,
+    "expat": 26,
+    "pugixml": 26
+  },
+  "schema_summaries_identical": true,
+  "schemas_compiled_per_validator": 22,
+  "instance_comparisons": 195,
+  "known_anyuri_mismatch_entries": 2,
+  "actual_api_validation_cases_per_backend_per_platform": 3,
+  "optimized_measurement_counts": {
+    "macos": 2240,
+    "linux": 4480
+  },
+  "original_optimized_input_bytes_and_decoded_identities_match": true,
+  "optimized_source_commits_match_between_platforms": true,
+  "optimized_conformance_cases_per_platform": 44,
+  "optimized_conformance_outcomes_match": true,
+  "optimized_actual_schema_api_cases_per_platform": 12,
+  "elapsed_clock_anomaly_records_macos": 8,
+  "elapsed_clock_anomaly_records_linux": 0,
+  "separate_clock_confirmation_measurements": 24,
+  "optimized_schemas_compiled_per_validator": 22,
+  "optimized_schema_instances_checked_per_platform": 195,
+  "optimized_schema_outcomes_match_original_and_between_platforms": true,
+  "preliminary_macos_screen_measurements": 288,
+  "unchanged_xerces_calibration_measurements": 48
+}

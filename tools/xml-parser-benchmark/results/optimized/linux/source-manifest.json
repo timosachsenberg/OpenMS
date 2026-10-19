@@ -1,0 +1,102 @@
+{
+  "xerces": {
+    "source_commit": "58aa37348c968a12e3285295f28c197cc0b7bdbe",
+    "optimization": "Release -O3 -DNDEBUG, C++23",
+    "libraries": {
+      "libOpenMS.so": "a9838d17672ffa0e179f00cb78aa5879568344f29a162cf562fb818749b45f13",
+      "libOpenSwathAlgo.so": "6a096aef64506e49d4273882fd2a4a4d61dff38d7207bb5b7525186b09675edb"
+    },
+    "source_tree": "cd9387209029839d243ae70532a90b4fb0cef294",
+    "tracked_source_changes": "",
+    "timed_source_sha256": {
+      "benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+      "launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+      "run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+      "run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f"
+    },
+    "build_configuration": {
+      "flags": "Release -O3 -DNDEBUG, C++23; -I private dependencies/header-priority",
+      "source_patches_outside_commit": false,
+      "dependency_workarounds": [
+        "Private parser header priority overlay ahead of broad contrib include",
+        "Original contrib CURL::libcurl_static config for Arrow"
+      ],
+      "shared_dependency_prefix": "Original private dependencies installation, unchanged"
+    }
+  },
+  "libxml2": {
+    "source_commit": "dc7ad95e1eb4fe72b37f59373416ccd339f39c75",
+    "optimization": "Release -O3 -DNDEBUG, C++23",
+    "libraries": {
+      "libOpenMS.so": "273da7237c434dcf31fb9e3518cdc0e2c031bec757813a7c23c0ee013a378375",
+      "libOpenSwathAlgo.so": "6a096aef64506e49d4273882fd2a4a4d61dff38d7207bb5b7525186b09675edb"
+    },
+    "source_tree": "919fd63099129af1472511891a0704020f9ab507",
+    "tracked_source_changes": "",
+    "timed_source_sha256": {
+      "benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+      "launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+      "run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+      "run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f"
+    },
+    "build_configuration": {
+      "flags": "Release -O3 -DNDEBUG, C++23; -I private dependencies/header-priority",
+      "source_patches_outside_commit": false,
+      "dependency_workarounds": [
+        "Private parser header priority overlay ahead of broad contrib include",
+        "Original contrib CURL::libcurl_static config for Arrow"
+      ],
+      "shared_dependency_prefix": "Original private dependencies installation, unchanged"
+    }
+  },
+  "expat": {
+    "source_commit": "6ebf5ec649805d807c65c75e757bc21d4be2a3c9",
+    "optimization": "Release -O3 -DNDEBUG, C++23",
+    "libraries": {
+      "libOpenMS.so": "235de5ee108eece08ea0a0b90a0cca92ef07f9e5631da6490d543bd9c8a7c00e",
+      "libOpenSwathAlgo.so": "6a096aef64506e49d4273882fd2a4a4d61dff38d7207bb5b7525186b09675edb"
+    },
+    "source_tree": "66e809b52a021d4859b265ad155bac62438764a5",
+    "tracked_source_changes": "",
+    "timed_source_sha256": {
+      "benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+      "launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+      "run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+      "run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f"
+    },
+    "build_configuration": {
+      "flags": "Release -O3 -DNDEBUG, C++23; -I private dependencies/header-priority",
+      "source_patches_outside_commit": false,
+      "dependency_workarounds": [
+        "Private parser header priority overlay ahead of broad contrib include",
+        "Original contrib CURL::libcurl_static config for Arrow"
+      ],
+      "shared_dependency_prefix": "Original private dependencies installation, unchanged"
+    }
+  },
+  "pugixml": {
+    "source_commit": "250dd47ef6af3879b1c2735041618c17e1ba1ccc",
+    "optimization": "Release -O3 -DNDEBUG, C++23",
+    "libraries": {
+      "libOpenMS.so": "5717c9e578aa7952c5d8ae0e3796258ed8a3929b21ef6d02ec8739218c9ab995",
+      "libOpenSwathAlgo.so": "6a096aef64506e49d4273882fd2a4a4d61dff38d7207bb5b7525186b09675edb"
+    },
+    "source_tree": "0a208afc7858346a32a60cefae9f1e216e482bac",
+    "tracked_source_changes": "",
+    "timed_source_sha256": {
+      "benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+      "launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+      "run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+      "run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f"
+    },
+    "build_configuration": {
+      "flags": "Release -O3 -DNDEBUG, C++23; -I private dependencies/header-priority",
+      "source_patches_outside_commit": false,
+      "dependency_workarounds": [
+        "Private parser header priority overlay ahead of broad contrib include",
+        "Original contrib CURL::libcurl_static config for Arrow"
+      ],
+      "shared_dependency_prefix": "Original private dependencies installation, unchanged"
+    }
+  }
+}

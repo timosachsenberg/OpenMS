@@ -1,0 +1,843 @@
+Adversarial review of optimization code for three OpenMS C++ XML adapters. This is a focused follow-up after a full-source review exceeded900seconds without a final answer. Return a FINAL concise report (max600words), at most8 concrete findings with file/function, mechanism, minimalfix andfalsification test. Prioritize real correctness or memory/speed regressions. Do not perform an exhaustive library survey, do not use tools, do not edit files. Distinguish demonstrated code bugs from profiling hypotheses. If no further actionable defect is supported, say so.
+
+Constraints: preserve Unicode, legacy derived onCharacters overrides, callback exception containment, compressed input, soft stop, per-reader thread independence. Timed work includes decoding and digest intentionally. External parentwait4 records wholeprocess peak; retainedRSSseparate. PugiDOM and incomplete XMLconformanceare known limits, no claim of strictXMLparity. Full tests25+focused andhugearray havepassed, but testpasses do not prove correctness.
+
+
+## libxml2 XMLFile.cpp native helpers
+    struct LibxmlState
+    {
+      XMLHandler* handler;
+      std::exception_ptr exception;
+      static LibxmlState& state(void* ctx)
+      {
+        return *static_cast<LibxmlState*>(static_cast<xmlParserCtxt*>(ctx)->_private);
+      }
+      static std::u16string utf16(const xmlChar* text, int length = -1)
+      {
+        std::u16string result;
+        const unsigned char* cursor = text;
+        const unsigned char* end = text + (length < 0 ? xmlStrlen(text) : length);
+        while (cursor < end)
+        {
+          unsigned int cp = *cursor++;
+          if (cp >= 0xc0)
+          {
+            const int remaining = cp < 0xe0 ? 1 : cp < 0xf0 ? 2 : 3;
+            cp &= (1u << (6 - remaining)) - 1;
+            for (int i = 0; i < remaining && cursor < end; ++i) { cp = (cp << 6) | (*cursor++ & 0x3f); }
+          }
+          if (cp > 0xffff)
+          {
+            cp -= 0x10000;
+            result.push_back(static_cast<char16_t>(0xd800 + (cp >> 10)));
+            result.push_back(static_cast<char16_t>(0xdc00 + (cp & 0x3ff)));
+          }
+          else { result.push_back(static_cast<char16_t>(cp)); }
+        }
+        return result;
+      }
+      template <typename Callback> static void callback(void* ctx, Callback&& fn)
+      {
+        // Stopping the parser can re-enter an error callback. Keep the original
+        // handler exception rather than replacing it with a parser-stop error.
+        if (state(ctx).exception) { return; }
+        try { fn(state(ctx)); }
+        catch (...)
+        {
+          state(ctx).exception = std::current_exception();
+          xmlStopParser(static_cast<xmlParserCtxt*>(ctx));
+        }
+      }
+      static void start(void* ctx, const xmlChar* name, const xmlChar** attrs)
+      {
+        callback(ctx, [&](LibxmlState& s)
+        {
+          std::vector<std::pair<std::u16string, std::u16string>> values;
+          if (attrs)
+          {
+            for (Size i = 0; attrs[i]; i += 2) { values.emplace_back(utf16(attrs[i]), utf16(attrs[i + 1])); }
+          }
+          s.handler->onStartElement(utf16(name).c_str(), XMLAttributes(values));
+        });
+      }
+      static void end(void* ctx, const xmlChar* name)
+      {
+        callback(ctx, [&](LibxmlState& s) { s.handler->onEndElement(utf16(name).c_str()); });
+      }
+      static void characters(void* ctx, const xmlChar* text, int length)
+      {
+        callback(ctx, [&](LibxmlState& s)
+        {
+          if (s.handler->tryOnCharactersUTF8(reinterpret_cast<const char*>(text), static_cast<Size>(length))) { return; }
+          const auto value = utf16(text, length);
+          s.handler->onCharacters(value.c_str(), value.size());
+        });
+      }
+      static void error(void* ctx, const xmlError* error)
+      {
+        callback(ctx, [&](LibxmlState& s)
+        {
+          const std::string message = error->message ? error->message : "libxml2 parse error";
+          if (error->level == XML_ERR_WARNING) { s.handler->warning(XMLHandler::LOAD, message, error->line, error->int2); }
+          else { s.handler->fatalError(XMLHandler::LOAD, message, error->line, error->int2); }
+        });
+      }
+    };
+    void parse(xercesc::InputSource* const source, XMLHandler* handler)
+    {
+      LibxmlState state{handler, {}};
+      xmlSAXHandler sax{};
+      xmlSAXVersion(&sax, 1);
+      sax.startElement = LibxmlState::start;
+      sax.endElement = LibxmlState::end;
+      sax.characters = LibxmlState::characters;
+      sax.cdataBlock = LibxmlState::characters;
+      auto free_parser = [](xmlParserCtxt* ctx)
+      {
+        if (ctx->myDoc) { xmlFreeDoc(ctx->myDoc); }
+        xmlFreeParserCtxt(ctx);
+      };
+      unique_ptr<xmlParserCtxt, decltype(free_parser)> parser(xmlCreatePushParserCtxt(&sax, nullptr, nullptr, 0, nullptr), free_parser);
+      if (!parser) { throw std::bad_alloc(); }
+      parser->_private = &state;
+      parser->userData = parser.get();
+      // SAX1 ignores sax.serror; the context-local API works in both SAX modes.
+      xmlCtxtSetErrorHandler(parser.get(), LibxmlState::error, parser.get());
+      xmlCtxtUseOptions(parser.get(), XML_PARSE_NONET | XML_PARSE_NO_XXE | XML_PARSE_NOENT);
+      if (source->getEncoding())
+      {
+        const auto encoding = StringManager::convert(reinterpret_cast<const char16_t*>(source->getEncoding()));
+        if (xmlSwitchEncodingName(parser.get(), encoding.c_str()) != 0)
+        {
+          throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "Unsupported XML encoding: " + encoding);
+        }
+      }
+      unique_ptr<xercesc::BinInputStream> stream(source->makeStream());
+      if (!stream) { throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "Cannot open XML input stream"); }
+      char buffer[65536];
+      int status = 0;
+      while (!state.exception)
+      {
+        const auto count = stream->readBytes(reinterpret_cast<XMLByte*>(buffer), sizeof(buffer));
+        status = xmlParseChunk(parser.get(), buffer, static_cast<int>(count), count == 0);
+        if (status || count == 0) { break; }
+      }
+      if (state.exception)
+      {
+        try { std::rethrow_exception(state.exception); }
+        catch (const XMLHandler::EndParsingSoftly&) { return; }
+      }
+      if (status)
+      {
+        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "libxml2 rejected XML input");
+      }
+    }
+
+
+
+## libxml2 XMLAttributes.cpp
+// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// --------------------------------------------------------------------------
+// $Maintainer: Timo Sachsenberg $
+// $Authors: Timo Sachsenberg $
+// --------------------------------------------------------------------------
+
+#include <OpenMS/FORMAT/HANDLERS/XMLAttributes.h>
+
+#include <xercesc/sax2/Attributes.hpp>
+#include <xercesc/util/XMLString.hpp>
+#include <xercesc/util/TransService.hpp>
+#include <cstring>
+
+namespace OpenMS::Internal
+{
+  // XMLCh is guaranteed to match char16_t in size; the attribute values are
+  // consumed purely as UTF-16 code units, so the reinterpret_cast at this
+  // boundary is well-defined for our use.
+  static_assert(sizeof(::XMLCh) == sizeof(char16_t), "XMLCh is not sized correctly for UTF-16.");
+
+  namespace
+  {
+    inline const xercesc::Attributes* attrs(const void* handle)
+    {
+      return static_cast<const xercesc::Attributes*>(handle);
+    }
+
+    bool equalsASCII(const char16_t* wide, const char* ascii)
+    {
+      while (*ascii && *wide == static_cast<unsigned char>(*ascii))
+      {
+        ++wide;
+        ++ascii;
+      }
+      return *ascii == 0 && *wide == 0;
+    }
+  }
+
+  const char16_t* XMLAttributes::value(const char16_t* qname) const
+  {
+    if (native_attributes_)
+    {
+      const SignedSize i = index(qname);
+      return i < 0 ? nullptr : (*native_attributes_)[i].second.c_str();
+    }
+    return reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(reinterpret_cast<const ::XMLCh*>(qname)));
+  }
+
+  const char16_t* XMLAttributes::value(const char* qname) const
+  {
+    if (native_attributes_)
+    {
+      bool ascii = true;
+      for (const auto* ch = qname; *ch; ++ch)
+      {
+        if (static_cast<unsigned char>(*ch) > 127) { ascii = false; break; }
+      }
+      if (ascii)
+      {
+        // XML vocabulary names are usually ASCII; avoid allocating a transcoder.
+        for (const auto& item : *native_attributes_)
+        {
+          if (equalsASCII(item.first.c_str(), qname)) return item.second.c_str();
+        }
+        return nullptr;
+      }
+      const xercesc::TranscodeFromStr transcoded(reinterpret_cast<const XMLByte*>(qname), std::strlen(qname), "UTF-8");
+      return value(reinterpret_cast<const char16_t*>(transcoded.str()));
+    }
+    ::XMLCh* transcoded = xercesc::XMLString::transcode(qname);
+    const char16_t* val = reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(transcoded));
+    xercesc::XMLString::release(&transcoded);
+    return val;
+  }
+
+  SignedSize XMLAttributes::index(const char16_t* qname) const
+  {
+    if (native_attributes_)
+    {
+      for (Size i = 0; i < native_attributes_->size(); ++i)
+      {
+        if ((*native_attributes_)[i].first == qname) { return static_cast<SignedSize>(i); }
+      }
+      return -1;
+    }
+    return static_cast<SignedSize>(attrs(attributes_)->getIndex(reinterpret_cast<const ::XMLCh*>(qname)));
+  }
+
+  const char16_t* XMLAttributes::valueByIndex(Size i) const
+  {
+    if (native_attributes_) { return i < native_attributes_->size() ? (*native_attributes_)[i].second.c_str() : nullptr; }
+    return reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(static_cast<XMLSize_t>(i)));
+  }
+
+} // namespace OpenMS::Internal
+
+
+## expat XMLFile.cpp native helpers
+    namespace
+    {
+      static_assert(sizeof(XML_Char) == 1, "This adapter requires UTF-8 Expat callbacks.");
+
+      // Expat validates UTF-8 before callbacks; OpenMS handlers still consume UTF-16.
+      std::u16string utf16(std::string_view text)
+      {
+        std::u16string result;
+        result.reserve(text.size());
+        for (Size i = 0; i < text.size();)
+        {
+          unsigned char lead = static_cast<unsigned char>(text[i++]);
+          unsigned code = lead;
+          unsigned continuation = 0;
+          if (lead >= 0xf0) { code &= 0x07; continuation = 3; }
+          else if (lead >= 0xe0) { code &= 0x0f; continuation = 2; }
+          else if (lead >= 0xc0) { code &= 0x1f; continuation = 1; }
+          for (unsigned j = 0; j < continuation; ++j)
+          {
+            code = (code << 6) | (static_cast<unsigned char>(text[i++]) & 0x3f);
+          }
+          if (code > 0xffff)
+          {
+            code -= 0x10000;
+            result.push_back(static_cast<char16_t>(0xd800 + (code >> 10)));
+            result.push_back(static_cast<char16_t>(0xdc00 + (code & 0x3ff)));
+          }
+          else result.push_back(static_cast<char16_t>(code));
+        }
+        return result;
+      }
+
+      struct ExpatCallbacks
+      {
+        XML_Parser parser;
+        XMLHandler& handler;
+        std::exception_ptr exception;
+
+        template <typename Callback>
+        void invoke(Callback&& callback) noexcept
+        {
+          // Never unwind a C++ exception through Expat's C stack.
+          if (exception) return;
+          try { callback(); }
+          catch (...)
+          {
+            exception = std::current_exception();
+            XML_StopParser(parser, XML_FALSE);
+          }
+        }
+
+        static void XMLCALL start(void* data, const XML_Char* name, const XML_Char** attributes) noexcept
+        {
+          auto& self = *static_cast<ExpatCallbacks*>(data);
+          self.invoke([&]
+          {
+            const auto tag = utf16(name);
+            std::vector<std::u16string> strings;
+            for (Size i = 0; attributes[i]; ++i) strings.push_back(utf16(attributes[i]));
+            std::vector<const char16_t*> pairs;
+            pairs.reserve(strings.size() + 1);
+            for (const auto& value : strings) pairs.push_back(value.c_str());
+            pairs.push_back(nullptr);
+            self.handler.onStartElement(tag.c_str(), XMLAttributes(pairs.data()));
+          });
+        }
+
+        static void XMLCALL end(void* data, const XML_Char* name) noexcept
+        {
+          auto& self = *static_cast<ExpatCallbacks*>(data);
+          self.invoke([&]
+          {
+            const auto tag = utf16(name);
+            self.handler.onEndElement(tag.c_str());
+          });
+        }
+
+        static void XMLCALL characters(void* data, const XML_Char* text, int length) noexcept
+        {
+          auto& self = *static_cast<ExpatCallbacks*>(data);
+          self.invoke([&]
+          {
+            if (self.handler.tryOnCharactersUTF8(text, static_cast<Size>(length))) return;
+            const auto value = utf16(std::string_view(text, static_cast<Size>(length)));
+            self.handler.onCharacters(value.c_str(), value.size());
+          });
+        }
+      };
+    }
+
+    void parse(xercesc::InputSource* source, XMLHandler* handler, const std::string& encoding)
+    {
+      // Reuse the existing bounded-memory plain/compressed streams. Xerces remains
+      // a dependency for these stream adapters, DOM readers and XSD validation.
+      unique_ptr<XML_ParserStruct, decltype(&XML_ParserFree)> parser(
+        XML_ParserCreate(encoding.empty() ? nullptr : encoding.c_str()), XML_ParserFree);
+      if (!parser) throw std::bad_alloc();
+      ExpatCallbacks callbacks{parser.get(), *handler, {}};
+      XML_SetUserData(parser.get(), &callbacks);
+      XML_SetElementHandler(parser.get(), ExpatCallbacks::start, ExpatCallbacks::end);
+      XML_SetCharacterDataHandler(parser.get(), ExpatCallbacks::characters);
+      // Ordinary OpenMS SAX reads use qualified names without namespace expansion.
+      // External entities are rejected; parameter entity parsing is disabled.
+      XML_SetParamEntityParsing(parser.get(), XML_PARAM_ENTITY_PARSING_NEVER);
+      XML_SetExternalEntityRefHandler(parser.get(), [](XML_Parser, const XML_Char*, const XML_Char*, const XML_Char*, const XML_Char*) -> int { return XML_STATUS_ERROR; });
+      try
+      {
+        unique_ptr<xercesc::BinInputStream> stream(source->makeStream());
+        if (!stream) throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "Cannot open XML input stream");
+        std::array<XMLByte, 65536> buffer;
+        for (;;)
+        {
+          const auto length = stream->readBytes(buffer.data(), buffer.size());
+          const auto status = XML_Parse(parser.get(), reinterpret_cast<const char*>(buffer.data()), static_cast<int>(length), length == 0);
+          if (callbacks.exception) std::rethrow_exception(callbacks.exception);
+          if (status == XML_STATUS_ERROR)
+          {
+            handler->fatalError(XMLHandler::LOAD, XML_ErrorString(XML_GetErrorCode(parser.get())),
+                                static_cast<UInt>(XML_GetCurrentLineNumber(parser.get())),
+                                static_cast<UInt>(XML_GetCurrentColumnNumber(parser.get()) + 1));
+          }
+          if (length == 0) break;
+        }
+      }
+      catch (const xercesc::XMLException& error)
+      {
+        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", StringManager::convert(error.getMessage()));
+      }
+      catch (const XMLHandler::EndParsingSoftly&)
+      {
+        // Expected early termination (metadata/size-only reads).
+      }
+    }
+
+
+
+## expat XMLAttributes.cpp
+// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// --------------------------------------------------------------------------
+// $Maintainer: Timo Sachsenberg $
+// $Authors: Timo Sachsenberg $
+// --------------------------------------------------------------------------
+
+#include <OpenMS/FORMAT/HANDLERS/XMLAttributes.h>
+
+#include <xercesc/sax2/Attributes.hpp>
+#include <string_view>
+#include <xercesc/util/XMLString.hpp>
+#include <xercesc/util/TransService.hpp>
+#include <cstring>
+
+namespace OpenMS::Internal
+{
+  // XMLCh is guaranteed to match char16_t in size; the attribute values are
+  // consumed purely as UTF-16 code units, so the reinterpret_cast at this
+  // boundary is well-defined for our use.
+  static_assert(sizeof(::XMLCh) == sizeof(char16_t), "XMLCh is not sized correctly for UTF-16.");
+
+  namespace
+  {
+    inline const xercesc::Attributes* attrs(const void* handle)
+    {
+      return static_cast<const xercesc::Attributes*>(handle);
+    }
+
+    bool equalsASCII(const char16_t* wide, const char* ascii)
+    {
+      while (*ascii && *wide == static_cast<unsigned char>(*ascii))
+      {
+        ++wide;
+        ++ascii;
+      }
+      return *ascii == 0 && *wide == 0;
+    }
+  }
+
+  const char16_t* XMLAttributes::value(const char16_t* qname) const
+  {
+    if (pairs_)
+    {
+      const auto i = index(qname);
+      return i < 0 ? nullptr : pairs_[2 * i + 1];
+    }
+    return reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(reinterpret_cast<const ::XMLCh*>(qname)));
+  }
+
+  const char16_t* XMLAttributes::value(const char* qname) const
+  {
+    if (pairs_)
+    {
+      bool ascii = true;
+      for (const auto* ch = qname; *ch; ++ch)
+      {
+        if (static_cast<unsigned char>(*ch) > 127) { ascii = false; break; }
+      }
+      if (ascii)
+      {
+        // XML vocabulary names are usually ASCII; avoid allocating a transcoder.
+        for (Size i = 0; pairs_[2 * i]; ++i)
+        {
+          if (equalsASCII(pairs_[2 * i], qname)) return pairs_[2 * i + 1];
+        }
+        return nullptr;
+      }
+      // Expat names are UTF-8 regardless of the process locale.
+      const xercesc::TranscodeFromStr name(reinterpret_cast<const XMLByte*>(qname), std::strlen(qname), "UTF-8");
+      return value(reinterpret_cast<const char16_t*>(name.str()));
+    }
+    ::XMLCh* transcoded = xercesc::XMLString::transcode(qname);
+    const char16_t* val = value(reinterpret_cast<const char16_t*>(transcoded));
+    xercesc::XMLString::release(&transcoded);
+    return val;
+  }
+
+  SignedSize XMLAttributes::index(const char16_t* qname) const
+  {
+    if (pairs_)
+    {
+      for (SignedSize i = 0; pairs_[2 * i]; ++i)
+      {
+        if (std::u16string_view(pairs_[2 * i]) == qname) return i;
+      }
+      return -1;
+    }
+    return static_cast<SignedSize>(attrs(attributes_)->getIndex(reinterpret_cast<const ::XMLCh*>(qname)));
+  }
+
+  const char16_t* XMLAttributes::valueByIndex(Size i) const
+  {
+    if (pairs_)
+    {
+      for (Size j = 0; pairs_[2 * j]; ++j)
+      {
+        if (i == j) return pairs_[2 * j + 1];
+      }
+      return nullptr;
+    }
+    return reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(static_cast<XMLSize_t>(i)));
+  }
+
+} // namespace OpenMS::Internal
+
+
+## pugixml XMLFile.cpp native helpers
+    void parse(xercesc::InputSource* const source, XMLHandler* handler, Size known_size = 0)
+    {
+      // Deliberately DOM-backed event delivery: this prototype measures the whole-file
+      // memory cost of pugixml rather than claiming to supply streaming parsing.
+      // ponytail: the DOM is O(file size); use a streaming backend for bounded-memory loads.
+      auto utf16 = [](const char* value)
+      {
+        const auto wide = pugi::as_wide(value);
+        std::u16string result;
+        for (auto ch : wide)
+        {
+          const auto cp = static_cast<uint32_t>(ch);
+          if constexpr (sizeof(wchar_t) == 2) result.push_back(static_cast<char16_t>(cp));
+          else if (cp <= 0xffff) result.push_back(static_cast<char16_t>(cp));
+          else
+          {
+            result.push_back(static_cast<char16_t>(0xd800 + ((cp - 0x10000) >> 10)));
+            result.push_back(static_cast<char16_t>(0xdc00 + ((cp - 0x10000) & 0x3ff)));
+          }
+        }
+        return result;
+      };
+      unique_ptr<xercesc::BinInputStream> stream(source->makeStream());
+      if (!stream)
+      {
+        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "Cannot open XML input stream");
+      }
+      std::vector<char> input;
+      // Avoid geometric spare capacity when the uncompressed byte count is known.
+      input.reserve(known_size);
+      std::array<XMLByte, 65536> chunk;
+      XMLSize_t count;
+      while ((count = stream->readBytes(chunk.data(), chunk.size())) != 0)
+      {
+        input.insert(input.end(), chunk.begin(), chunk.begin() + count);
+      }
+      pugi::xml_document document;
+      // Keep whitespace text and CDATA so handler character data is preserved.
+      pugi::xml_encoding encoding = pugi::encoding_auto;
+      if (source->getEncoding())
+      {
+        const std::string requested = StringManager::convert(reinterpret_cast<const char16_t*>(source->getEncoding()));
+        if (requested == "UTF-8" || requested == "utf-8") encoding = pugi::encoding_utf8;
+        else if (requested == "UTF-16" || requested == "utf-16") encoding = pugi::encoding_utf16;
+        else if (requested == "ISO-8859-1") encoding = pugi::encoding_latin1;
+        else
+        {
+          throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "Unsupported pugixml encoding override: " + requested);
+        }
+      }
+      const auto status = document.load_buffer_inplace(input.data(), input.size(), pugi::parse_default | pugi::parse_ws_pcdata, encoding);
+      if (!status)
+      {
+        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "",
+            std::string("pugixml: ") + status.description() + " at byte " + std::to_string(status.offset));
+      }
+      try
+      {
+        // Walk parent/sibling links instead of consuming one C++ stack frame per
+        // XML level. Element exits occur only after all their children are visited.
+        auto node = document.first_child();
+        while (node)
+        {
+          if (node.type() == pugi::node_element)
+          {
+            auto name = utf16(node.name());
+            XMLAttributes::Values attributes;
+            for (auto attr : node.attributes()) attributes.emplace_back(utf16(attr.name()), utf16(attr.value()));
+            handler->onStartElement(name.c_str(), XMLAttributes(attributes));
+            if (auto child = node.first_child())
+            {
+              node = child;
+              continue;
+            }
+          }
+          else if (node.type() == pugi::node_pcdata || node.type() == pugi::node_cdata)
+          {
+            const char* value = node.value();
+            if (!handler->tryOnCharactersUTF8(value, std::strlen(value)))
+            {
+              auto text = utf16(value);
+              handler->onCharacters(text.c_str(), text.size());
+            }
+          }
+          while (node)
+          {
+            if (node.type() == pugi::node_element)
+            {
+              auto name = utf16(node.name());
+              handler->onEndElement(name.c_str());
+            }
+            if (auto sibling = node.next_sibling())
+            {
+              node = sibling;
+              break;
+            }
+            node = node.parent();
+            if (node == document) node = {};
+          }
+        }
+      }
+      catch (const XMLHandler::EndParsingSoftly&)
+      {
+        // Early callback termination works, but the DOM has already been built.
+      }
+    }
+
+
+
+## pugixml XMLAttributes.cpp
+// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// --------------------------------------------------------------------------
+// $Maintainer: Timo Sachsenberg $
+// $Authors: Timo Sachsenberg $
+// --------------------------------------------------------------------------
+
+#include <OpenMS/FORMAT/HANDLERS/XMLAttributes.h>
+
+#include <xercesc/sax2/Attributes.hpp>
+#include <xercesc/util/XMLString.hpp>
+#include <xercesc/util/TransService.hpp>
+#include <cstring>
+
+namespace OpenMS::Internal
+{
+  // XMLCh is guaranteed to match char16_t in size; the attribute values are
+  // consumed purely as UTF-16 code units, so the reinterpret_cast at this
+  // boundary is well-defined for our use.
+  static_assert(sizeof(::XMLCh) == sizeof(char16_t), "XMLCh is not sized correctly for UTF-16.");
+
+  namespace
+  {
+    inline const xercesc::Attributes* attrs(const void* handle)
+    {
+      return static_cast<const xercesc::Attributes*>(handle);
+    }
+
+    bool equalsASCII(const char16_t* wide, const char* ascii)
+    {
+      while (*ascii && *wide == static_cast<unsigned char>(*ascii))
+      {
+        ++wide;
+        ++ascii;
+      }
+      return *ascii == 0 && *wide == 0;
+    }
+  }
+
+  const char16_t* XMLAttributes::value(const char16_t* qname) const
+  {
+    if (native_)
+    {
+      for (const auto& item : *static_cast<const Values*>(attributes_))
+      {
+        if (item.first == qname) return item.second.c_str();
+      }
+      return nullptr;
+    }
+    return reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(reinterpret_cast<const ::XMLCh*>(qname)));
+  }
+
+  const char16_t* XMLAttributes::value(const char* qname) const
+  {
+    if (native_)
+    {
+      bool ascii = true;
+      for (const auto* ch = qname; *ch; ++ch)
+      {
+        if (static_cast<unsigned char>(*ch) > 127) { ascii = false; break; }
+      }
+      if (ascii)
+      {
+        // XML vocabulary names are usually ASCII; compare without allocating a transcoder.
+        for (const auto& item : *static_cast<const Values*>(attributes_))
+        {
+          if (equalsASCII(item.first.c_str(), qname)) return item.second.c_str();
+        }
+        return nullptr;
+      }
+    }
+    // Arbitrary narrow names retain explicit UTF-8 conversion and Xerces-backed behavior.
+    const xercesc::TranscodeFromStr transcoded(reinterpret_cast<const XMLByte*>(qname), std::strlen(qname), "UTF-8");
+    return value(reinterpret_cast<const char16_t*>(transcoded.str()));
+  }
+
+  SignedSize XMLAttributes::index(const char16_t* qname) const
+  {
+    if (native_)
+    {
+      const auto& values = *static_cast<const Values*>(attributes_);
+      for (Size i = 0; i < values.size(); ++i) if (values[i].first == qname) return i;
+      return -1;
+    }
+    return static_cast<SignedSize>(attrs(attributes_)->getIndex(reinterpret_cast<const ::XMLCh*>(qname)));
+  }
+
+  const char16_t* XMLAttributes::valueByIndex(Size i) const
+  {
+    if (native_)
+    {
+      const auto& values = *static_cast<const Values*>(attributes_);
+      return i < values.size() ? values[i].second.c_str() : nullptr;
+    }
+    return reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(static_cast<XMLSize_t>(i)));
+  }
+
+} // namespace OpenMS::Internal
+
+
+## Shared MzMLHandler.cpp
+    bool MzMLHandler::tryOnCharactersUTF8(const char* chars, Size length)
+    {
+      // A subclass may override only onCharacters. Leave that dispatch intact
+      // unless the subclass explicitly opts in by overriding this new hook.
+      if (typeid(*this) != typeid(MzMLHandler)) { return false; }
+      if (length == 0) { return true; }
+      if (std::any_of(chars, chars + length,
+          [](unsigned char value) { return value >= 0x80; })) { return false; }
+      if (skip_spectrum_ || skip_chromatogram_ || !options_.getFillData() || open_tags_.empty()) { return true; }
+      if (open_tags_.back() == "binary")
+      {
+        // XML parsers have normalized entities/line endings. Valid base64 is
+        // ASCII, so no UTF-8 -> UTF-16 -> ASCII round trip is needed here.
+        bin_data_.back().base64.append(chars, length);
+      }
+      return true;
+    }
+
+    void MzMLHandler::onCharacters(const char16_t* chars, Size length)
+    {
+      // Metadata reads discard binary arrays on closing the spectrum. Avoid
+      // constructing their encoded payloads in the first place (also in Xerces).
+      if (skip_spectrum_ || skip_chromatogram_ || !options_.getFillData())
+      {
+        return;
+      }
+
+      const std::string& current_tag = open_tags_.back();
+
+      if (current_tag == "binary")
+      {
+        // Since we convert a Base64 string here, it can only contain plain ASCII
+        sm_.appendASCII(chars, length, bin_data_.back().base64);
+      }
+      else if (current_tag == "offset" || current_tag == "indexListOffset" || current_tag == "fileChecksum")
+      {
+        //do nothing for
+        // - index
+        // - checksum
+        // - binary chromatogram data
+      }
+      else
+      {
+        /*std::string transcoded_chars2 = sm_.convert(chars);
+        StringUtils::trim(transcoded_chars2);
+        if (transcoded_chars2 != "")
+        {
+          warning(LOAD,std::string("Unhandled character content in tag '") + current_tag + "': " +
+              transcoded_chars2);
+        }
+        */
+      }
+    }
+
+
+
+
+## Shared footer I/O helpers
+  int IndexedMzMLDecoder::parseOffsets(const std::string& filename, std::streampos indexoffset, OffsetVector& spectra_offsets, OffsetVector& chromatograms_offsets)
+  {
+    std::ifstream f(filename, std::ios::binary);
+    if (!f.is_open())
+    {
+      if (!File::exists(filename))
+      {
+        throw Exception::FileNotFound(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+      }
+      if (!File::readable(filename))
+      {
+        throw Exception::FileNotReadable(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+      }
+      throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+    }
+
+    f.seekg(0, std::ios::end);
+    const std::streampos length = f.tellg();
+    if (!f || length < 0 || indexoffset < 0 || indexoffset > length)
+    {
+      std::cerr << "IndexedMzMLDecoder::parseOffsets Error: Offset was " << indexoffset
+                << " (not between 0 and " << length << ").\n";
+      return -1;
+    }
+
+    // Read straight into the final XML buffer: no raw allocation or full-tail copy.
+    std::string xml = "<indexedmzML>";
+    const Size prefix_size = xml.size();
+    const std::streamoff tail_length = length - indexoffset;
+    if (tail_length == 0 || tail_length > std::numeric_limits<std::streamsize>::max() ||
+        static_cast<std::uintmax_t>(tail_length) > xml.max_size() - prefix_size - 1)
+    {
+      return -1;
+    }
+    const Size tail_size = static_cast<Size>(tail_length);
+    xml.resize(prefix_size + tail_size + 1);
+    f.seekg(indexoffset);
+    if (!f) { return -1; }
+    f.read(xml.data() + prefix_size, static_cast<std::streamsize>(tail_length));
+    if (!f || f.gcount() != tail_length) { return -1; }
+    xml.back() = '\n';
+    return domParseIndexedEnd_(xml, spectra_offsets, chromatograms_offsets);
+  }
+
+  std::streampos IndexedMzMLDecoder::findIndexListOffset(const std::string& filename, int buffersize)
+  {
+    if (buffersize <= 0) { return -1; }
+    std::ifstream f(filename, std::ios::binary);
+    if (!f.is_open())
+    {
+      if (!File::exists(filename))
+      {
+        throw Exception::FileNotFound(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+      }
+      if (!File::readable(filename))
+      {
+        throw Exception::FileNotReadable(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+      }
+      throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+    }
+
+    f.seekg(0, std::ios::end);
+    const std::streampos length = f.tellg();
+    if (!f || length < 0) { return -1; }
+    const std::streamoff read_length = std::min(static_cast<std::streamoff>(length), static_cast<std::streamoff>(buffersize));
+    std::string buffer;
+    if (read_length > std::numeric_limits<std::streamsize>::max() ||
+        static_cast<std::uintmax_t>(read_length) > buffer.max_size()) { return -1; }
+    buffer.resize(static_cast<Size>(read_length));
+    f.seekg(-read_length, std::ios::end);
+    if (!f) { return -1; }
+    f.read(buffer.data(), static_cast<std::streamsize>(read_length));
+    if (!f || f.gcount() != read_length) { return -1; }
+
+    // The same namespace/whitespace-tolerant pattern is shared by independent
+    // readers; C++ initializes it once and regex_search never mutates it.
+    static const boost::regex listoffset_rx(R"(<[^>/]*indexListOffset\s*>\s*(\d*))");
+    boost::smatch matches;
+    if (!boost::regex_search(buffer, matches, listoffset_rx) || matches[1].length() == 0)
+    {
+      std::cerr << "IndexedMzMLDecoder::findIndexListOffset Error: Could not find element indexListOffset in the last "
+                << read_length << " bytes. Maybe this is not an indexedMzML.\n";
+      return -1;
+    }
+    return OpenMS::IndexedMzMLUtils::stringToStreampos(matches[1].str());
+  }
+
+
+Contract/context: XMLHandler::tryOnCharactersUTF8 default returns false with no sideeffects; true means consumed, false falls back to legacy UTF16 onCharacters. Adapters call the hook only after their XML parser has delivered normalized characters. Pugi caller passes known_size=File::fileSize for plain-file input, buffer.size for memory input, zero for compressed streams. Each XMLFile parse creates independent state. UTF8attribute fallback uses Xerces TranscodeFromStr UTF8.

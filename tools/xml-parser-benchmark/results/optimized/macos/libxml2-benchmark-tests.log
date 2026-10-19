@@ -1,0 +1,7 @@
+Test project $WORKSPACE/benchmark-optimized-build
+    Start 1: xml_benchmark_smoke
+1/1 Test #1: xml_benchmark_smoke ..............   Passed    6.59 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   6.59 sec

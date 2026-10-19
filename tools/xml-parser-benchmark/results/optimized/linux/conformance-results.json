@@ -1,0 +1,353 @@
+{
+  "method": "OpenMS XMLFile generic SAX callbacks, isolated process per case",
+  "results": [
+    {
+      "backend": "xerces",
+      "case": "entity-valid",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        65,
+        38,
+        66
+      ]
+    },
+    {
+      "backend": "libxml2",
+      "case": "entity-valid",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        65,
+        38,
+        66
+      ]
+    },
+    {
+      "backend": "expat",
+      "case": "entity-valid",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        65,
+        38,
+        66
+      ]
+    },
+    {
+      "backend": "pugixml",
+      "case": "entity-valid",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        65,
+        38,
+        66
+      ]
+    },
+    {
+      "backend": "xerces",
+      "case": "undefined-entity",
+      "stderr": "the file 'memory' could not be found\n",
+      "accepted": false
+    },
+    {
+      "backend": "libxml2",
+      "case": "undefined-entity",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': Entity 'undefined' not defined\n( in line 1 column 15)\nWhile loading 'memory': Entity 'undefined' not defined\n( in line 1 column 15) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "expat",
+      "case": "undefined-entity",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': undefined entity( in line 1 column 4)\nWhile loading 'memory': undefined entity( in line 1 column 4) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "pugixml",
+      "case": "undefined-entity",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        38,
+        117,
+        110,
+        100,
+        101,
+        102,
+        105,
+        110,
+        101,
+        100,
+        59
+      ]
+    },
+    {
+      "backend": "xerces",
+      "case": "malformed-reference",
+      "stderr": "the file 'memory' could not be found\n",
+      "accepted": false
+    },
+    {
+      "backend": "libxml2",
+      "case": "malformed-reference",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': xmlParseEntityRef: no name\n( in line 1 column 6)\nWhile loading 'memory': xmlParseEntityRef: no name\n( in line 1 column 6) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "expat",
+      "case": "malformed-reference",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': not well-formed (invalid token)( in line 1 column 6)\nWhile loading 'memory': not well-formed (invalid token)( in line 1 column 6) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "pugixml",
+      "case": "malformed-reference",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        65,
+        38,
+        45,
+        66
+      ]
+    },
+    {
+      "backend": "xerces",
+      "case": "duplicate-attribute",
+      "stderr": "the file 'memory' could not be found\n",
+      "accepted": false
+    },
+    {
+      "backend": "libxml2",
+      "case": "duplicate-attribute",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': Attribute a redefined\n( in line 1 column 15)\nWhile loading 'memory': Attribute a redefined\n( in line 1 column 15) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "expat",
+      "case": "duplicate-attribute",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': duplicate attribute( in line 1 column 10)\nWhile loading 'memory': duplicate attribute( in line 1 column 10) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "pugixml",
+      "case": "duplicate-attribute",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": []
+    },
+    {
+      "backend": "xerces",
+      "case": "invalid-utf8",
+      "stderr": "the file 'memory' could not be found\n",
+      "accepted": false
+    },
+    {
+      "backend": "libxml2",
+      "case": "invalid-utf8",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': Invalid bytes in character encoding\n( in line 1 column 4)\nWhile loading 'memory': Invalid bytes in character encoding\n( in line 1 column 4) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "expat",
+      "case": "invalid-utf8",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': not well-formed (invalid token)( in line 1 column 4)\nWhile loading 'memory': not well-formed (invalid token)( in line 1 column 4) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "pugixml",
+      "case": "invalid-utf8",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": []
+    },
+    {
+      "backend": "xerces",
+      "case": "overlong-utf8",
+      "stderr": "the file 'memory' could not be found\n",
+      "accepted": false
+    },
+    {
+      "backend": "libxml2",
+      "case": "overlong-utf8",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': Invalid bytes in character encoding\n( in line 1 column 4)\nWhile loading 'memory': Invalid bytes in character encoding\n( in line 1 column 4) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "expat",
+      "case": "overlong-utf8",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': not well-formed (invalid token)( in line 1 column 4)\nWhile loading 'memory': not well-formed (invalid token)( in line 1 column 4) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "pugixml",
+      "case": "overlong-utf8",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        47
+      ]
+    },
+    {
+      "backend": "xerces",
+      "case": "truncated-utf8",
+      "stderr": "the file 'memory' could not be found\n",
+      "accepted": false
+    },
+    {
+      "backend": "libxml2",
+      "case": "truncated-utf8",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': Invalid bytes in character encoding\n( in line 1 column 4)\nWhile loading 'memory': Invalid bytes in character encoding\n( in line 1 column 4) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "expat",
+      "case": "truncated-utf8",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': not well-formed (invalid token)( in line 1 column 4)\nWhile loading 'memory': not well-formed (invalid token)( in line 1 column 4) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "pugixml",
+      "case": "truncated-utf8",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": []
+    },
+    {
+      "backend": "xerces",
+      "case": "latin1",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        233
+      ]
+    },
+    {
+      "backend": "libxml2",
+      "case": "latin1",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        233
+      ]
+    },
+    {
+      "backend": "expat",
+      "case": "latin1",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        233
+      ]
+    },
+    {
+      "backend": "pugixml",
+      "case": "latin1",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        233
+      ]
+    },
+    {
+      "backend": "xerces",
+      "case": "windows1252",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        8364
+      ]
+    },
+    {
+      "backend": "libxml2",
+      "case": "windows1252",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        8364
+      ]
+    },
+    {
+      "backend": "expat",
+      "case": "windows1252",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': unknown encoding( in line 1 column 31)\nWhile loading 'memory': unknown encoding( in line 1 column 31) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "pugixml",
+      "case": "windows1252",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": []
+    },
+    {
+      "backend": "xerces",
+      "case": "unicode",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        946,
+        55358,
+        56812
+      ]
+    },
+    {
+      "backend": "libxml2",
+      "case": "unicode",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        946,
+        55358,
+        56812
+      ]
+    },
+    {
+      "backend": "expat",
+      "case": "unicode",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        946,
+        55358,
+        56812
+      ]
+    },
+    {
+      "backend": "pugixml",
+      "case": "unicode",
+      "stderr": "",
+      "accepted": true,
+      "utf16_code_units": [
+        946,
+        55358,
+        56812
+      ]
+    },
+    {
+      "backend": "xerces",
+      "case": "mismatched-tag",
+      "stderr": "the file 'memory' could not be found\n",
+      "accepted": false
+    },
+    {
+      "backend": "libxml2",
+      "case": "mismatched-tag",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': Opening and ending tag mismatch: x line 0 and r\n( in line 2 column 8)\nWhile loading 'memory': Opening and ending tag mismatch: x line 0 and r\n( in line 2 column 8) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "expat",
+      "case": "mismatched-tag",
+      "stderr": "${XML_POC_ROOT}/optimized/source/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp(71): While loading 'memory': mismatched tag( in line 2 column 6)\nWhile loading 'memory': mismatched tag( in line 2 column 6) in: memory\n",
+      "accepted": false
+    },
+    {
+      "backend": "pugixml",
+      "case": "mismatched-tag",
+      "stderr": "pugixml: Start-end tags mismatch at byte 9 in: \n",
+      "accepted": false
+    }
+  ]
+}

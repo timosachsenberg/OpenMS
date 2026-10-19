@@ -1,0 +1,1077 @@
+{
+  "method": "C++ steady_clock seconds > Python launcher perf_counter seconds + 0.5s. Cause unestablished. Frozen matrices unchanged; independent three-repetition confirmations are not mixed with final medians.",
+  "anomalies": [
+    {
+      "matrix": "results/openmp-scaling.json",
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 1084.27293842,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 1084.27285479
+        }
+      ],
+      "ok": true,
+      "process_seconds": 16.217089458019473,
+      "max_rss_bytes": 67190784,
+      "user_seconds": 11.701811,
+      "system_seconds": 0.430044,
+      "removed_stale_kmp": false,
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 8,
+      "repetition": 4
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 946.48869,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 946.488649709
+        }
+      ],
+      "ok": true,
+      "process_seconds": 7.886980999959633,
+      "max_rss_bytes": 62832640,
+      "user_seconds": 7.838009,
+      "system_seconds": 0.107559,
+      "removed_stale_kmp": false,
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 2,
+      "repetition": 4
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/pugixml/lib/libOpenMS.dylib",
+      "seconds": 148.664089583,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 148.664001583
+        }
+      ],
+      "ok": true,
+      "process_seconds": 12.073084833915345,
+      "max_rss_bytes": 3512434688,
+      "user_seconds": 9.887874,
+      "system_seconds": 0.299983,
+      "removed_stale_kmp": false,
+      "backend": "pugixml",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 4
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/libxml2/lib/libOpenMS.dylib",
+      "seconds": 954.091417625,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 954.091387333
+        }
+      ],
+      "ok": true,
+      "process_seconds": 5.023451625020243,
+      "max_rss_bytes": 59441152,
+      "user_seconds": 5.031,
+      "system_seconds": 0.10045899999999999,
+      "removed_stale_kmp": false,
+      "backend": "libxml2",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 1
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 1061.94891621,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 1061.94888721
+        }
+      ],
+      "ok": true,
+      "process_seconds": 6.346361875068396,
+      "max_rss_bytes": 63438848,
+      "user_seconds": 6.373129,
+      "system_seconds": 0.099326,
+      "removed_stale_kmp": false,
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 2
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/pugixml/lib/libOpenMS.dylib",
+      "seconds": 908.594015833,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 908.593981
+        }
+      ],
+      "ok": true,
+      "process_seconds": 4.969391042017378,
+      "max_rss_bytes": 3510583296,
+      "user_seconds": 4.903462,
+      "system_seconds": 0.18740099999999998,
+      "removed_stale_kmp": false,
+      "backend": "pugixml",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 1
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "seconds": 878.781251916,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 878.781216417
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.855239750002511,
+      "max_rss_bytes": 58966016,
+      "user_seconds": 2.534928,
+      "system_seconds": 0.09873599999999999,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 0
+    },
+    {
+      "matrix": "results/optimized/macos/metadata-scaling.json",
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots-optimized/libxml2/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 112984064,
+      "seconds": 475.070928875,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 474.874970292,
+          "read_seconds": 0.193386625
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.6428353750379756,
+      "max_rss_bytes": 113721344,
+      "user_seconds": 2.179807,
+      "system_seconds": 0.107626,
+      "removed_stale_kmp": false,
+      "backend": "libxml2",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 3
+    }
+  ],
+  "confirmations": [
+    {
+      "matrix": "results/optimized/macos/metadata-scaling.json",
+      "backend": "libxml2",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 0,
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots-optimized/libxml2/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 112476160,
+      "seconds": 2.1835795,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 2.005937792,
+          "read_seconds": 0.175050667
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.598015083000064,
+      "max_rss_bytes": 113180672,
+      "user_seconds": 2.081779,
+      "system_seconds": 0.184939,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 2,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 6.364187333,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 6.364155959
+        }
+      ],
+      "ok": true,
+      "process_seconds": 6.643261249992065,
+      "max_rss_bytes": 62930944,
+      "user_seconds": 6.673711,
+      "system_seconds": 0.146786,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 8,
+      "repetition": 1,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 6.306225625,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 6.306190084
+        }
+      ],
+      "ok": true,
+      "process_seconds": 6.488093041931279,
+      "max_rss_bytes": 63471616,
+      "user_seconds": 6.714166,
+      "system_seconds": 0.14201,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 2,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "seconds": 2.501960833,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.501926541
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.7083288750145584,
+      "max_rss_bytes": 58327040,
+      "user_seconds": 2.515211,
+      "system_seconds": 0.11420999999999999,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 0,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 7.340702583,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 7.340668375
+        }
+      ],
+      "ok": true,
+      "process_seconds": 7.52347895805724,
+      "max_rss_bytes": 65372160,
+      "user_seconds": 7.630034,
+      "system_seconds": 0.153561,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 1,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 6.518866291,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 6.518833959
+        }
+      ],
+      "ok": true,
+      "process_seconds": 6.7288829169701785,
+      "max_rss_bytes": 63520768,
+      "user_seconds": 6.833737,
+      "system_seconds": 0.138197,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/optimized/macos/metadata-scaling.json",
+      "backend": "libxml2",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 1,
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots-optimized/libxml2/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 111968256,
+      "seconds": 2.103886209,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 1.920708541,
+          "read_seconds": 0.180577209
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.231759833986871,
+      "max_rss_bytes": 112672768,
+      "user_seconds": 2.112378,
+      "system_seconds": 0.11243099999999999,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/optimized/macos/metadata-scaling.json",
+      "backend": "libxml2",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 2,
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots-optimized/libxml2/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 112541696,
+      "seconds": 2.113184334,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 1.929861125,
+          "read_seconds": 0.180789958
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.254235874977894,
+      "max_rss_bytes": 113262592,
+      "user_seconds": 2.115495,
+      "system_seconds": 0.114853,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "pugixml",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 1,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/pugixml/lib/libOpenMS.dylib",
+      "seconds": 5.394953209,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 5.394915583
+        }
+      ],
+      "ok": true,
+      "process_seconds": 5.611411583959125,
+      "max_rss_bytes": 3511631872,
+      "user_seconds": 5.29528,
+      "system_seconds": 0.229213,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 2,
+      "repetition": 1,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 6.656084875,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 6.656052792
+        }
+      ],
+      "ok": true,
+      "process_seconds": 6.8505613330053166,
+      "max_rss_bytes": 63143936,
+      "user_seconds": 6.8659609999999995,
+      "system_seconds": 0.137795,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "pugixml",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 1,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/pugixml/lib/libOpenMS.dylib",
+      "seconds": 5.206377625,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 5.206340542
+        }
+      ],
+      "ok": true,
+      "process_seconds": 5.3631914999568835,
+      "max_rss_bytes": 3511205888,
+      "user_seconds": 5.3756829999999995,
+      "system_seconds": 0.23421399999999998,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "libxml2",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 2,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/libxml2/lib/libOpenMS.dylib",
+      "seconds": 5.196293917,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 5.196258625
+        }
+      ],
+      "ok": true,
+      "process_seconds": 5.403517834027298,
+      "max_rss_bytes": 59604992,
+      "user_seconds": 5.48174,
+      "system_seconds": 0.135044,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 1,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "seconds": 2.644546875,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.644510709
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.7904619169421494,
+      "max_rss_bytes": 59293696,
+      "user_seconds": 2.659816,
+      "system_seconds": 0.11032,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 8,
+      "repetition": 2,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 6.51597775,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 6.5159445
+        }
+      ],
+      "ok": true,
+      "process_seconds": 6.711748459027149,
+      "max_rss_bytes": 63930368,
+      "user_seconds": 6.941714,
+      "system_seconds": 0.159304,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 2,
+      "repetition": 2,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 6.546793917,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 6.54675775
+        }
+      ],
+      "ok": true,
+      "process_seconds": 6.733005249989219,
+      "max_rss_bytes": 63045632,
+      "user_seconds": 6.765807,
+      "system_seconds": 0.12983899999999998,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 8,
+      "repetition": 0,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 6.579573208,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 6.579540042
+        }
+      ],
+      "ok": true,
+      "process_seconds": 6.776870334055275,
+      "max_rss_bytes": 64094208,
+      "user_seconds": 7.016994,
+      "system_seconds": 0.158321,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "pugixml",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 2,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/pugixml/lib/libOpenMS.dylib",
+      "seconds": 5.471794042,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 5.47175375
+        }
+      ],
+      "ok": true,
+      "process_seconds": 5.6298933329526335,
+      "max_rss_bytes": 3510140928,
+      "user_seconds": 5.372753,
+      "system_seconds": 0.22775499999999999,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "libxml2",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 0,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/libxml2/lib/libOpenMS.dylib",
+      "seconds": 5.182781917,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 5.182750166
+        }
+      ],
+      "ok": true,
+      "process_seconds": 5.328646959038451,
+      "max_rss_bytes": 59228160,
+      "user_seconds": 5.469003,
+      "system_seconds": 0.125625,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "pugixml",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 2,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/pugixml/lib/libOpenMS.dylib",
+      "seconds": 5.137829667,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 5.137796041
+        }
+      ],
+      "ok": true,
+      "process_seconds": 5.293140667025,
+      "max_rss_bytes": 3510665216,
+      "user_seconds": 5.314988,
+      "system_seconds": 0.22417099999999998,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "pugixml",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 0,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/pugixml/lib/libOpenMS.dylib",
+      "seconds": 5.179321375,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 5.179289791
+        }
+      ],
+      "ok": true,
+      "process_seconds": 5.324145874939859,
+      "max_rss_bytes": 3512074240,
+      "user_seconds": 5.359933,
+      "system_seconds": 0.225204,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "pugixml",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 0,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/pugixml/lib/libOpenMS.dylib",
+      "seconds": 5.489432292,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 5.489391833
+        }
+      ],
+      "ok": true,
+      "process_seconds": 5.643667416996323,
+      "max_rss_bytes": 3510386688,
+      "user_seconds": 5.388558,
+      "system_seconds": 0.228089,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 2,
+      "repetition": 0,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/expat/lib/libOpenMS.dylib",
+      "seconds": 6.579419292,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 6.579387291
+        }
+      ],
+      "ok": true,
+      "process_seconds": 6.758707790984772,
+      "max_rss_bytes": 63078400,
+      "user_seconds": 6.797636,
+      "system_seconds": 0.134344,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "libxml2",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 4,
+      "repetition": 1,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/libxml2/lib/libOpenMS.dylib",
+      "seconds": 5.149764709,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 5.149731791
+        }
+      ],
+      "ok": true,
+      "process_seconds": 5.275789499981329,
+      "max_rss_bytes": 59228160,
+      "user_seconds": 5.42406,
+      "system_seconds": 0.126284,
+      "removed_stale_kmp": false
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "openmp_threads": 1,
+      "repetition": 0,
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "seconds": 2.5448,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.544760583
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.6681168329669163,
+      "max_rss_bytes": 58359808,
+      "user_seconds": 2.563719,
+      "system_seconds": 0.09962399999999999,
+      "removed_stale_kmp": false
+    }
+  ],
+  "summary": [
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "stream",
+      "workers": 1,
+      "openmp_threads": 8,
+      "original_median": 6.487270708,
+      "confirmation_median": 6.51597775,
+      "confirmation_min": 6.306225625,
+      "confirmation_max": 6.579573208,
+      "repetitions": 3
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "stream",
+      "workers": 1,
+      "openmp_threads": 2,
+      "original_median": 6.560640583,
+      "confirmation_median": 6.579419292,
+      "confirmation_min": 6.546793917,
+      "confirmation_max": 6.656084875,
+      "repetitions": 3
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "pugixml",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "stream",
+      "workers": 1,
+      "openmp_threads": 1,
+      "original_median": 5.395382666,
+      "confirmation_median": 5.471794042,
+      "confirmation_min": 5.394953209,
+      "confirmation_max": 5.489432292,
+      "repetitions": 3
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "libxml2",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "stream",
+      "workers": 1,
+      "openmp_threads": 4,
+      "original_median": 4.983491208,
+      "confirmation_median": 5.182781917,
+      "confirmation_min": 5.149764709,
+      "confirmation_max": 5.196293917,
+      "repetitions": 3
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "expat",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "stream",
+      "workers": 1,
+      "openmp_threads": 4,
+      "original_median": 6.50184975,
+      "confirmation_median": 6.518866291,
+      "confirmation_min": 6.364187333,
+      "confirmation_max": 7.340702583,
+      "repetitions": 3
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "pugixml",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "stream",
+      "workers": 1,
+      "openmp_threads": 4,
+      "original_median": 5.166929041,
+      "confirmation_median": 5.179321375,
+      "confirmation_min": 5.137829667,
+      "confirmation_max": 5.206377625,
+      "repetitions": 3
+    },
+    {
+      "matrix": "results/openmp-scaling.json",
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "stream",
+      "workers": 1,
+      "openmp_threads": 1,
+      "original_median": 2.580230625,
+      "confirmation_median": 2.5448,
+      "confirmation_min": 2.501960833,
+      "confirmation_max": 2.644546875,
+      "repetitions": 3
+    },
+    {
+      "matrix": "results/optimized/macos/metadata-scaling.json",
+      "backend": "libxml2",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openmp_threads": 1,
+      "original_median": 2.100662375,
+      "confirmation_median": 2.113184334,
+      "confirmation_min": 2.103886209,
+      "confirmation_max": 2.1835795,
+      "repetitions": 3
+    }
+  ],
+  "complete": true
+}

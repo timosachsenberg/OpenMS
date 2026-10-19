@@ -1,0 +1,874 @@
+{
+  "samples": [
+    {
+      "pid": 2703583,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2703634,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2703634,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2703634,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2703634,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2703634,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2703634,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2703634,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2703667,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/medium-zlib.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2703669,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 65
+    },
+    {
+      "pid": 2703669,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 65
+    },
+    {
+      "pid": 2703669,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2703669,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2703669,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2703669,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2703669,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2703669,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2703852,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2703852,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2704524,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2704524,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2704524,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2704524,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2704524,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2704524,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2704712,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/medium-zlib.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "64"
+      },
+      "threads_observed": 128
+    },
+    {
+      "pid": 2704845,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/medium-zlib.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "4"
+      },
+      "threads_observed": 8
+    },
+    {
+      "pid": 2704853,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 9
+    },
+    {
+      "pid": 2704853,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 9
+    },
+    {
+      "pid": 2704853,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 9
+    },
+    {
+      "pid": 2704853,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2704853,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2704853,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2704853,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2704853,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2704853,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2704923,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/medium-zlib.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "8"
+      },
+      "threads_observed": 16
+    },
+    {
+      "pid": 2704945,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/medium-zlib.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "32"
+      },
+      "threads_observed": 33
+    },
+    {
+      "pid": 2705016,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2705016,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2705016,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2705016,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2705016,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2705016,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2705016,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2705016,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2705016,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "1"
+      },
+      "threads_observed": 2
+    },
+    {
+      "pid": 2705061,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/medium-zlib.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "32"
+      },
+      "threads_observed": 64
+    },
+    {
+      "pid": 2705125,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "32"
+      },
+      "threads_observed": 64
+    },
+    {
+      "pid": 2705125,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "32"
+      },
+      "threads_observed": 64
+    },
+    {
+      "pid": 2705125,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "32"
+      },
+      "threads_observed": 64
+    },
+    {
+      "pid": 2705125,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "32"
+      },
+      "threads_observed": 64
+    },
+    {
+      "pid": 2705125,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "32"
+      },
+      "threads_observed": 64
+    },
+    {
+      "pid": 2705125,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "32"
+      },
+      "threads_observed": 64
+    },
+    {
+      "pid": 2705125,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/large.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "32"
+      },
+      "threads_observed": 64
+    },
+    {
+      "pid": 2705259,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/medium-zlib.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "16"
+      },
+      "threads_observed": 1
+    },
+    {
+      "pid": 2705291,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/medium-zlib.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "2"
+      },
+      "threads_observed": 4
+    },
+    {
+      "pid": 2705296,
+      "command": [
+        "${XML_POC_ROOT}/benchmark-build/xml_parser_benchmark",
+        "stream",
+        "${XML_POC_ROOT}/data/medium-zlib.mzML",
+        "1",
+        "0"
+      ],
+      "openmp_environment": {
+        "OMP_DYNAMIC": "FALSE",
+        "OMP_NUM_THREADS": "96"
+      },
+      "threads_observed": 192
+    }
+  ]
+}

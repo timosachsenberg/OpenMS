@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.20)
+project(OpenMSXMLSchemaProbe LANGUAGES CXX)
+find_package(OpenMS CONFIG REQUIRED)
+add_executable(xml_schema_validation_probe schema_validation_probe.cpp)
+target_compile_features(xml_schema_validation_probe PRIVATE cxx_std_23)
+target_link_libraries(xml_schema_validation_probe PRIVATE OpenMS::OpenMS)

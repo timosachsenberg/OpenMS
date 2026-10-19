@@ -1,0 +1,17 @@
+{
+  "timestamp_utc": "2026-10-19T20:40:13.381557+00:00",
+  "host": "ibminode05",
+  "scope": "Only dedicated original and optimized XML proof-of-concept scratch job root",
+  "root": "${XML_POC_ROOT}",
+  "removed": true,
+  "root_absent": true,
+  "shared_contrib": "/scratch/kohlbach/contrib/build",
+  "shared_contrib_present": true,
+  "shared_contrib_directory_identity_unchanged": true,
+  "original_measurements": 4480,
+  "optimized_measurements": 4480,
+  "original_copied_files_sha256_verified": 133,
+  "optimized_copied_files_sha256_verified": 96,
+  "reproduction_files_sha256_verified": 30,
+  "authorization": "Parent independently verified all final local evidence and explicitly authorized this exact scratch-root cleanup"
+}

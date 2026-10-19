@@ -1,0 +1,18 @@
+{
+  "xerces": {
+    "source_commit": "58aa37348c968a12e3285295f28c197cc0b7bdbe",
+    "optimization": "Release -O3 -DNDEBUG, C++23"
+  },
+  "libxml2": {
+    "source_commit": "dc7ad95e1eb4fe72b37f59373416ccd339f39c75",
+    "optimization": "Release -O3 -DNDEBUG, C++23"
+  },
+  "expat": {
+    "source_commit": "6ebf5ec649805d807c65c75e757bc21d4be2a3c9",
+    "optimization": "Release -O3 -DNDEBUG, C++23"
+  },
+  "pugixml": {
+    "source_commit": "250dd47ef6af3879b1c2735041618c17e1ba1ccc",
+    "optimization": "Release -O3 -DNDEBUG, C++23"
+  }
+}

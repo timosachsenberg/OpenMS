@@ -1,0 +1,118 @@
+# External review provenance and decisions
+
+This is a triage of actual CLI reviews, not an endorsement of every reviewer claim. Accepted patches require their own post-change validation and measurements; estimated improvements in the reviews are not benchmark results. The preliminary candidate screen below is distinct from final reruns and does not establish causal attribution.
+
+## Provenance
+
+The completed Claude, Kimi and Vibe reviews received the same self-contained, read-only full input: `review-input.txt`, **212,224 bytes**, SHA256 **`d581ad98fda63f6a8fc22da0f1fabcb444c4612374928b526c0a766334cc7e14`**. It contains the hot implementation/harness sources, constraints and original measurements. Original feature heads were libxml2 `27bd7add0c`, Expat `74d529ecb0`, and pugixml `27538482e6`, on OpenMS develop `77cccda7caf40b46a4919d33748450270eccd565`.
+
+| Reviewer | Actual execution | Result used |
+|---|---|---|
+| Claude Code | CLI **2.1.288**; JSON reports actual model **`claude-fable-5-1`**, provider `firstParty`; read-only plan/safe mode, tools disabled | Successful final result, exit 0, approximately 697 s; `claude-review-run.json`, final result extracted into `claude-findings.md` |
+| Kimi | CLI **2.1.1**; tool-free custom reviewer agent; underlying model is not identified by the saved run metadata | Successful final answer, exit 0, approximately 468 s; `kimi-review-run.json`, final-only `kimi-findings.md` |
+| Vibe | CLI **2.26.1**; supported Python legacy review mode; workspace safe profile, tools disabled, thinking off; requested `mistral-vibe-cli-latest` / alias `mistral-medium-3.5` | Successful final answer, exit **0**, **54.854 s**; `vibe-review-run.json`, completed assistant text only in `vibe-findings.md`. Actual serving model is **not identified** by the run metadata. |
+
+| Vibe attempt | Input and configuration | Recorded outcome |
+|---|---|---|
+| Initial full-input attempt | Full 212,224-byte packet; installed CLI runtime | Failed; no final answer used. Safe first-attempt metadata retained separately. |
+| Full Python retry | Same full packet and SHA as Claude/Kimi; installed default thinking `high` | **900.670 s**, exit **3**, no final answer (`vibe-full-review-timeout-run.json`). |
+| Focused Python follow-up | `vibe-focused-input.txt`, **33,028 bytes**, SHA256 **`9322a135d665e22ad6ee4ece2f41aac2144b6ae1481aa93095cf246800b6814b`**; thinking `high`, tools disabled, max turns 1 | **600.781 s**, exit **3**, no final answer (`vibe-focused-timeout-run.json`). |
+| Successful full Python retry | **Same full 212,224-byte input and SHA as Claude/Kimi**; workspace-only profile `.vibe/agents/optimized-review.toml`, requested installed default model `mistral-vibe-cli-latest` (alias `mistral-medium-3.5`), thinking `off`, all tools disabled | **Exit 0, 54.854 s, completed final answer.** Profile discovered per process through `VIBE_AGENT_PATHS`; no global configuration was changed. `vibe-profile-discovery-run.json` records an earlier unknown-agent preflight with no inference. Requested model/alias are not proof of the actual serving model. |
+
+The failed focused follow-up covered current event helpers from all three native adapters, `LibxmlState`, the shared UTF8 hook, footer helpers and attributes; it did **not** include the full fragment implementations or benchmark harness. No findings are attributed to that narrower packet. The successful fourth attempt returned to the identical full packet and supplies the third completed full-input review. Failed attempts contribute no findings.
+
+Use final answers and safe run metadata only. **Do not read or publish Vibe’s private reasoning JSONL, Kimi stderr, or intermediate reasoning.** These reviewers did not execute the proposed tests or performance experiments; an assertion labeled “high confidence” remains subject to source inspection and reproduction.
+
+## Accepted changes
+
+Commit references below identify the libxml2 shared implementation or the specific backend implementation; equivalent cherry-picks have different SHAs on sibling branches. An optimized Xerces control receives applicable shared changes separately; the original snapshots remain frozen.
+
+| Review finding | Decision and implementation |
+|---|---|
+| UTF8 → UTF16 → ASCII copies for mzML binary text (Claude 9; Kimi A2/H1) | Accepted mechanism. Shared opt-in `tryOnCharactersUTF8` defaults to false, with ASCII direct append in an **exact** `MzMLHandler`; non-ASCII and derived handlers retain existing conversion/virtual dispatch. Empty chunks are safe. Shared `68bbf92267`, `2e21b62de5`; libxml2 adapter `866f64f4e3`, Expat `c8f198c779`, pugixml `479246c435`. No claim yet that this explains the entire original timing gap. |
+| Metadata-only parsing collects binary payloads and discards them | Confirmed by inspection beyond the reviewers' initial proposals. `getFillData()==false` now suppresses accumulation in both UTF16 and UTF8 paths, including the optimized Xerces control (`68bbf92267`). XML syntax and metadata parsing continue. Shared tests exercise metadata equivalence and preservation of older UTF16 overrides; SDK consumers must rebuild for the new virtual API. |
+| Narrow-name XMLAttributes transcoder allocation (Claude 8; Kimi A1) | Accepted ASCII fast comparison with explicit UTF8 fallback for non-ASCII, bounded long-name handling, and Unicode tests: libxml2 `dc7ad95e1e`, Expat `6ebf5ec649`, pugixml `250dd47ef6`. **Correction:** mzML already uses UTF16 attribute-name constants for much of its hot path; this is not evidence that narrow lookup dominates mzML. Other format handlers use narrow names. |
+| Duplicate index-tail buffers and exception leak (Claude 6; Kimi A8) | Confirmed, partly inherited from baseline. One RAII `std::string` contains prefix, directly read tail and newline. Binary I/O, sizes, offsets, empty tails and read counts are checked (`160c257615`). The backend XML method is unchanged. The final string still uses normal `resize` initialization; this is one buffer, not a claim of zero-copy XML parsing. |
+| Footer seek/read on short files, unchecked regex result (Kimi A6) | Confirmed unsafe paths. Clamp the window to file size; reject nonpositive windows; validate I/O and regex success; reuse one immutable regex with the same valid-input matching pattern (`160c257615`). Tests cover tiny/empty/truncated tokens, missing footer, invalid windows/offsets and integer overflow. |
+| SAX1 structured error handler is ignored (Claude 1) | Confirmed by original malformed-tag probe and upstream libxml2 source. Use `xmlCtxtSetErrorHandler` with the parser context; preserve the first captured exception on reentry (`e4b8f4daf1`). Regression requires actual tag-mismatch text and line/column rather than the previous generic exception. This API is available at the declared minimum libxml2 2.13. |
+| pugixml enforced encoding cached globally (Claude 3; Kimi A3) | Confirmed. Per-call conversion replaces leaked function-static encoding; sequential/parallel different overrides tested (`6c7e1ac977`). Broader encoding support is a separate limitation. |
+| pugixml input capacity and wide-string intermediates (Claude 5; Kimi H6) | Reserve known **uncompressed** file/buffer sizes (`0c36f0c5c0`); route supported text through the UTF8 hook. Compressed input's expanded length remains unknown. No predicted “one file size” memory saving is claimed without measurement; the whole-file DOM remains O(file size). |
+| Recursive pugixml event visitor (Kimi A4) | Accepted. Parent/sibling traversal replaces recursive `std::function`, preserving element/text/end order and avoiding a C++ stack frame per XML level (`103ccc4874`). Deep traversal and event-order tests were added. This is not a strict XML validator or a memory bound. |
+| Spectrum-decoding catch-all writes shared error text (Kimi A7; Claude lower-priority item) | **Partly correct:** the spectrum `errCount` is already `std::atomic<int>`, so its increment is not the alleged lost-update race. The shared `error_message` string really was written outside the critical section. Synchronize it with the existing named OpenMP critical region (`bfe0f73104`, propagated to siblings/control). This is a genuine pre-existing error-path race, not “benign.” No fabricated TSan result is claimed. |
+
+## Rejected or corrected assertions
+
+- **Claude 2: libxml2 streaming necessarily rejects a >10 MB binary text node without HUGE.** Rejected for the tested implementation. The frozen original completes actual full loading/streaming/indexed verification of a 1,048,576-peak spectrum whose uncompressed base64 node exceeds 11 MB on both hosts. The push SAX path delivers chunks without retaining a DOM text node. The **fragment DOM** does need its existing size-limit policy; retain its external-entity block and explicit amplification limit. Do not add HUGE globally on the basis of this review claim.
+- **Claude 11: the benchmark reports only post-join RSS.** Incorrect for the published peak tables. `run_benchmarks.py` collects actual child `wait4` / `ru_maxrss` peaks; later harnesses additionally sample current resident RSS after joining. Retained-context estimates use the latter, clearly labeled and baseline-adjusted. Keep peak, sampled residency and allocator retention distinct.
+- **Claude 4: pugixml 1.16 auto encoding ignores ISO-8859-1 declarations.** Overstated: upstream 1.16 `guess_buffer_encoding` explicitly recognizes ISO-8859-1 and `latin1` declarations. The stale override bug above is real; universal declaration handling is not established. Do not report this specific Latin1 autodetection claim as confirmed.
+- **Kimi A7 counter-race claim / Claude “benign” description.** Corrected separately above: atomic counter, real unsynchronized string access.
+- **Expat XML_GetBuffer is automatically zero-copy for existing fragment strings.** Not established: its buffer is parser-owned and an already materialized `std::string` still must be copied into it. Avoid assuming an improvement without changing/validating the input path and measuring it.
+
+## Vibe final-answer triage
+
+Vibe supplied eight numbered findings and four hypotheses. Its confidence labels, proposed percentages, OOM thresholds and “confirmed thread-safe” statement are reviewer assertions, not independent measurements or guarantees. The full input described the frozen original prototypes; previously accepted patches may already address a finding.
+
+| ID | Source-checked decision |
+|---|---|
+| 1: whole-file pugixml DOM | **Confirmed known limitation:** whole-file DOM memory is O(input size), including metadata-only mode. No universal 2 GB OOM threshold follows; available RAM, input structure and readers matter. Its proposed “streaming pugi adapter” is not a small change to this DOM library, and the predicted 25 GiB saving is not a measured implementation result. |
+| 2: UTF8/UTF16 round trips | **Accepted limited mechanism**, already addressed by the additive ASCII character hook above. Rewriting every callback/attribute API is unnecessary for this patch and carries ABI, Unicode and derived-handler risks. The claimed universal 2× memory and 20–30% CPU overhead are unmeasured. |
+| 3: swallowed `readBytes()` exception | **Rejected.** A C++ exception from the read loop naturally unwinds through RAII parser ownership and propagates; it does not need to be stored in the C-callback exception slot. That slot prevents exceptions escaping through C frames, a different path. No swallowed-read exception or context leak was demonstrated. |
+| 4: index-tail allocation | **Real remaining resource risk:** a valid in-range but very early offset can require a large tail buffer. Shared checked I/O, bounds/overflow checks and single-buffer RAII are implemented. Rejecting every offset before half the file is an unsupported format assumption; no arbitrary half-file cap was added. A bounded/streamed index policy remains separate work. |
+| 5: Xerces initialization race | **Rejected.** `Init.cpp` already serializes `xercesInitialize()` with `std::lock_guard<std::mutex>` (original lines 26–29). Per-reader calls do not imply concurrent unprotected initialization. Moving initialization to another constructor is not a demonstrated fix. |
+| 6: outer pugixml fragment copy | **Rejected for the inspected code.** `domParseString_()` already calls `document.load_buffer(in.data(), fragment_end)` over the framed input span. DOM parsing itself copies/owns data as required, but the alleged additional outer fragment-string copy is absent. |
+| 7: skip binary decoding with `skip_xml_checks_` | **Rejected semantics.** This flag skips checks, not requested spectrum data. Indexed queries still require decoded coordinates/intensities; suppressing decode would break them. Metadata-only accumulation is handled by `getFillData()` instead. |
+| 8: vector growth “leak” | **Allocation growth, not a leak.** Known uncompressed sizes are now reserved; compressed expanded size remains unknown. The review's proposed size API/expression is not itself verified as a drop-in patch. DOM retention remains separately disclosed. |
+| H1: larger Expat chunks | **Unmeasured hypothesis.** Chunking alone does not establish costly text-node reallocation; require profiles and matched measurements before changing the shared input policy. |
+| H2: remove fragment `XML_PARSE_HUGE` | **Rejected for compatibility.** Valid large mzML binary nodes exceed the ordinary DOM text limit; huge-array regression and actual indexed decoding verify this requirement. Preserve the existing external-entity block and amplification bound. No mzML text-size ceiling justifying removal was established. |
+| H3: replace Expat external-entity handler | **Rejected as a transparent optimization.** Changing default/external handlers can alter entity/security semantics, and the external callback is not exercised by the benchmark inputs. No measured overhead or safe equivalent policy was shown. |
+| H4: borrowed attribute views | **Deferred hypothesis.** Some temporary copies may be avoidable, but lifetimes and actual allocations need inspection/profile evidence. No numeric gain or blanket risk-free claim is accepted. |
+
+Vibe's broader “all replacements are thread-safe” assertion is **not established** by independent parser contexts or successful scaling runs. Existing source races, callback ownership and XML-library contracts require separate analysis; sanitizer coverage remains a release gate. Its final summary repeats several rejected findings and is not an authoritative implementation plan. No additional core patch was justified by this final answer.
+
+## Measured optimized macOS and Linux conformance probes
+
+`results/optimized/macos/conformance-results.json` and `results/optimized/linux/conformance-results.json` each record **44 isolated processes: 11 XML cases × four optimized backends**, through actual generic OpenMS `XMLFile` callbacks, not only standalone library calls. The measured outcomes below match on both platforms (88 cases total). Reproduction uses `run_conformance_probe.py` and `tools/xml-parser-benchmark/conformance_probe.cpp`. This is a small negative/encoding corpus, not an XML conformance certification; completion of these Linux probes does not imply completion of the optimized Linux timing matrix.
+
+| Input case | Xerces control | libxml2 | Expat | pugixml |
+|---|---|---|---|---|
+| `A&amp;B` | Accept → `A&B` | Same | Same | Same |
+| Undefined `&undefined;` | Reject | Reject | Reject | Accept → literal `&undefined;` |
+| Malformed reference `A&-B` | Reject | Reject | Reject | Accept → literal `A&-B` |
+| Duplicate attribute | Reject | Reject | Reject | Accept |
+| Invalid UTF8 byte `FF` | Reject | Reject | Reject | Accept → empty text |
+| Overlong UTF8 `C0 AF` | Reject | Reject | Reject | Accept → `/` |
+| Truncated UTF8 `E2 82` | Reject | Reject | Reject | Accept → empty text |
+| ISO-8859-1 declaration, byte `E9` | Accept → U+00E9 (233) | Same | Same | Same |
+| Windows-1252 declaration, byte `80` | Accept → U+20AC (8364) | Same | Reject encoding | Accept → empty text; euro lost |
+| Valid UTF8 `β🧬` | Accept → U+03B2 / U+1F9EC | Same | Same | Same |
+| Mismatched tags | Reject | Reject | Reject | Reject |
+
+Accepted/rejected counts are **4/7 Xerces, 4/7 libxml2, 3/8 Expat, 10/1 pugixml**; accepting malformed data is not a pass. This confirms the reviewed malformed-reference, duplicate-attribute and invalid-UTF8 differences for these exact inputs, and confirms the Windows-1252 support gap. It also empirically rejects the review claim that pugixml ignores this Latin1 declaration. The encoding name Windows-1252 does not imply a Windows OS test.
+
+## Known limits and deferred hypotheses
+
+- **pugixml conformance (Claude 4; Kimi A5/H3):** the optimized macOS and Linux probes above confirm malformed-reference, duplicate-attribute and invalid-UTF8 acceptance for the listed cases, extending the original malformed-reference observation. Its DOM parser is not a strict substitute for all Xerces XML checks. Internal-DTD cases and a broader negative corpus remain untested here. Fragment-only use does not magically make untrusted fragments conforming. No parser replacement, homemade streaming tokenizer, DTD expansion emulation or weakened checks were introduced.
+- **Encoding:** the optimized macOS and Linux probes confirm that Expat rejects this Windows-1252 declaration, and pugixml accepts it while losing the euro; Xerces/libxml2 decode U+20AC. Expat has no custom unknown-encoding handler, and pugixml's explicit override mapping is limited. All four correctly decode the tested Latin1 declaration and Greek/emoji UTF8. More encoding coverage is required before production; these results are not universal encoding parity.
+- **Malformed index-tail return/throw behavior (Claude 7):** backend error behavior is not fully normalized. The baseline DOM parser itself can return a partial document after malformed input. Keep this as a compatibility-policy question rather than assert that every baseline malformed tail reliably returns -1. The new shared I/O checks do not change backend parsing policy.
+- **Per-event scratch arenas / libxml2 SAX2 attribute spans (Claude 10; Kimi A2):** plausible remaining allocation costs, deferred pending profiles after the smaller UTF8 change. Borrowed pointer lifetimes, qualified names and namespace-disabled legacy semantics make this more than a blind allocation substitution.
+- **libxml2 SAX fragment rewrite, parser reuse, larger read chunks (Kimi A9/H4/H5; Claude hypotheses):** unimplemented proposals, not demonstrated wins. Preserve root framing, binary child-node rules, entities, exceptions and reentrancy before considering reuse. Current trailing-parent-tag regressions cover framing; oldest-supported libxml2 remains a separate version test.
+- **Schema cache (Kimi A10):** deferred. No validation-speed benchmark establishes its value here; freshness, imported-schema invalidation, lifetime and shared-grammar concurrency need a separate contract. Current per-call grammar compilation is intentional, and XSD compatibility still has the documented Windows-style `xs:anyURI` difference.
+- **Whitespace-node flags and fragment framing:** changing pugixml whitespace flags can change generic handler callbacks, so it is not accepted as a transparent optimization. Existing fragment token framing has explicit scope/DOCTYPE limitations; further negative tests are preferable to inventing a replacement XML tokenizer. The libxml2 direct-child `indexList` expectation matches normal indexed mzML structure, but does not promise acceptance of arbitrary nested legacy shapes.
+- **Dead Expat DOM helper:** a cleanup candidate, not an established runtime optimization; retaining Xerces elsewhere is already disclosed.
+- **Harness digest (Claude 12; Kimi H2):** digest work really is timed and can dilute parser-only differences. Retain it unchanged for the requested before/after comparison and decoded-output checks. Report an OpenMS parse/decode/consume workload, not tokenizer throughput. No counting-only speed is inferred.
+- **Identical random-query sequence (Kimi A11; Claude hypothesis):** intentionally retained for reproducible worker/back-end equality. Results measure cached independent-reader/weak scaling, not divergent disk I/O. Alternative seeds require separate baseline digests and a separate experiment.
+- **OpenMP warmup team (Claude hypothesis):** original Linux thread observation is consistent with retained idle warmup and active reader teams. CPU impact depends on waiting policy and is not established by thread count alone. No unmeasured passive-wait or warmup-location change is mixed into comparable timing rows.
+
+## Xerces control audit and calibration
+
+`results/optimized/macos/control-audit.json` records identical normalized compile commands for original and optimized-control `MzMLHandler.cpp` and `XMLFile.cpp`: the same Apple compiler, `-O3 -DNDEBUG -std=gnu++23`, OpenMP and floating-point flags. The timed harness source is unchanged. The optimized Xerces control is `58aa37348c968a12e3285295f28c197cc0b7bdbe`; original snapshots remain separate.
+
+The **288-measurement preliminary screen** in `results/optimized/macos/SELECTION.md` observed largest-input single-reader full-stream Xerces medians of **2.926 → 2.628 s** (about 10%). The original range **2.602–2.949 s** overlaps the candidate range **2.491–2.647 s**. A fresh unchanged-core calibration using the original ABI-compatible executable had median **2.785 s**, range **2.730–2.807 s**. Calibration is separate from the final candidate matrix, and ranges are observed minima/maxima, not confidence intervals.
+
+There is **no confirmed algorithmic explanation** for that Xerces full-data streaming difference: its SAX adapter does not invoke the new UTF8 hook; the new `getFillData()==false` guard does not skip work when full data are requested; index-tail changes are outside this workload; the synchronized string write is an error-path change. The added full-data condition is not evidence of a speedup. Compiler flags therefore do not explain it, while temporal CPU scheduling/frequency and binary-layout effects have not been separated. Do not attribute the apparent Xerces improvement—or the entire native-backend before/after difference—to a particular accepted patch. Final matched reruns against the optimized Xerces control and the explicitly labeled across-session observations determine the published comparison.
+
+## Validation and reporting gates
+
+Root coordination owns builds, existing/focused tests, malformed-input/Unicode/metadata/huge-array checks, and reruns against frozen original snapshots. Keep input hashes, parameters, digest logic and runtime settings identical in matched before/after rows. Report the optimized Xerces control separately from untouched upstream. Publish measured outcomes only after those gates finish; committed optimizations above describe implementation and intent, not already-earned speed or memory improvements. Re-run/review on Windows and with sanitizers before claiming broad portability or race freedom.
+
+Completed validation: 13,760 final original/optimized measurements across both platforms passed process, decoded-output and input-identity checks; class tests, schemas and adversarial probes passed with the documented compatibility outcomes. A separate cross-clock audit preserves eight discrepant macOS repetitions and 24 confirmation runs without that discrepancy; see `results/optimized/macos/clock-consistency.json`. Frozen five-run medians are unchanged. Linux scratch cleanup followed verified copies; the shared contrib directory was preserved.

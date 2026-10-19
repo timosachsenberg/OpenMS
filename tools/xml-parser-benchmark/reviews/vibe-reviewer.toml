@@ -1,0 +1,13 @@
+display_name = "Focused XML review"
+description = "Return a concise review with all tools disabled."
+safety = "safe"
+instructions = "Review only the source embedded in the prompt. Return your final findings as concise text, maximum600words. Do not use tools, edit files, or send messages."
+active_model = "mistral-medium-3.5"
+disabled_tools = ["*"]
+
+[[models]]
+name = "mistral-vibe-cli-latest"
+provider = "mistral"
+alias = "mistral-medium-3.5"
+thinking = "off"
+temperature = 1.0

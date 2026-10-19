@@ -1,0 +1,12 @@
+{
+  "reviewer": "vibe",
+  "version": "2.26.1",
+  "runtime": "supported Python CLI, legacy harness",
+  "mode": "ask agent, all tools disabled",
+  "started_utc": "2026-10-19T17:03:27.469747+00:00",
+  "elapsed_seconds": 600.7808272838593,
+  "returncode": 3,
+  "input_sha256": "9322a135d665e22ad6ee4ece2f41aac2144b6ae1481aa93095cf246800b6814b",
+  "input_bytes": 33028,
+  "scope": "Focused current optimization helpers across all three adapters; earlier full212224byte review exceeded time limit without final findings. Private reasoning output excluded from publication."
+}

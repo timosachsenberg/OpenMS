@@ -1,0 +1,2382 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "python": "3.15.0 (main, Oct  9 2026, 11:16:41) [Clang 21.0.0 (clang-2100.3.34.2)]",
+  "cpu_count": 16,
+  "binary": "$WORKSPACE/benchmark-residency-build/xml_parser_benchmark",
+  "binary_sha256": "d7467941e8a608639b6e88e4deefde311a1d000d527cf5aed1027c2d30abe245",
+  "backends": {
+    "xerces": "snapshots/xerces/lib"
+  },
+  "libraries": {
+    "xerces": {
+      "$WORKSPACE/snapshots/xerces/lib/libOpenSwathAlgo.dylib": "c37b9cd6f4268731899609f3232e1523fbaa5714ce3db16e926e81bf765ba42d",
+      "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib": "892333d537668a6df977624f387d74a596ea410ed08f4262031522e2f4b61ace"
+    }
+  },
+  "inputs": {
+    "$WORKSPACE/benchmark-data/large.mzML": {
+      "bytes": 1126185409,
+      "sha256": "8f2c671efe432f61f21e682c8fd5a58dc4fd9f83ee2bb2020f38e8d0cc61abf7"
+    },
+    "$WORKSPACE/benchmark-data/medium-zlib.mzML": {
+      "bytes": 68885049,
+      "sha256": "adca5a3f2d35aa26d2d52102c3b61e4d6d69381a7b5adea18a7f502709bc81b7"
+    }
+  },
+  "parameters": {
+    "binary": "benchmark-residency-build/xml_parser_benchmark",
+    "backend": [
+      "xerces=snapshots/xerces/lib"
+    ],
+    "input": [
+      "benchmark-data/large.mzML",
+      "benchmark-data/medium-zlib.mzML"
+    ],
+    "workers": "1,8",
+    "modes": "stream,load,indexed,indexed-metadata",
+    "repetitions": 3,
+    "queries": 2048,
+    "timeout": 600,
+    "startup_retries": 1,
+    "output": "results/optimized/macos/calibration-xerces-original.json"
+  },
+  "launcher_sha256": "06f066400360e17bc2f9ac6f6ced695c6521ddc06db337cd55c06991b7d60108",
+  "records": [
+    {
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 53149696,
+      "seconds": 0.416687959,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.416654166
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5764376670122147,
+      "max_rss_bytes": 53854208,
+      "user_seconds": 0.49973199999999995,
+      "system_seconds": 0.037776,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "stream",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 142671872,
+      "seconds": 2.829706125,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.809259083
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.803957291
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.820080708
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.812112667
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.806532625
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.806440875
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.810067834
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.829651958
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.948709374992177,
+      "max_rss_bytes": 143327232,
+      "user_seconds": 21.716744,
+      "system_seconds": 0.7724909999999999,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 56590336,
+      "seconds": 0.446891291,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.112396791,
+          "read_seconds": 0.334113084
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5796853330684826,
+      "max_rss_bytes": 57311232,
+      "user_seconds": 0.522203,
+      "system_seconds": 0.036663,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "stream",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 144310272,
+      "seconds": 2.843293333,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.828988041
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.843227917
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.834792791
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.829947
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.841865917
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.834294167
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.84258925
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.834219625
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.964145457954146,
+      "max_rss_bytes": 144965632,
+      "user_seconds": 21.877394,
+      "system_seconds": 0.790926,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 402685952,
+      "seconds": 2.296271667,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 1.927087875,
+          "read_seconds": 0.355448625
+        },
+        {
+          "open_seconds": 1.887954875,
+          "read_seconds": 0.351643084
+        },
+        {
+          "open_seconds": 1.933747083,
+          "read_seconds": 0.350659459
+        },
+        {
+          "open_seconds": 1.92772175,
+          "read_seconds": 0.354154167
+        },
+        {
+          "open_seconds": 1.927978084,
+          "read_seconds": 0.352522916
+        },
+        {
+          "open_seconds": 1.927949083,
+          "read_seconds": 0.354555958
+        },
+        {
+          "open_seconds": 1.928201541,
+          "read_seconds": 0.354112667
+        },
+        {
+          "open_seconds": 1.928144875,
+          "read_seconds": 0.354194333
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.4456891659647226,
+      "max_rss_bytes": 640417792,
+      "user_seconds": 13.579321,
+      "system_seconds": 3.97254,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "load",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 8959688704,
+      "seconds": 3.157174291,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.1528365
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.137356375
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.136419042
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.117690208
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.129730875
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.122897792
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.157104542
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.134360334
+        }
+      ],
+      "ok": true,
+      "process_seconds": 3.513996999943629,
+      "max_rss_bytes": 8959950848,
+      "user_seconds": 23.29552,
+      "system_seconds": 1.926768,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "indexed",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 425525248,
+      "seconds": 0.891991125,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 0.53597725,
+          "read_seconds": 0.354755167
+        },
+        {
+          "open_seconds": 0.526879166,
+          "read_seconds": 0.355747167
+        },
+        {
+          "open_seconds": 0.536348042,
+          "read_seconds": 0.354848417
+        },
+        {
+          "open_seconds": 0.535932125,
+          "read_seconds": 0.354769458
+        },
+        {
+          "open_seconds": 0.535670875,
+          "read_seconds": 0.353573
+        },
+        {
+          "open_seconds": 0.537108209,
+          "read_seconds": 0.354249166
+        },
+        {
+          "open_seconds": 0.536431875,
+          "read_seconds": 0.35342025
+        },
+        {
+          "open_seconds": 0.536575166,
+          "read_seconds": 0.353787834
+        }
+      ],
+      "ok": true,
+      "process_seconds": 1.0366619169944897,
+      "max_rss_bytes": 425754624,
+      "user_seconds": 3.651657,
+      "system_seconds": 3.042914,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "load",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 1192361984,
+      "seconds": 0.461897,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.458612084
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.45687475
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.461327291
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.456275125
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.455049333
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.457117334
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.460303042
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.461842
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.6159219589317217,
+      "max_rss_bytes": 1192755200,
+      "user_seconds": 3.548807,
+      "system_seconds": 0.226493,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "load",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 1161084928,
+      "seconds": 2.970764208,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.970721666
+        }
+      ],
+      "ok": true,
+      "process_seconds": 3.1182829160243273,
+      "max_rss_bytes": 1161822208,
+      "user_seconds": 2.940853,
+      "system_seconds": 0.154869,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 123568128,
+      "seconds": 1.621191166,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 1.316885583,
+          "read_seconds": 0.301106834
+        }
+      ],
+      "ok": true,
+      "process_seconds": 1.7490350420121104,
+      "max_rss_bytes": 124387328,
+      "user_seconds": 1.616856,
+      "system_seconds": 0.10947699999999999,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 53149696,
+      "seconds": 0.417819625,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.417784583
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5508913750527427,
+      "max_rss_bytes": 53788672,
+      "user_seconds": 0.5036349999999999,
+      "system_seconds": 0.027898,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "indexed",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 416759808,
+      "seconds": 0.891933959,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 0.540612959,
+          "read_seconds": 0.348153208
+        },
+        {
+          "open_seconds": 0.54099225,
+          "read_seconds": 0.350071416
+        },
+        {
+          "open_seconds": 0.532409917,
+          "read_seconds": 0.34969375
+        },
+        {
+          "open_seconds": 0.539884625,
+          "read_seconds": 0.348659041
+        },
+        {
+          "open_seconds": 0.54025825,
+          "read_seconds": 0.350016167
+        },
+        {
+          "open_seconds": 0.541016958,
+          "read_seconds": 0.349791375
+        },
+        {
+          "open_seconds": 0.539546417,
+          "read_seconds": 0.349953375
+        },
+        {
+          "open_seconds": 0.509222,
+          "read_seconds": 0.352033958
+        }
+      ],
+      "ok": true,
+      "process_seconds": 1.0170243330067024,
+      "max_rss_bytes": 416956416,
+      "user_seconds": 3.588219,
+      "system_seconds": 3.04614,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 422658048,
+      "seconds": 2.290783125,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 1.922899417,
+          "read_seconds": 0.357040416
+        },
+        {
+          "open_seconds": 1.923029458,
+          "read_seconds": 0.357120208
+        },
+        {
+          "open_seconds": 1.922994792,
+          "read_seconds": 0.35776125
+        },
+        {
+          "open_seconds": 1.922453125,
+          "read_seconds": 0.357551042
+        },
+        {
+          "open_seconds": 1.921511916,
+          "read_seconds": 0.358820042
+        },
+        {
+          "open_seconds": 1.922680583,
+          "read_seconds": 0.357295334
+        },
+        {
+          "open_seconds": 1.922598625,
+          "read_seconds": 0.358255791
+        },
+        {
+          "open_seconds": 1.922231625,
+          "read_seconds": 0.358299875
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.408522916957736,
+      "max_rss_bytes": 640729088,
+      "user_seconds": 13.650602,
+      "system_seconds": 3.987082,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "indexed",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 93388800,
+      "seconds": 0.432059167,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.068450125,
+          "read_seconds": 0.362245584
+        },
+        {
+          "open_seconds": 0.067611458,
+          "read_seconds": 0.363113625
+        },
+        {
+          "open_seconds": 0.068779083,
+          "read_seconds": 0.363173417
+        },
+        {
+          "open_seconds": 0.068256292,
+          "read_seconds": 0.3628555
+        },
+        {
+          "open_seconds": 0.066060583,
+          "read_seconds": 0.365402375
+        },
+        {
+          "open_seconds": 0.068010375,
+          "read_seconds": 0.362781625
+        },
+        {
+          "open_seconds": 0.0685495,
+          "read_seconds": 0.362572541
+        },
+        {
+          "open_seconds": 0.068805375,
+          "read_seconds": 0.363064916
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5556595410453156,
+      "max_rss_bytes": 94126080,
+      "user_seconds": 2.951561,
+      "system_seconds": 0.535265,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "load",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 8966242304,
+      "seconds": 3.17091725,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.16389075
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.161464958
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.1647715
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.161209958
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.170872167
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.163634459
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.165433416
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.163180625
+        }
+      ],
+      "ok": true,
+      "process_seconds": 3.5301359590375796,
+      "max_rss_bytes": 8966504448,
+      "user_seconds": 23.53817,
+      "system_seconds": 1.9134069999999999,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "indexed",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 51675136,
+      "seconds": 0.3470725,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.011953291,
+          "read_seconds": 0.335023084
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.4833056249190122,
+      "max_rss_bytes": 52412416,
+      "user_seconds": 0.427164,
+      "system_seconds": 0.030411999999999998,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 53526528,
+      "seconds": 0.418697291,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.41866475
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.558312707929872,
+      "max_rss_bytes": 54247424,
+      "user_seconds": 0.50549,
+      "system_seconds": 0.025838999999999997,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "stream",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 112640000,
+      "seconds": 0.433046125,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.432014958
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.432253875
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.423043208
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.432464792
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.425740292
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.422611584
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.432464792
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.432964083
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5605574590153992,
+      "max_rss_bytes": 113278976,
+      "user_seconds": 3.391728,
+      "system_seconds": 0.127301,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "load",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 188792832,
+      "seconds": 0.440023875,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.43998025
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5725220000604168,
+      "max_rss_bytes": 189448192,
+      "user_seconds": 0.518689,
+      "system_seconds": 0.03288,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "indexed",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 51593216,
+      "seconds": 0.347643792,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.011803125,
+          "read_seconds": 0.335747166
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.46850837499368936,
+      "max_rss_bytes": 52297728,
+      "user_seconds": 0.427967,
+      "system_seconds": 0.031104,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "load",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 8964833280,
+      "seconds": 3.161953459,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.154447875
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.151530042
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.160821666
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.156717625
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.152517666
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.150409125
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.161768625
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 3.154449916
+        }
+      ],
+      "ok": true,
+      "process_seconds": 3.5084008750272915,
+      "max_rss_bytes": 8965095424,
+      "user_seconds": 23.487424,
+      "system_seconds": 1.882372,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "load",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 1191591936,
+      "seconds": 0.479775042,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.471804583
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.476616166
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.471103125
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.475869
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.47971375
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.470701208
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.469963958
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.474917708
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.6311804159777239,
+      "max_rss_bytes": 1191985152,
+      "user_seconds": 3.622401,
+      "system_seconds": 0.241036,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "stream",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 141361152,
+      "seconds": 2.95771675,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.933226042
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.950445542
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.936662583
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.957654959
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.939396125
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.933176791
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.955187125
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.931739333
+        }
+      ],
+      "ok": true,
+      "process_seconds": 3.0832277920562774,
+      "max_rss_bytes": 142098432,
+      "user_seconds": 22.415853,
+      "system_seconds": 0.833791,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "stream",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 112558080,
+      "seconds": 0.450614333,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.448334167
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.440175875
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.450561042
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.445355916
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.439711958
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.440528
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.439866708
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.442052958
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5890393750742078,
+      "max_rss_bytes": 113262592,
+      "user_seconds": 3.491672,
+      "system_seconds": 0.131965,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "indexed",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 95158272,
+      "seconds": 0.39252975,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 0.087730709,
+          "read_seconds": 0.304340416
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5334885419579223,
+      "max_rss_bytes": 95879168,
+      "user_seconds": 0.467147,
+      "system_seconds": 0.038301,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 120946688,
+      "seconds": 0.588557292,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.200588875,
+          "read_seconds": 0.387397667
+        },
+        {
+          "open_seconds": 0.200509708,
+          "read_seconds": 0.385537542
+        },
+        {
+          "open_seconds": 0.198794333,
+          "read_seconds": 0.387289917
+        },
+        {
+          "open_seconds": 0.198931375,
+          "read_seconds": 0.387323458
+        },
+        {
+          "open_seconds": 0.200883083,
+          "read_seconds": 0.385167209
+        },
+        {
+          "open_seconds": 0.20055825,
+          "read_seconds": 0.385542292
+        },
+        {
+          "open_seconds": 0.200673125,
+          "read_seconds": 0.387333334
+        },
+        {
+          "open_seconds": 0.200080375,
+          "read_seconds": 0.3833
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.7284257500432432,
+      "max_rss_bytes": 121667584,
+      "user_seconds": 4.030423,
+      "system_seconds": 0.6506799999999999,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 120717312,
+      "seconds": 0.590187333,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.202799167,
+          "read_seconds": 0.383473416
+        },
+        {
+          "open_seconds": 0.205220875,
+          "read_seconds": 0.384198041
+        },
+        {
+          "open_seconds": 0.204148667,
+          "read_seconds": 0.38401175
+        },
+        {
+          "open_seconds": 0.204832167,
+          "read_seconds": 0.38405775
+        },
+        {
+          "open_seconds": 0.204931333,
+          "read_seconds": 0.383471583
+        },
+        {
+          "open_seconds": 0.20524025,
+          "read_seconds": 0.383968875
+        },
+        {
+          "open_seconds": 0.203439667,
+          "read_seconds": 0.386149875
+        },
+        {
+          "open_seconds": 0.20237225,
+          "read_seconds": 0.38459025
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.71830950002186,
+      "max_rss_bytes": 121372672,
+      "user_seconds": 4.031759,
+      "system_seconds": 0.661233,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "load",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 188792832,
+      "seconds": 0.4387565,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.438590792
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5735181669006124,
+      "max_rss_bytes": 189448192,
+      "user_seconds": 0.519119,
+      "system_seconds": 0.035545,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "indexed",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 94797824,
+      "seconds": 0.398244334,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 0.089702375,
+          "read_seconds": 0.308029959
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.518977832980454,
+      "max_rss_bytes": 95535104,
+      "user_seconds": 0.47141099999999997,
+      "system_seconds": 0.035564,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 55443456,
+      "seconds": 0.457332917,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.119116875,
+          "read_seconds": 0.33776775
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5967597089475021,
+      "max_rss_bytes": 56164352,
+      "user_seconds": 0.533015,
+      "system_seconds": 0.03532,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 58556416,
+      "seconds": 2.729570834,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.729534083
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.8489134169649333,
+      "max_rss_bytes": 59211776,
+      "user_seconds": 2.741003,
+      "system_seconds": 0.09701,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 119619584,
+      "seconds": 0.600518875,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.209263334,
+          "read_seconds": 0.388870958
+        },
+        {
+          "open_seconds": 0.209497375,
+          "read_seconds": 0.388971792
+        },
+        {
+          "open_seconds": 0.208528584,
+          "read_seconds": 0.388211125
+        },
+        {
+          "open_seconds": 0.208021166,
+          "read_seconds": 0.391993084
+        },
+        {
+          "open_seconds": 0.21030275,
+          "read_seconds": 0.387301208
+        },
+        {
+          "open_seconds": 0.21098525,
+          "read_seconds": 0.387669708
+        },
+        {
+          "open_seconds": 0.208350042,
+          "read_seconds": 0.390137667
+        },
+        {
+          "open_seconds": 0.208397584,
+          "read_seconds": 0.391417541
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.7350904589984566,
+      "max_rss_bytes": 119980032,
+      "user_seconds": 4.067296,
+      "system_seconds": 0.676076,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "indexed",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 91504640,
+      "seconds": 0.460981791,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.070072041,
+          "read_seconds": 0.389739209
+        },
+        {
+          "open_seconds": 0.071450958,
+          "read_seconds": 0.388108084
+        },
+        {
+          "open_seconds": 0.0712005,
+          "read_seconds": 0.387743292
+        },
+        {
+          "open_seconds": 0.071463208,
+          "read_seconds": 0.38941975
+        },
+        {
+          "open_seconds": 0.070507542,
+          "read_seconds": 0.389791416
+        },
+        {
+          "open_seconds": 0.069753625,
+          "read_seconds": 0.387956542
+        },
+        {
+          "open_seconds": 0.071160209,
+          "read_seconds": 0.388120791
+        },
+        {
+          "open_seconds": 0.070825083,
+          "read_seconds": 0.388926875
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.576772499945946,
+      "max_rss_bytes": 92160000,
+      "user_seconds": 3.15106,
+      "system_seconds": 0.535929,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "stream",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 112345088,
+      "seconds": 0.46852175,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.464722584
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.4616135
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.466886958
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.461838958
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.467683375
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.468465417
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.46417625
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.459449166
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.6140572089934722,
+      "max_rss_bytes": 113016832,
+      "user_seconds": 3.569219,
+      "system_seconds": 0.13225,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "indexed",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 92569600,
+      "seconds": 0.477285042,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.082302666,
+          "read_seconds": 0.394106125
+        },
+        {
+          "open_seconds": 0.08247375,
+          "read_seconds": 0.393306334
+        },
+        {
+          "open_seconds": 0.082133125,
+          "read_seconds": 0.395041875
+        },
+        {
+          "open_seconds": 0.08231025,
+          "read_seconds": 0.393255542
+        },
+        {
+          "open_seconds": 0.076446209,
+          "read_seconds": 0.395108
+        },
+        {
+          "open_seconds": 0.080943417,
+          "read_seconds": 0.394686458
+        },
+        {
+          "open_seconds": 0.082570334,
+          "read_seconds": 0.394106125
+        },
+        {
+          "open_seconds": 0.081607083,
+          "read_seconds": 0.390025583
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.6033075830200687,
+      "max_rss_bytes": 93290496,
+      "user_seconds": 3.179428,
+      "system_seconds": 0.548514,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 56049664,
+      "seconds": 0.441658333,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.11222325,
+          "read_seconds": 0.329072584
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5781384999863803,
+      "max_rss_bytes": 56754176,
+      "user_seconds": 0.514645,
+      "system_seconds": 0.03677,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 58474496,
+      "seconds": 2.80709225,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.807058458
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.938161041936837,
+      "max_rss_bytes": 59129856,
+      "user_seconds": 2.818668,
+      "system_seconds": 0.09766999999999999,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "load",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 1160839168,
+      "seconds": 2.962936625,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.962894167
+        }
+      ],
+      "ok": true,
+      "process_seconds": 3.1111012920737267,
+      "max_rss_bytes": 1161691136,
+      "user_seconds": 2.9133839999999998,
+      "system_seconds": 0.16899999999999998,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 422854656,
+      "seconds": 2.350673833,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 1.96491725,
+          "read_seconds": 0.371917917
+        },
+        {
+          "open_seconds": 1.96133575,
+          "read_seconds": 0.378438416
+        },
+        {
+          "open_seconds": 1.962951667,
+          "read_seconds": 0.374902083
+        },
+        {
+          "open_seconds": 1.955044625,
+          "read_seconds": 0.375032917
+        },
+        {
+          "open_seconds": 1.963402625,
+          "read_seconds": 0.37715225
+        },
+        {
+          "open_seconds": 1.963845666,
+          "read_seconds": 0.373176084
+        },
+        {
+          "open_seconds": 1.962682,
+          "read_seconds": 0.374294417
+        },
+        {
+          "open_seconds": 1.963567,
+          "read_seconds": 0.37730425
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.480059541994706,
+      "max_rss_bytes": 636469248,
+      "user_seconds": 13.917233,
+      "system_seconds": 3.94848,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "stream",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 58490880,
+      "seconds": 2.784959208,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.784920583
+        }
+      ],
+      "ok": true,
+      "process_seconds": 2.9135141669539735,
+      "max_rss_bytes": 59129856,
+      "user_seconds": 2.797051,
+      "system_seconds": 0.095884,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "indexed",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 413859840,
+      "seconds": 0.897729542,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 0.539649125,
+          "read_seconds": 0.354869458
+        },
+        {
+          "open_seconds": 0.534018708,
+          "read_seconds": 0.356866375
+        },
+        {
+          "open_seconds": 0.541287625,
+          "read_seconds": 0.354774833
+        },
+        {
+          "open_seconds": 0.541537917,
+          "read_seconds": 0.355219542
+        },
+        {
+          "open_seconds": 0.541653875,
+          "read_seconds": 0.355150708
+        },
+        {
+          "open_seconds": 0.538799167,
+          "read_seconds": 0.354483958
+        },
+        {
+          "open_seconds": 0.542398334,
+          "read_seconds": 0.354721
+        },
+        {
+          "open_seconds": 0.540524,
+          "read_seconds": 0.354437458
+        }
+      ],
+      "ok": true,
+      "process_seconds": 1.0281529170461,
+      "max_rss_bytes": 414121984,
+      "user_seconds": 3.643647,
+      "system_seconds": 3.071254,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 124502016,
+      "seconds": 1.642705375,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 1.33385525,
+          "read_seconds": 0.3060705
+        }
+      ],
+      "ok": true,
+      "process_seconds": 1.764408832998015,
+      "max_rss_bytes": 125222912,
+      "user_seconds": 1.6451,
+      "system_seconds": 0.106776,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "load",
+      "workers": 8,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 1193623552,
+      "seconds": 0.468613125,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.46522925
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.459928459
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.459799459
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.462786334
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.468572958
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.462563667
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.460005875
+        },
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.464536
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.6277909580385312,
+      "max_rss_bytes": 1194016768,
+      "user_seconds": 3.577241,
+      "system_seconds": 0.222984,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "load",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 188563456,
+      "seconds": 0.435864208,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 4096,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 8392704,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "5495910545189168999",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 0.435817166
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5710457909153774,
+      "max_rss_bytes": 189284352,
+      "user_seconds": 0.516,
+      "system_seconds": 0.034619,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 0
+    },
+    {
+      "mode": "indexed",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 94404608,
+      "seconds": 0.39868075,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 0.090883541,
+          "read_seconds": 0.307266334
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.5366073329932988,
+      "max_rss_bytes": 95125504,
+      "user_seconds": 0.473539,
+      "system_seconds": 0.038743,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "load",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 1161314304,
+      "seconds": 2.942484625,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 32768,
+      "chromatograms_per_worker": 1,
+      "points_per_worker": 67141632,
+      "index_spectra": 0,
+      "index_chromatograms": 0,
+      "hash_per_worker": "4299646233721013837",
+      "jobs": [
+        {
+          "open_seconds": 0,
+          "read_seconds": 2.942436125
+        }
+      ],
+      "ok": true,
+      "process_seconds": 3.1010988749330863,
+      "max_rss_bytes": 1162199040,
+      "user_seconds": 2.921036,
+      "system_seconds": 0.15042899999999998,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 1
+    },
+    {
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 123961344,
+      "seconds": 1.652437584,
+      "file_bytes": 1126185409,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 32768,
+      "index_chromatograms": 1,
+      "hash_per_worker": "8044413199707015275",
+      "jobs": [
+        {
+          "open_seconds": 1.339910791,
+          "read_seconds": 0.309544959
+        }
+      ],
+      "ok": true,
+      "process_seconds": 1.7715029590763152,
+      "max_rss_bytes": 124682240,
+      "user_seconds": 1.6512959999999999,
+      "system_seconds": 0.109209,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "repetition": 2
+    },
+    {
+      "mode": "indexed",
+      "workers": 1,
+      "openms_library": "$WORKSPACE/snapshots/xerces/lib/libOpenMS.dylib",
+      "resident_rss_bytes": 51314688,
+      "seconds": 0.346896125,
+      "file_bytes": 68885049,
+      "spectra_per_worker": 2048,
+      "chromatograms_per_worker": 0,
+      "points_per_worker": 4194304,
+      "index_spectra": 4096,
+      "index_chromatograms": 1,
+      "hash_per_worker": "16159325683882314271",
+      "jobs": [
+        {
+          "open_seconds": 0.011567667,
+          "read_seconds": 0.335232208
+        }
+      ],
+      "ok": true,
+      "process_seconds": 0.4820343339815736,
+      "max_rss_bytes": 52035584,
+      "user_seconds": 0.428039,
+      "system_seconds": 0.030813,
+      "removed_stale_kmp": false,
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "repetition": 1
+    }
+  ],
+  "failures": [],
+  "summary": [
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "indexed",
+      "workers": 1,
+      "repetitions": 3,
+      "seconds_median": 0.398244334,
+      "seconds_min": 0.39252975,
+      "seconds_max": 0.39868075,
+      "rss_mib_median": 91.109375,
+      "rss_mib_max": 91.4375,
+      "hash_per_worker": "8044413199707015275",
+      "resident_rss_mib_median": 90.40625,
+      "job_open_seconds_median": 0.089702375,
+      "job_read_seconds_median": 0.307266334,
+      "aggregate_spectra_per_second": 5142.571595255891
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "indexed",
+      "workers": 8,
+      "repetitions": 3,
+      "seconds_median": 0.891991125,
+      "seconds_min": 0.891933959,
+      "seconds_max": 0.897729542,
+      "rss_mib_median": 397.640625,
+      "rss_mib_max": 406.03125,
+      "hash_per_worker": "8044413199707015275",
+      "resident_rss_mib_median": 397.453125,
+      "job_open_seconds_median": 0.539172792,
+      "job_read_seconds_median": 0.354343312,
+      "aggregate_spectra_per_second": 18367.89575681036
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "repetitions": 3,
+      "seconds_median": 1.642705375,
+      "seconds_min": 1.621191166,
+      "seconds_max": 1.652437584,
+      "rss_mib_median": 118.90625,
+      "rss_mib_max": 119.421875,
+      "hash_per_worker": "8044413199707015275",
+      "resident_rss_mib_median": 118.21875,
+      "job_open_seconds_median": 1.33385525,
+      "job_read_seconds_median": 0.3060705,
+      "aggregate_spectra_per_second": 1246.723868545204
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "indexed-metadata",
+      "workers": 8,
+      "repetitions": 3,
+      "seconds_median": 2.296271667,
+      "seconds_min": 2.290783125,
+      "seconds_max": 2.350673833,
+      "rss_mib_median": 610.75,
+      "rss_mib_max": 611.046875,
+      "hash_per_worker": "8044413199707015275",
+      "resident_rss_mib_median": 403.078125,
+      "job_open_seconds_median": 1.9279635835,
+      "job_read_seconds_median": 0.35765614599999995,
+      "aggregate_spectra_per_second": 7135.044270003616
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "load",
+      "workers": 1,
+      "repetitions": 3,
+      "seconds_median": 2.962936625,
+      "seconds_min": 2.942484625,
+      "seconds_max": 2.970764208,
+      "rss_mib_median": 1108.0,
+      "rss_mib_max": 1108.359375,
+      "hash_per_worker": "4299646233721013837",
+      "resident_rss_mib_median": 1107.296875,
+      "job_open_seconds_median": 0,
+      "job_read_seconds_median": 2.962894167
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "load",
+      "workers": 8,
+      "repetitions": 3,
+      "seconds_median": 3.161953459,
+      "seconds_min": 3.157174291,
+      "seconds_max": 3.17091725,
+      "rss_mib_median": 8549.78125,
+      "rss_mib_max": 8551.125,
+      "hash_per_worker": "4299646233721013837",
+      "resident_rss_mib_median": 8549.53125,
+      "job_open_seconds_median": 0.0,
+      "job_read_seconds_median": 3.1555837705
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "stream",
+      "workers": 1,
+      "repetitions": 3,
+      "seconds_median": 2.784959208,
+      "seconds_min": 2.729570834,
+      "seconds_max": 2.80709225,
+      "rss_mib_median": 56.390625,
+      "rss_mib_max": 56.46875,
+      "hash_per_worker": "4299646233721013837",
+      "resident_rss_mib_median": 55.78125,
+      "job_open_seconds_median": 0,
+      "job_read_seconds_median": 2.784920583,
+      "aggregate_mib_per_second": 385.6480543735016
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/large.mzML",
+      "mode": "stream",
+      "workers": 8,
+      "repetitions": 3,
+      "seconds_median": 2.843293333,
+      "seconds_min": 2.829706125,
+      "seconds_max": 2.95771675,
+      "rss_mib_median": 136.6875,
+      "rss_mib_max": 138.25,
+      "hash_per_worker": "4299646233721013837",
+      "resident_rss_mib_median": 136.0625,
+      "job_open_seconds_median": 0.0,
+      "job_read_seconds_median": 2.8345434789999997,
+      "aggregate_mib_per_second": 3021.8875769432066
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "mode": "indexed",
+      "workers": 1,
+      "repetitions": 3,
+      "seconds_median": 0.3470725,
+      "seconds_min": 0.346896125,
+      "seconds_max": 0.347643792,
+      "rss_mib_median": 49.875,
+      "rss_mib_max": 49.984375,
+      "hash_per_worker": "16159325683882314271",
+      "resident_rss_mib_median": 49.203125,
+      "job_open_seconds_median": 0.011803125,
+      "job_read_seconds_median": 0.335232208,
+      "aggregate_spectra_per_second": 5900.784418241145
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "mode": "indexed",
+      "workers": 8,
+      "repetitions": 3,
+      "seconds_median": 0.460981791,
+      "seconds_min": 0.432059167,
+      "seconds_max": 0.477285042,
+      "rss_mib_median": 88.96875,
+      "rss_mib_max": 89.765625,
+      "hash_per_worker": "16159325683882314271",
+      "resident_rss_mib_median": 88.28125,
+      "job_open_seconds_median": 0.07099264599999999,
+      "job_read_seconds_median": 0.38852383300000004,
+      "aggregate_spectra_per_second": 35541.53400388867
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "mode": "indexed-metadata",
+      "workers": 1,
+      "repetitions": 3,
+      "seconds_median": 0.446891291,
+      "seconds_min": 0.441658333,
+      "seconds_max": 0.457332917,
+      "rss_mib_median": 54.125,
+      "rss_mib_max": 54.65625,
+      "hash_per_worker": "16159325683882314271",
+      "resident_rss_mib_median": 53.453125,
+      "job_open_seconds_median": 0.112396791,
+      "job_read_seconds_median": 0.334113084,
+      "aggregate_spectra_per_second": 4582.769996294244
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "mode": "indexed-metadata",
+      "workers": 8,
+      "repetitions": 3,
+      "seconds_median": 0.590187333,
+      "seconds_min": 0.588557292,
+      "seconds_max": 0.600518875,
+      "rss_mib_median": 115.75,
+      "rss_mib_max": 116.03125,
+      "hash_per_worker": "16159325683882314271",
+      "resident_rss_mib_median": 115.125,
+      "job_open_seconds_median": 0.204490417,
+      "job_read_seconds_median": 0.386719896,
+      "aggregate_spectra_per_second": 27760.677134017715
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "mode": "load",
+      "workers": 1,
+      "repetitions": 3,
+      "seconds_median": 0.4387565,
+      "seconds_min": 0.435864208,
+      "seconds_max": 0.440023875,
+      "rss_mib_median": 180.671875,
+      "rss_mib_max": 180.671875,
+      "hash_per_worker": "5495910545189168999",
+      "resident_rss_mib_median": 180.046875,
+      "job_open_seconds_median": 0,
+      "job_read_seconds_median": 0.438590792
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "mode": "load",
+      "workers": 8,
+      "repetitions": 3,
+      "seconds_median": 0.468613125,
+      "seconds_min": 0.461897,
+      "seconds_max": 0.479775042,
+      "rss_mib_median": 1137.5,
+      "rss_mib_max": 1138.703125,
+      "hash_per_worker": "5495910545189168999",
+      "resident_rss_mib_median": 1137.125,
+      "job_open_seconds_median": 0.0,
+      "job_read_seconds_median": 0.4626750005
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "mode": "stream",
+      "workers": 1,
+      "repetitions": 3,
+      "seconds_median": 0.417819625,
+      "seconds_min": 0.416687959,
+      "seconds_max": 0.418697291,
+      "rss_mib_median": 51.359375,
+      "rss_mib_max": 51.734375,
+      "hash_per_worker": "5495910545189168999",
+      "resident_rss_mib_median": 50.6875,
+      "job_open_seconds_median": 0,
+      "job_read_seconds_median": 0.417784583,
+      "aggregate_mib_per_second": 157.230292894179
+    },
+    {
+      "backend": "xerces",
+      "input": "$WORKSPACE/benchmark-data/medium-zlib.mzML",
+      "mode": "stream",
+      "workers": 8,
+      "repetitions": 3,
+      "seconds_median": 0.450614333,
+      "seconds_min": 0.433046125,
+      "seconds_max": 0.46852175,
+      "rss_mib_median": 108.015625,
+      "rss_mib_max": 108.03125,
+      "hash_per_worker": "5495910545189168999",
+      "resident_rss_mib_median": 107.34375,
+      "job_open_seconds_median": 0.0,
+      "job_read_seconds_median": 0.44129047899999996,
+      "aggregate_mib_per_second": 1166.2993776220792
+    }
+  ]
+}

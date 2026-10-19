@@ -1,0 +1,15 @@
+{
+  "completed_measurements": 4480,
+  "failures": 0,
+  "sha256_verified_files": 133,
+  "all_remote_original_snapshots_unchanged": true,
+  "all_cross_mode_digests_and_counts_verified": true,
+  "schema_api_cases": 12,
+  "minimum_available_gib": 773.5844993591309,
+  "swap_free_kib_min": 3706068,
+  "swap_free_kib_max": 3706068,
+  "host_pswpin_delta": 1,
+  "host_pswpout_delta": 11,
+  "maximum_peak_rss_gib": 211.0250015258789,
+  "scratch_retained_for_optimized_rerun": true
+}

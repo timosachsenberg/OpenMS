@@ -1,0 +1,57 @@
+Test project $WORKSPACE/OpenMS-build
+      Start 101: OnDiscMSExperiment_test
+ 1/26 Test #101: OnDiscMSExperiment_test ..........   Passed    1.14 sec
+      Start 172: CVMappingFile_test
+ 2/26 Test #172: CVMappingFile_test ...............   Passed    0.35 sec
+      Start 174: ConsensusXMLFile_test
+ 3/26 Test #174: ConsensusXMLFile_test ............   Passed    0.41 sec
+      Start 183: FeatureXMLFile_test
+ 4/26 Test #183: FeatureXMLFile_test ..............   Passed    0.41 sec
+      Start 196: IdXMLFile_test
+ 5/26 Test #196: IdXMLFile_test ...................   Passed    0.50 sec
+      Start 198: IndexedMzMLDecoder_test
+ 6/26 Test #198: IndexedMzMLDecoder_test ..........   Passed    0.34 sec
+      Start 199: IndexedMzMLFile_test
+ 7/26 Test #199: IndexedMzMLFile_test .............   Passed    0.42 sec
+      Start 200: IndexedMzMLFileLoader_test
+ 8/26 Test #200: IndexedMzMLFileLoader_test .......   Passed    0.47 sec
+      Start 214: MzDataFile_test
+ 9/26 Test #214: MzDataFile_test ..................   Passed    0.47 sec
+      Start 215: MzIdentMLFile_test
+10/26 Test #215: MzIdentMLFile_test ...............   Passed    1.00 sec
+      Start 216: MzDataValidator_test
+11/26 Test #216: MzDataValidator_test .............   Passed    0.38 sec
+      Start 219: MzMLFile_test
+12/26 Test #219: MzMLFile_test ....................   Passed    0.69 sec
+      Start 222: MzMLSpectrumDecoder_test
+13/26 Test #222: MzMLSpectrumDecoder_test .........   Passed    0.37 sec
+      Start 225: MzMLValidator_test
+14/26 Test #225: MzMLValidator_test ...............   Passed    0.35 sec
+      Start 230: MzXMLFile_test
+15/26 Test #230: MzXMLFile_test ...................   Passed    0.39 sec
+      Start 243: ParamXMLFile_test
+16/26 Test #243: ParamXMLFile_test ................   Passed    0.43 sec
+      Start 251: PepXMLFile_test
+17/26 Test #251: PepXMLFile_test ..................   Passed    0.56 sec
+      Start 258: ProtXMLFile_test
+18/26 Test #258: ProtXMLFile_test .................   Passed    0.40 sec
+      Start 261: SemanticValidator_test
+19/26 Test #261: SemanticValidator_test ...........   Passed    0.37 sec
+      Start 276: TraMLFile_test
+20/26 Test #276: TraMLFile_test ...................   Passed    0.82 sec
+      Start 277: TransformationXMLFile_test
+21/26 Test #277: TransformationXMLFile_test .......   Passed    0.37 sec
+      Start 278: UnimodXMLFile_test
+22/26 Test #278: UnimodXMLFile_test ...............   Passed    0.42 sec
+      Start 280: XMLFile_test
+23/26 Test #280: XMLFile_test .....................   Passed    0.35 sec
+      Start 281: XMLHandler_test
+24/26 Test #281: XMLHandler_test ..................   Passed    0.39 sec
+      Start 282: XMLValidator_test
+25/26 Test #282: XMLValidator_test ................   Passed    0.38 sec
+      Start 330: XMLParserBackend_test
+26/26 Test #330: XMLParserBackend_test ............   Passed    0.37 sec
+
+100% tests passed out of 26
+
+Total Test time (real) =  12.58 sec

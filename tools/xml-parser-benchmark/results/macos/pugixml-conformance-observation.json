@@ -1,0 +1,33 @@
+{
+  "library": "pugixml",
+  "version": "1.16",
+  "method": "Standalone load_string with default flags, reported by prototype_pugixml audit",
+  "cases": [
+    {
+      "xml": "<root>A&-B</root>",
+      "status": 0,
+      "description": "No error",
+      "text": "A&-B"
+    },
+    {
+      "xml": "<root>&undefined;</root>",
+      "status": 0,
+      "description": "No error",
+      "text": "&undefined;"
+    },
+    {
+      "xml": "<root a=\"A&-B\"/>",
+      "status": 0,
+      "description": "No error",
+      "attribute": "A&-B"
+    },
+    {
+      "xml": "<root>A&amp;B</root>",
+      "status": 0,
+      "description": "No error",
+      "text": "A&B"
+    }
+  ],
+  "documentation": "https://pugixml.org/docs/manual.html#loading.w3c",
+  "scope": "Structural malformed XML is rejected in focused tests; these malformed entity forms are tolerated, so full well-formedness equivalence is not established."
+}

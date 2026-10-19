@@ -1,0 +1,2582 @@
+diff --git a/cmake/cmake_findExternalLibs.cmake b/cmake/cmake_findExternalLibs.cmake
+index a6a8728b78..fe1be3259f 100644
+--- a/cmake/cmake_findExternalLibs.cmake
++++ b/cmake/cmake_findExternalLibs.cmake
+@@ -20,6 +20,7 @@
+ #     stack corruption etc, due to different runtime libs ...
+ # compiler-wise: build the dependencies with the same compiler as OpenMS!
+ find_package(XercesC REQUIRED)
++find_package(EXPAT REQUIRED)
+ 
+ #------------------------------------------------------------------------------
+ # BOOST
+diff --git a/src/openms/CMakeLists.txt b/src/openms/CMakeLists.txt
+index 2097f3046e..23427183ad 100644
+--- a/src/openms/CMakeLists.txt
++++ b/src/openms/CMakeLists.txt
+@@ -80,6 +80,7 @@ set(OPENMS_DEP_PRIVATE_LIBRARIES
+   Boost::boost
+   CURL::libcurl
+   XercesC::XercesC
++  EXPAT::EXPAT
+   $<$<BOOL:${WITH_HDF5}>:HDF5::HDF5>
+   ${LPTARGET}
+   BZip2::BZip2
+diff --git a/src/openms/include/OpenMS/FORMAT/HANDLERS/MzMLHandler.h b/src/openms/include/OpenMS/FORMAT/HANDLERS/MzMLHandler.h
+index db7c6ebec2..c0dcda2acb 100644
+--- a/src/openms/include/OpenMS/FORMAT/HANDLERS/MzMLHandler.h
++++ b/src/openms/include/OpenMS/FORMAT/HANDLERS/MzMLHandler.h
+@@ -121,6 +121,9 @@ public:
+       /// Docu in base class XMLHandler::characters
+       void onCharacters(const char16_t* chars, Size length) override;
+ 
++      /// Consume ASCII character data directly; preserve derived UTF-16 overrides.
++      bool tryOnCharactersUTF8(const char* chars, Size length) override;
++
+       /// Docu in base class XMLHandler::writeTo
+       void writeTo(std::ostream& os) override;
+ 
+diff --git a/src/openms/include/OpenMS/FORMAT/HANDLERS/MzMLSpectrumDecoder.h b/src/openms/include/OpenMS/FORMAT/HANDLERS/MzMLSpectrumDecoder.h
+index fefc76697c..b9e1fa9e26 100644
+--- a/src/openms/include/OpenMS/FORMAT/HANDLERS/MzMLSpectrumDecoder.h
++++ b/src/openms/include/OpenMS/FORMAT/HANDLERS/MzMLSpectrumDecoder.h
+@@ -28,7 +28,7 @@ namespace OpenMS
+     @brief A class to decode input strings that contain an mzML chromatogram or
+     spectrum tag.
+ 
+-    It uses xercesc to parse a string containing either a exactly one mzML
++    It uses Expat to parse a string containing either a exactly one mzML
+     spectrum or chromatogram (from \<chromatogram\> to \</chromatogram\> or
+     \<spectrum\> to \</spectrum\> tag). It returns the data contained in the
+     binaryDataArray for Intensity / mass-to-charge or Intensity / time.
+diff --git a/src/openms/include/OpenMS/FORMAT/HANDLERS/XMLAttributes.h b/src/openms/include/OpenMS/FORMAT/HANDLERS/XMLAttributes.h
+index e0f9978781..7d3bc41081 100644
+--- a/src/openms/include/OpenMS/FORMAT/HANDLERS/XMLAttributes.h
++++ b/src/openms/include/OpenMS/FORMAT/HANDLERS/XMLAttributes.h
+@@ -15,7 +15,7 @@ namespace OpenMS::Internal
+   /**
+     @brief Xerces-free, lightweight view over the attribute list of an XML element.
+ 
+-    Wraps a live @c xercesc::Attributes (owned by the SAX parser and valid only
++    Wraps a live @c xercesc::Attributes or UTF-16 name/value pairs (owned by the adapter and valid only
+     for the duration of the @c startElement callback). It exposes only the small
+     surface the OpenMS handlers actually use (value-by-name, index-by-name,
+     value-by-index), so that Xerces types never appear in a public header.
+@@ -38,7 +38,7 @@ namespace OpenMS::Internal
+       @brief Wrap a live attribute list (non-owning).
+ 
+       Takes an opaque handle so this header need not name any Xerces type. The
+-      only caller is the internal SAX2HandlerAdapter, which passes the address of
++      caller is the internal SAX2HandlerAdapter, which passes the address of
+       the live @c xercesc::Attributes (recovered internally in @c XMLAttributes.cpp).
+     */
+     explicit XMLAttributes(const void* attributes) noexcept :
+@@ -46,6 +46,12 @@ namespace OpenMS::Internal
+     {
+     }
+ 
++    /// Wrap alternating UTF-16 name/value pointers terminated by nullptr (Expat adapter).
++    explicit XMLAttributes(const char16_t* const* pairs) noexcept :
++      attributes_(nullptr), pairs_(pairs)
++    {
++    }
++
+     /// Value of the attribute named @p qname (UTF-16 code units), or @c nullptr if absent.
+     const char16_t* value(const char16_t* qname) const;
+ 
+@@ -63,6 +69,7 @@ namespace OpenMS::Internal
+ 
+   private:
+     const void* attributes_;
++    const char16_t* const* pairs_ = nullptr;
+   };
+ 
+ } // namespace OpenMS::Internal
+diff --git a/src/openms/include/OpenMS/FORMAT/HANDLERS/XMLHandler.h b/src/openms/include/OpenMS/FORMAT/HANDLERS/XMLHandler.h
+index 4649e02f44..8ad5fe5e0f 100644
+--- a/src/openms/include/OpenMS/FORMAT/HANDLERS/XMLHandler.h
++++ b/src/openms/include/OpenMS/FORMAT/HANDLERS/XMLHandler.h
+@@ -99,6 +99,16 @@ public:
+       virtual void onEndElement(const char16_t * qname);
+       /// Parsing method for character data
+       virtual void onCharacters(const char16_t * chars, Size length);
++      /**
++        @brief Try to consume UTF-8 character data without UTF-16 conversion.
++
++        Length is in bytes; the input is borrowed for this call only. Return
++        false without side effects to request the adapter's existing UTF-16
++        conversion and onCharacters dispatch. The default always returns false.
++        Derived handlers opt in explicitly; existing UTF-16 overrides stay valid.
++      */
++      virtual bool tryOnCharactersUTF8(const char* chars, Size length);
++
+       //@}
+ 
+       /// Writes the contents to a stream.
+diff --git a/src/openms/include/OpenMS/FORMAT/XMLFile.h b/src/openms/include/OpenMS/FORMAT/XMLFile.h
+index 55239b84ea..1448b62fd0 100644
+--- a/src/openms/include/OpenMS/FORMAT/XMLFile.h
++++ b/src/openms/include/OpenMS/FORMAT/XMLFile.h
+@@ -21,13 +21,14 @@ namespace OpenMS
+     class XMLHandler;
+ 
+     /**
+-      @brief Base class for loading and storing XML files via Xerces, with optional schema validation and transparent gzip / bzip2 / zip decompression on load.
++      @brief Base class for loading XML through Expat and storing XML, with optional schema validation and transparent gzip / bzip2 / zip decompression on load.
+ 
+       Concrete file-format classes derive from @c XMLFile and provide an
+       @ref XMLHandler subclass that drives the SAX parser. The base class hides the
+-      Xerces setup, the compression-magic detection on the input side, the suffix-based
++      Expat setup, the compression-magic detection on the input side, the suffix-based
+       compression selection on the output side, and the optional encoding override used
+-      for non-conforming XML producers (e.g. X!Tandem).
++      for non-conforming XML producers (e.g. X!Tandem). Xerces remains in use for
++      schema validation, DOM paths, transcoding helpers and input stream adapters.
+ 
+       Compression is detected on @ref parse_ by reading the first two bytes of the file
+       and matching one of three magic numbers: @c "BZ" (bzip2), @c 0x1F8B (gzip),
+@@ -82,7 +83,7 @@ protected:
+         gzip (@c 0x1F8B), or zip (@c "PK") and wraps the file in a
+         @ref CompressedInputSource accordingly; any other magic falls through to a
+         plain @c LocalFileInputSource. If @ref enforceEncoding_ has set
+-        @c enforced_encoding_, the override is applied to the source before parsing.
++        @c enforced_encoding_, the override is supplied to Expat before parsing.
+ 
+         On exit (success or exception), @c handler->reset() is called via an RAII guard
+         so the handler can be reused on subsequent calls.
+@@ -100,7 +101,7 @@ protected:
+ 
+         Wraps @p buffer in a @c xercesc::MemBufInputSource (with the literal id
+         @c "inMemory"). If @ref enforceEncoding_ has set @c enforced_encoding_, the
+-        override is applied to the source before parsing. The RAII handler reset described
++        override is supplied to Expat before parsing. The RAII handler reset described
+         for @ref parse_ also applies here.
+ 
+         @note The buffer must be plain text; gzip / bzip2 / zip buffers are not supported on this path (only on @ref parse_).
+@@ -135,9 +136,9 @@ protected:
+         @brief Set or clear the XML-encoding override applied to subsequent @ref parse_ / @ref parseBuffer_ calls.
+ 
+         Stores @p encoding in @ref enforced_encoding_. Pass an empty string to disable the
+-        override and let Xerces use the encoding declared inside the XML.
++        override and let Expat use the encoding declared inside the XML.
+ 
+-        @param[in] encoding Encoding name (e.g. @c "ISO-8859-1") to apply to the @c InputSource before parsing; empty string disables the override so Xerces consults the XML declaration instead.
++        @param[in] encoding Encoding name (e.g. @c "ISO-8859-1") to apply to the @c InputSource before parsing; empty string disables the override so Expat consults the XML declaration instead.
+       */
+       void enforceEncoding_(const std::string& encoding);
+     };
+diff --git a/src/openms/source/FORMAT/HANDLERS/IndexedMzMLDecoder.cpp b/src/openms/source/FORMAT/HANDLERS/IndexedMzMLDecoder.cpp
+index c5e3022b96..8007231033 100644
+--- a/src/openms/source/FORMAT/HANDLERS/IndexedMzMLDecoder.cpp
++++ b/src/openms/source/FORMAT/HANDLERS/IndexedMzMLDecoder.cpp
+@@ -7,22 +7,23 @@
+ // --------------------------------------------------------------------------
+ 
+ #include <OpenMS/FORMAT/HANDLERS/IndexedMzMLDecoder.h>
+-#include <OpenMS/CONCEPT/Init.h>
++#include <expat.h>
++#include <memory>
++#include <exception>
++#include <cstring>
++#include <string_view>
+ 
+ #include <OpenMS/SYSTEM/File.h>
+ 
+ #include <boost/regex.hpp>
+ #include <boost/lexical_cast.hpp>
+ 
++#include <limits>
++#include <cstdint>
++#include <algorithm>
+ #include <fstream>
+ #include <iostream>
+ 
+-#include <xercesc/framework/MemBufInputSource.hpp>
+-#include <xercesc/parsers/XercesDOMParser.hpp>
+-#include <xercesc/dom/DOMElement.hpp>
+-#include <xercesc/dom/DOMNodeList.hpp>
+-#include <xercesc/util/XMLString.hpp>
+-
+ namespace OpenMS
+ {
+ 
+@@ -69,272 +70,197 @@ namespace OpenMS
+ 
+   int IndexedMzMLDecoder::parseOffsets(const std::string& filename, std::streampos indexoffset, OffsetVector& spectra_offsets, OffsetVector& chromatograms_offsets)
+   {
+-    //-------------------------------------------------------------
+-    // Open file, jump to end and read last indexoffset bytes into buffer.
+-    //-------------------------------------------------------------
+-    std::ifstream f(filename.c_str());
++    std::ifstream f(filename, std::ios::binary);
+     if (!f.is_open())
+     {
+       if (!File::exists(filename))
+       {
+         throw Exception::FileNotFound(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+       }
+-      else if (!File::readable(filename))
++      if (!File::readable(filename))
+       {
+         throw Exception::FileNotReadable(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+       }
+-      else
+-      {
+-        throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+-      }
++      throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+     }
+ 
+-    // get length of file:
+-    f.seekg(0, f.end);
+-    std::streampos length = f.tellg();
+-
+-    if (indexoffset < 0 || indexoffset > length)
++    f.seekg(0, std::ios::end);
++    const std::streampos length = f.tellg();
++    if (!f || length < 0 || indexoffset < 0 || indexoffset > length)
+     {
+-      std::cerr << "IndexedMzMLDecoder::parseOffsets Error: Offset was " <<
+-        indexoffset << " (not between 0 and " << length << ")." << std::endl;
++      std::cerr << "IndexedMzMLDecoder::parseOffsets Error: Offset was " << indexoffset
++                << " (not between 0 and " << length << ").\n";
+       return -1;
+     }
+ 
+-    //-------------------------------------------------------------
+-    // Read full end of file to parse offsets for spectra and chroms
+-    //-------------------------------------------------------------
+-    // read data as a block into a buffer
+-
+-    // allocate enough memory in buffer (+1 for string termination)
+-    std::streampos readl = length - indexoffset;
+-    char* buffer = new(std::nothrow) char[readl + std::streampos(1)];
+-
+-    // catch case where not enough memory is available
+-    if (buffer == nullptr)
++    // Read straight into the final XML buffer: no raw allocation or full-tail copy.
++    std::string xml = "<indexedmzML>";
++    const Size prefix_size = xml.size();
++    const std::streamoff tail_length = length - indexoffset;
++    if (tail_length == 0 || tail_length > std::numeric_limits<std::streamsize>::max() ||
++        static_cast<std::uintmax_t>(tail_length) > xml.max_size() - prefix_size - 1)
+     {
+-      // Warning: Index takes up more than 10 % of the whole file, please check your input file.\n";
+-      std::cerr << "IndexedMzMLDecoder::parseOffsets Could not allocate enough memory to read in index of indexedMzML" << std::endl;
+-      std::cerr << "IndexedMzMLDecoder::parseOffsets calculated index offset " << indexoffset << " and file length " << length <<
+-        ", consequently tried to read into memory " << readl << " bytes." << std::endl;
+       return -1;
+     }
+-
+-    // read into memory
+-    f.seekg(-readl, f.end);
+-    f.read(buffer, readl);
+-    buffer[readl] = '\0';
+-
+-    //-------------------------------------------------------------
+-    // Add a sane start element and then give it to a DOM parser
+-    //-------------------------------------------------------------
+-    // http://stackoverflow.com/questions/4691039/making-xerces-parse-a-string-insted-of-a-file
+-    std::string tmp_fixed_xml = "<indexedmzML>" +  std::string(buffer) + "\n";
+-    int res = domParseIndexedEnd_(tmp_fixed_xml, spectra_offsets, chromatograms_offsets);
+-
+-    delete[] buffer;
+-
+-    return res;
++    const Size tail_size = static_cast<Size>(tail_length);
++    xml.resize(prefix_size + tail_size + 1);
++    f.seekg(indexoffset);
++    if (!f) { return -1; }
++    f.read(xml.data() + prefix_size, static_cast<std::streamsize>(tail_length));
++    if (!f || f.gcount() != tail_length) { return -1; }
++    xml.back() = '\n';
++    return domParseIndexedEnd_(xml, spectra_offsets, chromatograms_offsets);
+   }
+ 
+   std::streampos IndexedMzMLDecoder::findIndexListOffset(const std::string& filename, int buffersize)
+   {
+-    // return value
+-    std::streampos indexoffset = -1;
+-
+-    //-------------------------------------------------------------
+-    // Open file, jump to end and read last n bytes into buffer.
+-    //-------------------------------------------------------------
+-    std::ifstream f(filename.c_str());
+-
++    if (buffersize <= 0) { return -1; }
++    std::ifstream f(filename, std::ios::binary);
+     if (!f.is_open())
+     {
+       if (!File::exists(filename))
+       {
+         throw Exception::FileNotFound(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+       }
+-      else if (!File::readable(filename))
++      if (!File::readable(filename))
+       {
+         throw Exception::FileNotReadable(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+       }
+-      else
+-      {
+-        throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+-      }
++      throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
+     }
+ 
+-    // Read the last few bytes and hope our offset is there to be found
+-    std::unique_ptr<char[]> buffer(new char[buffersize + 1]);
+-    f.seekg(-buffersize, f.end);
+-    f.read(buffer.get(), buffersize);
+-    buffer.get()[buffersize] = '\0';
+-
+-#ifdef DEBUG_READER
+-    std::cout << " reading file " << filename  << " with size " << buffersize << '\n';
+-    std::cout << buffer << '\n';
+-#endif
+-
+-    //-------------------------------------------------------------
+-    // Since we could be anywhere in the XML structure, use regex to find
+-    // indexListOffset and read its content.
+-    //-------------------------------------------------------------
+-    boost::regex listoffset_rx(R"(<[^>/]*indexListOffset\s*>\s*(\d*))");
+-    boost::cmatch matches;
+-    boost::regex_search(buffer.get(), matches, listoffset_rx);
+-    std::string thismatch(matches[1].first, matches[1].second);
+-    if (!thismatch.empty())
+-    {
+-      try
+-      {
+-        indexoffset = OpenMS::IndexedMzMLUtils::stringToStreampos(thismatch);
+-      }
+-      catch (Exception::ConversionError& /*e*/)
+-      {
+-        std::cerr << "Corrupted / unreadable value in <indexListOffset> : " << thismatch << std::endl;
+-        // free resources and re-throw
+-        throw;  // re-throw conversion error
+-      }
+-    }
+-    else
++    f.seekg(0, std::ios::end);
++    const std::streampos length = f.tellg();
++    if (!f || length < 0) { return -1; }
++    const std::streamoff read_length = std::min(static_cast<std::streamoff>(length), static_cast<std::streamoff>(buffersize));
++    std::string buffer;
++    if (read_length > std::numeric_limits<std::streamsize>::max() ||
++        static_cast<std::uintmax_t>(read_length) > buffer.max_size()) { return -1; }
++    buffer.resize(static_cast<Size>(read_length));
++    f.seekg(-read_length, std::ios::end);
++    if (!f) { return -1; }
++    f.read(buffer.data(), static_cast<std::streamsize>(read_length));
++    if (!f || f.gcount() != read_length) { return -1; }
++
++    // The same namespace/whitespace-tolerant pattern is shared by independent
++    // readers; C++ initializes it once and regex_search never mutates it.
++    static const boost::regex listoffset_rx(R"(<[^>/]*indexListOffset\s*>\s*(\d*))");
++    boost::smatch matches;
++    if (!boost::regex_search(buffer, matches, listoffset_rx) || matches[1].length() == 0)
+     {
+       std::cerr << "IndexedMzMLDecoder::findIndexListOffset Error: Could not find element indexListOffset in the last "
+-                << buffersize << " bytes. Maybe this is not a indexedMzML."
+-                << buffer.get() << std::endl;
++                << read_length << " bytes. Maybe this is not an indexedMzML.\n";
++      return -1;
+     }
+-
+-    return indexoffset;
++    return OpenMS::IndexedMzMLUtils::stringToStreampos(matches[1].str());
+   }
+ 
+   int IndexedMzMLDecoder::domParseIndexedEnd_(const std::string& in, OffsetVector& spectra_offsets, OffsetVector& chromatograms_offsets)
+   {
+-
+-    /*
+-
+-     We parse something like 
+-     
+-      <indexedmzML>
+-        <indexList count="1">
+-          <index name="chromatogram">
+-            <offset idRef="1">9752</offset>
+-          </index>
+-        </indexList>
+-        <indexListOffset>26795</indexListOffset>
+-      <fileChecksum>0</fileChecksum>
+-      </indexedmzML>
+-
+-    */
+-
+-    //-------------------------------------------------------------
+-    // Create parser from input string using MemBufInputSource
+-    //-------------------------------------------------------------
+-    // Xerces has to be initialised; CONCEPT/Init.cpp does so on loading the library, but a
+-    // static library (WebAssembly) links that object file only if something else calls into it
+-    static const bool xerces_initialized = (Internal::xercesInitialize(), true);
+-    (void)xerces_initialized;
+-    xercesc::MemBufInputSource myxml_buf(
+-        reinterpret_cast<const unsigned char*>(in.c_str()), in.length(), "myxml (in memory)");
+-    xercesc::XercesDOMParser parser;
+-    parser.setDoNamespaces(false);
+-    parser.setDoSchema(false);
+-    parser.setLoadExternalDTD(false);
+-    parser.parse(myxml_buf);
+-
+-    //-------------------------------------------------------------
+-    // Start parsing
+-    // see http://www.yolinux.com/TUTORIALS/XML-Xerces-C.html
+-    //-------------------------------------------------------------
+-
+-    // no need to free this pointer - owned by the parent parser object
+-    xercesc::DOMDocument* doc =  parser.getDocument();
+-    // Get the top-level element ("indexedmzML")
+-    xercesc::DOMElement* elementRoot = doc->getDocumentElement();
+-    if (!elementRoot)
++    struct Footer
+     {
+-      std::cerr << "IndexedMzMLDecoder::domParseIndexedEnd Error: " <<
+-        "No root element found:" << std::endl << std::endl << in << std::endl;
+-      return -1;
+-    }
+-
+-    // Extract the indexList tag (there should only be one)
+-    XMLCh* x_tag = xercesc::XMLString::transcode("indexList");
+-    xercesc::DOMNodeList* li = elementRoot->getElementsByTagName(x_tag);
+-    xercesc::XMLString::release(&x_tag);
+-    if (li->getLength() != 1)
+-    {
+-      std::cerr << "IndexedMzMLDecoder::domParseIndexedEnd Error: "
+-        << "no indexList element found:" << std::endl << std::endl << in << std::endl;
+-      return -1;
+-    }
+-    xercesc::DOMNode* indexListNode = li->item(0);
+-
+-    XMLCh* x_idref_tag = xercesc::XMLString::transcode("idRef");
+-    XMLCh* x_name_tag = xercesc::XMLString::transcode("name");
+-
+-    xercesc::DOMNodeList* index_elems = indexListNode->getChildNodes();
+-    const  XMLSize_t nodeCount_ = index_elems->getLength();
+-
+-    // Iterate through indexList elements (only two elements should be present
+-    // which should be either spectrum or chromatogram offsets)
+-    for (XMLSize_t j = 0; j < nodeCount_; ++j)
+-    {
+-      xercesc::DOMNode* currentNode = index_elems->item(j);
+-      if (currentNode->getNodeType() && // true is not NULL
+-          currentNode->getNodeType() == xercesc::DOMNode::ELEMENT_NODE) // is element
++      XML_Parser parser;
++      std::exception_ptr exception;
++      OffsetVector spectra, chromatograms, entries;
++      std::string index_name, id, offset;
++      Size depth = 0, list_depth = 0, index_depth = 0, offset_depth = 0, lists = 0;
++      bool invalid_index = false, has_spectra = false, has_chromatograms = false;
++      static const char* attribute(const XML_Char** attributes, const char* name)
+       {
+-        std::vector<std::pair<std::string, std::streampos> > result;
+-
+-        // Iterate through children
+-        // NOTE: Using xercesc::DOMNodeList and "item" is a very bad idea since
+-        //       each "item" call has complexity of O(n), see the
+-        //       implementation in DOMNodeListImpl.cpp :
+-        //       https://svn.apache.org/repos/asf/xerces/c/trunk/src/xercesc/dom/impl/DOMNodeListImpl.cpp
+-        //
+-        for (xercesc::DOMNode* currentONode = currentNode->getFirstChild(); currentONode != nullptr;
+-             currentONode = currentONode->getNextSibling())
+-        {
+-          if (currentONode->getNodeType() && // true is not NULL
+-              currentONode->getNodeType() == xercesc::DOMNode::ELEMENT_NODE) // is element
+-          {
+-            xercesc::DOMElement* currentElement = dynamic_cast<xercesc::DOMElement*>(currentONode);
+-
+-            char* x_name = xercesc::XMLString::transcode(currentElement->getAttribute(x_idref_tag));
+-            char* x_offset = xercesc::XMLString::transcode(currentONode->getTextContent());
+-
+-            std::streampos thisOffset = OpenMS::IndexedMzMLUtils::stringToStreampos(std::string(x_offset) );
+-            result.emplace_back(std::string(x_name), thisOffset);
+-
+-            xercesc::XMLString::release(&x_name);
+-            xercesc::XMLString::release(&x_offset);
+-          }
+-        }
+-
+-        // should be either spectrum or chromatogram ...
+-        xercesc::DOMElement* currentElement = dynamic_cast<xercesc::DOMElement*>(currentNode);
+-        char* x_indexName = xercesc::XMLString::transcode(currentElement->getAttribute(x_name_tag));
+-        std::string name(x_indexName);
+-        xercesc::XMLString::release(&x_indexName);
+-
+-        if (name == "spectrum")
++        for (Size i = 0; attributes[i]; i += 2)
+         {
+-          spectra_offsets = result;
++          if (std::strcmp(attributes[i], name) == 0) return attributes[i + 1];
+         }
+-        else if (name == "chromatogram")
++        return "";
++      }
++      void capture() noexcept
++      {
++        if (!exception) exception = std::current_exception();
++        XML_StopParser(parser, XML_FALSE);
++      }
++      static void XMLCALL start(void* opaque, const XML_Char* name, const XML_Char** attributes) noexcept
++      {
++        auto& s = *static_cast<Footer*>(opaque);
++        if (s.exception) return;
++        try
+         {
+-          chromatograms_offsets = result;
++          ++s.depth;
++          if (std::string_view(name) == "indexList" && s.depth > 1)
++          {
++            ++s.lists;
++            s.list_depth = s.depth;
++          }
++          else if (s.list_depth && s.depth == s.list_depth + 1)
++          {
++            s.index_depth = s.depth;
++            s.index_name = attribute(attributes, "name");
++            s.entries.clear();
++          }
++          else if (s.index_depth && s.depth == s.index_depth + 1)
++          {
++            s.offset_depth = s.depth;
++            s.id = attribute(attributes, "idRef");
++            s.offset.clear();
++          }
+         }
+-        else
++        catch (...) { s.capture(); }
++      }
++      static void XMLCALL end(void* opaque, const XML_Char*) noexcept
++      {
++        auto& s = *static_cast<Footer*>(opaque);
++        if (s.exception) return;
++        try
+         {
+-          std::cerr << "IndexedMzMLDecoder::domParseIndexedEnd Error: expected only " <<
+-            "'spectrum' or 'chromatogram' below indexList but found instead '" <<
+-            name << "'." << std::endl;
+-          xercesc::XMLString::release(&x_idref_tag);
+-          xercesc::XMLString::release(&x_name_tag);
+-          return -1;
++          if (s.depth == s.offset_depth)
++          {
++            s.entries.emplace_back(s.id, IndexedMzMLUtils::stringToStreampos(s.offset));
++            s.offset_depth = 0;
++          }
++          if (s.depth == s.index_depth)
++          {
++            if (s.index_name == "spectrum") { s.spectra = std::move(s.entries); s.has_spectra = true; }
++            else if (s.index_name == "chromatogram") { s.chromatograms = std::move(s.entries); s.has_chromatograms = true; }
++            else { s.invalid_index = true; }
++            s.index_depth = 0;
++          }
++          if (s.depth == s.list_depth) s.list_depth = 0;
++          --s.depth;
+         }
++        catch (...) { s.capture(); }
++      }
++      static void XMLCALL text(void* opaque, const XML_Char* value, int length) noexcept
++      {
++        auto& s = *static_cast<Footer*>(opaque);
++        if (s.exception) return;
++        try { if (s.offset_depth) s.offset.append(value, static_cast<Size>(length)); }
++        catch (...) { s.capture(); }
+       }
++    };
++    std::unique_ptr<XML_ParserStruct, decltype(&XML_ParserFree)> parser(XML_ParserCreate(nullptr), XML_ParserFree);
++    if (!parser) throw std::bad_alloc();
++    Footer footer{};
++    footer.parser = parser.get();
++    XML_SetUserData(parser.get(), &footer);
++    XML_SetElementHandler(parser.get(), Footer::start, Footer::end);
++    XML_SetCharacterDataHandler(parser.get(), Footer::text);
++    XML_SetParamEntityParsing(parser.get(), XML_PARAM_ENTITY_PARSING_NEVER);
++    XML_SetExternalEntityRefHandler(parser.get(), [](XML_Parser, const XML_Char*, const XML_Char*, const XML_Char*, const XML_Char*) -> int { return XML_STATUS_ERROR; });
++    for (Size offset = 0;;)
++    {
++      const auto count = std::min<Size>(65536, in.size() - offset);
++      const bool final = offset + count == in.size();
++      const auto status = XML_Parse(parser.get(), in.data() + offset, static_cast<int>(count), final);
++      if (footer.exception) std::rethrow_exception(footer.exception);
++      if (status == XML_STATUS_ERROR)
++      {
++        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", XML_ErrorString(XML_GetErrorCode(parser.get())));
++      }
++      if (final) break;
++      offset += count;
+     }
+-    xercesc::XMLString::release(&x_idref_tag);
+-    xercesc::XMLString::release(&x_name_tag);
+-
++    if (footer.lists != 1 || footer.invalid_index) return -1;
++    if (footer.has_spectra) spectra_offsets = std::move(footer.spectra);
++    if (footer.has_chromatograms) chromatograms_offsets = std::move(footer.chromatograms);
+     return 0;
+   }
+ 
+diff --git a/src/openms/source/FORMAT/HANDLERS/MzMLHandler.cpp b/src/openms/source/FORMAT/HANDLERS/MzMLHandler.cpp
+index e3f000a41a..f1e7cb03b7 100644
+--- a/src/openms/source/FORMAT/HANDLERS/MzMLHandler.cpp
++++ b/src/openms/source/FORMAT/HANDLERS/MzMLHandler.cpp
+@@ -23,6 +23,8 @@
+ #include <map>
+ #include <xercesc/util/XMLString.hpp>
+ 
++#include <typeinfo>
++
+ namespace OpenMS::Internal
+ {
+     namespace
+@@ -242,8 +244,11 @@ namespace OpenMS::Internal
+           }
+           catch (...)
+           {
+-            ++errCount;
+-            error_message = "Unknown exception during spectrum data population";
++            #pragma omp critical(MZMLErrorHandling)
++            {
++              ++errCount;
++              error_message = "Unknown exception during spectrum data population";
++            }
+           }
+         }
+         }
+@@ -809,9 +814,29 @@ namespace OpenMS::Internal
+     }
+ 
+ 
++    bool MzMLHandler::tryOnCharactersUTF8(const char* chars, Size length)
++    {
++      // A subclass may override only onCharacters. Leave that dispatch intact
++      // unless the subclass explicitly opts in by overriding this new hook.
++      if (typeid(*this) != typeid(MzMLHandler)) { return false; }
++      if (length == 0) { return true; }
++      if (std::any_of(chars, chars + length,
++          [](unsigned char value) { return value >= 0x80; })) { return false; }
++      if (skip_spectrum_ || skip_chromatogram_ || !options_.getFillData() || open_tags_.empty()) { return true; }
++      if (open_tags_.back() == "binary")
++      {
++        // XML parsers have normalized entities/line endings. Valid base64 is
++        // ASCII, so no UTF-8 -> UTF-16 -> ASCII round trip is needed here.
++        bin_data_.back().base64.append(chars, length);
++      }
++      return true;
++    }
++
+     void MzMLHandler::onCharacters(const char16_t* chars, Size length)
+     {
+-      if (skip_spectrum_ || skip_chromatogram_)
++      // Metadata reads discard binary arrays on closing the spectrum. Avoid
++      // constructing their encoded payloads in the first place (also in Xerces).
++      if (skip_spectrum_ || skip_chromatogram_ || !options_.getFillData())
+       {
+         return;
+       }
+diff --git a/src/openms/source/FORMAT/HANDLERS/MzMLSpectrumDecoder.cpp b/src/openms/source/FORMAT/HANDLERS/MzMLSpectrumDecoder.cpp
+index 162b86287e..4c2ad15044 100644
+--- a/src/openms/source/FORMAT/HANDLERS/MzMLSpectrumDecoder.cpp
++++ b/src/openms/source/FORMAT/HANDLERS/MzMLSpectrumDecoder.cpp
+@@ -17,6 +17,10 @@
+ #include <xercesc/dom/DOMNodeList.hpp>
+ 
+ #include <memory>
++#include <expat.h>
++#include <exception>
++#include <string_view>
++#include <cstring>
+ #include <xercesc/util/XMLString.hpp>
+ 
+ namespace OpenMS
+@@ -527,67 +531,135 @@ namespace OpenMS
+ 
+   std::string MzMLSpectrumDecoder::domParseString_(const std::string& in, std::vector<BinaryData>& data)
+   {
+-    // PRECONDITON is below (since we first need to do XML parsing before validating)
+-    // initializer list of XMLCh (= usually some type that fits utf16) from ASCII chars
+-    static constexpr XMLCh id_tag[] = {'i','d', 0};
+-    static constexpr XMLCh default_array_length_tag[] = { 'd','e','f','a','u','l','t','A','r','r','a','y','L','e','n','g','t','h', 0};
+-    static constexpr XMLCh binary_data_array_tag[] = { 'b','i','n','a','r','y','D','a','t','a','A','r','r','a','y', 0};
+-
+-    //-------------------------------------------------------------
+-    // Create parser from input string using MemBufInputSource
+-    //-------------------------------------------------------------
+-    // Xerces has to be initialised; CONCEPT/Init.cpp does so on loading the library, but a
+-    // static library (WebAssembly) links that object file only if something else calls into it
+-    static const bool xerces_initialized = (Internal::xercesInitialize(), true);
+-    (void)xerces_initialized;
+-    xercesc::MemBufInputSource myxml_buf(reinterpret_cast<const unsigned char*>(in.c_str()), in.length(), "myxml (in memory)");
+-    std::unique_ptr<xercesc::XercesDOMParser> parser = std::make_unique<xercesc::XercesDOMParser>(); // make sure it is deleted even in case of exceptions
+-    parser->setDoNamespaces(false);
+-    parser->setDoSchema(false);
+-    parser->setLoadExternalDTD(false);
+-    parser->parse(myxml_buf);
+-
+-    //-------------------------------------------------------------
+-    // Start parsing
+-    // see http://www.yolinux.com/TUTORIALS/XML-Xerces-C.html
+-    //-------------------------------------------------------------
+-
+-    // no need to free this pointer - owned by the parent parser object
+-    xercesc::DOMDocument* doc =  parser->getDocument();
+-    // Get the top-level element (needs to be <spectrum> or <chromatogram>)
+-    xercesc::DOMElement* elementRoot = doc->getDocumentElement();
+-    if (!elementRoot)
++    // The public method name is retained; Expat streams the bounded fragment
++    // directly into BinaryData rather than constructing a temporary DOM tree.
++    struct Fragment
+     {
+-      throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, in, "No root element");
+-    }
+-
+-    OPENMS_PRECONDITION(xercesc::XMLString::equals(elementRoot->getTagName(), CONST_XMLCH("spectrum")) || xercesc::XMLString::equals(elementRoot->getTagName(), CONST_XMLCH("chromatogram")),
+-          ("The input needs to contain a <spectrum> or <chromatogram> tag as root element. Got instead '" +
+-          StringUtils::toStr(Internal::unique_xerces_ptr(xercesc::XMLString::transcode(elementRoot->getTagName())).get()) + std::string("'.")).c_str())
+-
+-    // defaultArrayLength is a required attribute for the spectrum and the
+-    // chromatogram tag (but still check for it first to be safe).
+-    if (elementRoot->getAttributeNode(default_array_length_tag) == nullptr)
+-    {
+-      throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION,
+-          in, "Root element does not contain defaultArrayLength XML tag.");
+-    }
+-    int default_array_length = xercesc::XMLString::parseInt(elementRoot->getAttribute(default_array_length_tag));
+-    OpenMS::Internal::StringManager sm;
+-    std::string id = sm.convert(elementRoot->getAttribute(id_tag));
+-
+-    // Extract the binaryDataArray elements (there may be multiple) and process them
+-    xercesc::DOMNodeList* li = elementRoot->getElementsByTagName(binary_data_array_tag);
+-    for (Size i = 0; i < li->getLength(); i++)
++      XML_Parser parser;
++      std::vector<BinaryData>& data;
++      std::exception_ptr exception;
++      std::string id;
++      Size depth = 0, array_depth = 0, binary_depth = 0;
++      int length = 0;
++      bool binary_seen = false, root_complete = false;
++
++      static const char* attribute(const XML_Char** attributes, const char* name)
++      {
++        for (Size i = 0; attributes[i]; i += 2)
++        {
++          if (std::strcmp(attributes[i], name) == 0) return attributes[i + 1];
++        }
++        return "";
++      }
++      void capture() noexcept
++      {
++        if (!exception) exception = std::current_exception();
++        XML_StopParser(parser, XML_FALSE);
++      }
++      [[noreturn]] static void invalid(const char* message)
++      {
++        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", message);
++      }
++      static void XMLCALL start(void* opaque, const XML_Char* name, const XML_Char** attributes) noexcept
++      {
++        auto& s = *static_cast<Fragment*>(opaque);
++        if (s.exception) return;
++        try
++        {
++          ++s.depth;
++          const std::string_view tag(name);
++          if (s.depth == 1)
++          {
++            if (tag != "spectrum" && tag != "chromatogram") invalid("Expected spectrum or chromatogram root element");
++            const char* size = attribute(attributes, "defaultArrayLength");
++            if (!*size) invalid("Root element does not contain defaultArrayLength XML tag");
++            s.length = StringUtils::toInt32(size);
++            s.id = attribute(attributes, "id");
++          }
++          if (s.binary_depth) invalid("Invalid XML: binary must contain only text");
++          if (tag == "binaryDataArray")
++          {
++            if (s.array_depth) invalid("Nested binaryDataArray element");
++            s.array_depth = s.depth;
++            s.binary_seen = false;
++            s.data.emplace_back();
++            s.data.back().size = s.length;
++          }
++          else if (s.array_depth && s.depth == s.array_depth + 1)
++          {
++            if (tag == "binary") { s.binary_depth = s.depth; s.binary_seen = true; }
++            else if (tag == "cvParam")
++            {
++              Internal::MzMLHandlerHelper::handleBinaryDataArrayCVParam(s.data,
++                attribute(attributes, "accession"), attribute(attributes, "value"),
++                attribute(attributes, "name"), attribute(attributes, "unitAccession"));
++            }
++            else if (tag == "userParam") { std::cout << " unhandled userParam\n"; }
++            else if (tag == "referenceableParamGroupRef") { std::cout << " unhandled referenceableParamGroupRef\n"; }
++          }
++        }
++        catch (...) { s.capture(); }
++      }
++      static void XMLCALL end(void* opaque, const XML_Char*) noexcept
++      {
++        auto& s = *static_cast<Fragment*>(opaque);
++        if (s.exception) return;
++        try
++        {
++          if (s.depth == s.binary_depth) s.binary_depth = 0;
++          if (s.depth == s.array_depth)
++          {
++            if (!s.binary_seen) invalid("Invalid XML: binary element missing inside binaryDataArray");
++            s.array_depth = 0;
++          }
++          --s.depth;
++          if (s.depth == 0)
++          {
++            // Indexed offsets may include the parent's closing tags after the
++            // requested subtree; stop only after its complete root element.
++            s.root_complete = true;
++            XML_StopParser(s.parser, XML_FALSE);
++          }
++        }
++        catch (...) { s.capture(); }
++      }
++      static void XMLCALL text(void* opaque, const XML_Char* value, int length) noexcept
++      {
++        auto& s = *static_cast<Fragment*>(opaque);
++        if (s.exception) return;
++        try { if (s.binary_depth) s.data.back().base64.append(value, static_cast<Size>(length)); }
++        catch (...) { s.capture(); }
++      }
++      static void XMLCALL nontext(void* opaque) noexcept
++      {
++        auto& s = *static_cast<Fragment*>(opaque);
++        if (s.exception) return;
++        try { if (s.binary_depth) invalid("Invalid XML: binary must contain only text"); }
++        catch (...) { s.capture(); }
++      }
++    };
++    std::unique_ptr<XML_ParserStruct, decltype(&XML_ParserFree)> parser(XML_ParserCreate(nullptr), XML_ParserFree);
++    if (!parser) throw std::bad_alloc();
++    Fragment fragment{parser.get(), data, {}, {}};
++    XML_SetUserData(parser.get(), &fragment);
++    XML_SetElementHandler(parser.get(), Fragment::start, Fragment::end);
++    XML_SetCharacterDataHandler(parser.get(), Fragment::text);
++    XML_SetStartCdataSectionHandler(parser.get(), Fragment::nontext);
++    XML_SetCommentHandler(parser.get(), [](void* state, const XML_Char*) { Fragment::nontext(state); });
++    XML_SetProcessingInstructionHandler(parser.get(), [](void* state, const XML_Char*, const XML_Char*) { Fragment::nontext(state); });
++    XML_SetParamEntityParsing(parser.get(), XML_PARAM_ENTITY_PARSING_NEVER);
++    XML_SetExternalEntityRefHandler(parser.get(), [](XML_Parser, const XML_Char*, const XML_Char*, const XML_Char*, const XML_Char*) -> int { return XML_STATUS_ERROR; });
++    for (Size offset = 0;;)
+     {
+-      // Will append one single BinaryData object to data      
+-      handleBinaryDataArray_(li->item(i), data);
+-      
+-      // Set the size correctly (otherwise MzMLHandlerHelper complains).
+-      data.back().size = default_array_length;
++      const auto count = std::min<Size>(65536, in.size() - offset);
++      const bool final = offset + count == in.size();
++      const auto status = XML_Parse(parser.get(), in.data() + offset, static_cast<int>(count), final);
++      if (fragment.exception) std::rethrow_exception(fragment.exception);
++      if (status == XML_STATUS_ERROR && !fragment.root_complete) Fragment::invalid(XML_ErrorString(XML_GetErrorCode(parser.get())));
++      if (fragment.root_complete || final) break;
++      offset += count;
+     }
+-
+-    return id;
++    return fragment.id;
+   }
+ 
+   void MzMLSpectrumDecoder::domParseSpectrum(const std::string& in, OpenMS::Interfaces::SpectrumPtr& sptr)
+diff --git a/src/openms/source/FORMAT/HANDLERS/XMLAttributes.cpp b/src/openms/source/FORMAT/HANDLERS/XMLAttributes.cpp
+index 8e0937246e..923284a52f 100644
+--- a/src/openms/source/FORMAT/HANDLERS/XMLAttributes.cpp
++++ b/src/openms/source/FORMAT/HANDLERS/XMLAttributes.cpp
+@@ -9,7 +9,10 @@
+ #include <OpenMS/FORMAT/HANDLERS/XMLAttributes.h>
+ 
+ #include <xercesc/sax2/Attributes.hpp>
++#include <string_view>
+ #include <xercesc/util/XMLString.hpp>
++#include <xercesc/util/TransService.hpp>
++#include <cstring>
+ 
+ namespace OpenMS::Internal
+ {
+@@ -24,28 +27,79 @@ namespace OpenMS::Internal
+     {
+       return static_cast<const xercesc::Attributes*>(handle);
+     }
++
++    bool equalsASCII(const char16_t* wide, const char* ascii)
++    {
++      while (*ascii && *wide == static_cast<unsigned char>(*ascii))
++      {
++        ++wide;
++        ++ascii;
++      }
++      return *ascii == 0 && *wide == 0;
++    }
+   }
+ 
+   const char16_t* XMLAttributes::value(const char16_t* qname) const
+   {
++    if (pairs_)
++    {
++      const auto i = index(qname);
++      return i < 0 ? nullptr : pairs_[2 * i + 1];
++    }
+     return reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(reinterpret_cast<const ::XMLCh*>(qname)));
+   }
+ 
+   const char16_t* XMLAttributes::value(const char* qname) const
+   {
++    if (pairs_)
++    {
++      bool ascii = true;
++      for (const auto* ch = qname; *ch; ++ch)
++      {
++        if (static_cast<unsigned char>(*ch) > 127) { ascii = false; break; }
++      }
++      if (ascii)
++      {
++        // XML vocabulary names are usually ASCII; avoid allocating a transcoder.
++        for (Size i = 0; pairs_[2 * i]; ++i)
++        {
++          if (equalsASCII(pairs_[2 * i], qname)) return pairs_[2 * i + 1];
++        }
++        return nullptr;
++      }
++      // Expat names are UTF-8 regardless of the process locale.
++      const xercesc::TranscodeFromStr name(reinterpret_cast<const XMLByte*>(qname), std::strlen(qname), "UTF-8");
++      return value(reinterpret_cast<const char16_t*>(name.str()));
++    }
+     ::XMLCh* transcoded = xercesc::XMLString::transcode(qname);
+-    const ::XMLCh* val = attrs(attributes_)->getValue(transcoded);
++    const char16_t* val = value(reinterpret_cast<const char16_t*>(transcoded));
+     xercesc::XMLString::release(&transcoded);
+-    return reinterpret_cast<const char16_t*>(val);
++    return val;
+   }
+ 
+   SignedSize XMLAttributes::index(const char16_t* qname) const
+   {
++    if (pairs_)
++    {
++      for (SignedSize i = 0; pairs_[2 * i]; ++i)
++      {
++        if (std::u16string_view(pairs_[2 * i]) == qname) return i;
++      }
++      return -1;
++    }
+     return static_cast<SignedSize>(attrs(attributes_)->getIndex(reinterpret_cast<const ::XMLCh*>(qname)));
+   }
+ 
+   const char16_t* XMLAttributes::valueByIndex(Size i) const
+   {
++    if (pairs_)
++    {
++      for (Size j = 0; pairs_[2 * j]; ++j)
++      {
++        if (i == j) return pairs_[2 * j + 1];
++      }
++      return nullptr;
++    }
+     return reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(static_cast<XMLSize_t>(i)));
+   }
+ 
+diff --git a/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp b/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp
+index f1e2e89a32..8413527bd1 100644
+--- a/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp
++++ b/src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp
+@@ -15,6 +15,7 @@
+ #include <OpenMS/DATASTRUCTURES/ListUtils.h>
+ #include <OpenMS/METADATA/ProteinIdentification.h>
+ #include <OpenMS/SYSTEM/SIMDe.h>
++#include <OpenMS/SYSTEM/File.h>
+ 
+ #include <algorithm>
+ #include <bit>
+@@ -46,13 +47,16 @@ namespace OpenMS::Internal
+         error_message =std::string("While loading '") + file_ + "': " + msg;
+ 	      // test if file has the wrong extension and is therefore passed to the wrong parser
+         // only makes sense if we are loading/parsing a file
+-	      FileTypes::Type ft_name = FileHandler::getTypeByFileName(file_);
+-        FileTypes::Type ft_content = FileHandler::getTypeByContent(file_);
+-        if (ft_name != ft_content)
++        if (File::exists(file_))
+         {
+-          error_message +=std::string("\nProbable cause: The file suffix (") + FileTypes::typeToName(ft_name)
+-                          + ") does not match the file content (" + FileTypes::typeToName(ft_content) + "). "
+-                          + "Rename the file to fix this.";
++          const FileTypes::Type ft_name = FileHandler::getTypeByFileName(file_);
++          const FileTypes::Type ft_content = FileHandler::getTypeByContent(file_);
++          if (ft_name != ft_content)
++          {
++            error_message += std::string("\nProbable cause: The file suffix (") + FileTypes::typeToName(ft_name)
++                            + ") does not match the file content (" + FileTypes::typeToName(ft_content) + "). "
++                            + "Rename the file to fix this.";
++          }
+         }
+       }
+       else if (mode == STORE)
+@@ -124,6 +128,11 @@ namespace OpenMS::Internal
+     {
+     }
+ 
++    bool XMLHandler::tryOnCharactersUTF8(const char* /*chars*/, Size /*length*/)
++    {
++      return false;
++    }
++
+     void XMLHandler::writeTo(std::ostream & /*os*/)
+     {
+     }
+diff --git a/src/openms/source/FORMAT/XMLFile.cpp b/src/openms/source/FORMAT/XMLFile.cpp
+index 44c786397d..b7670c128f 100644
+--- a/src/openms/source/FORMAT/XMLFile.cpp
++++ b/src/openms/source/FORMAT/XMLFile.cpp
+@@ -13,7 +13,8 @@
+ #include <OpenMS/CONCEPT/Macros.h>
+ 
+ #include <OpenMS/FORMAT/HANDLERS/XMLHandler.h>
+-#include <OpenMS/FORMAT/HANDLERS/SAX2HandlerAdapter.h>
++#include <OpenMS/FORMAT/HANDLERS/XMLAttributes.h>
++#include <expat.h>
+ #include <OpenMS/SYSTEM/File.h>
+ #include <OpenMS/FORMAT/VALIDATORS/XMLValidator.h>
+ 
+@@ -23,8 +24,7 @@
+ #include <xercesc/framework/LocalFileInputSource.hpp>
+ #include <xercesc/framework/MemBufInputSource.hpp>
+ 
+-#include <xercesc/sax2/SAX2XMLReader.hpp>
+-#include <xercesc/sax2/XMLReaderFactory.hpp>
++#include <xercesc/util/BinInputStream.hpp>
+ 
+ #include <zlib.h>
+ #include <bzlib.h>
+@@ -34,6 +34,10 @@
+ #include <streambuf>
+ 
+ #include <memory>
++#include <array>
++#include <exception>
++#include <string_view>
++#include <vector>
+ #include <xercesc/util/XMLString.hpp>
+ 
+ using namespace std;
+@@ -78,41 +82,137 @@ private:
+       enforced_encoding_ = encoding;
+     }
+ 
+-    void parse(xercesc::InputSource* const source, XMLHandler* handler)
++    namespace
+     {
+-      unique_ptr<xercesc::SAX2XMLReader> parser(xercesc::XMLReaderFactory::createXMLReader());
++      static_assert(sizeof(XML_Char) == 1, "This adapter requires UTF-8 Expat callbacks.");
+ 
+-      parser->setFeature(xercesc::XMLUni::fgSAX2CoreNameSpaces, false);
+-      parser->setFeature(xercesc::XMLUni::fgSAX2CoreNameSpacePrefixes, false);
++      // Expat validates UTF-8 before callbacks; OpenMS handlers still consume UTF-16.
++      std::u16string utf16(std::string_view text)
++      {
++        std::u16string result;
++        result.reserve(text.size());
++        for (Size i = 0; i < text.size();)
++        {
++          unsigned char lead = static_cast<unsigned char>(text[i++]);
++          unsigned code = lead;
++          unsigned continuation = 0;
++          if (lead >= 0xf0) { code &= 0x07; continuation = 3; }
++          else if (lead >= 0xe0) { code &= 0x0f; continuation = 2; }
++          else if (lead >= 0xc0) { code &= 0x1f; continuation = 1; }
++          for (unsigned j = 0; j < continuation; ++j)
++          {
++            code = (code << 6) | (static_cast<unsigned char>(text[i++]) & 0x3f);
++          }
++          if (code > 0xffff)
++          {
++            code -= 0x10000;
++            result.push_back(static_cast<char16_t>(0xd800 + (code >> 10)));
++            result.push_back(static_cast<char16_t>(0xdc00 + (code & 0x3ff)));
++          }
++          else result.push_back(static_cast<char16_t>(code));
++        }
++        return result;
++      }
++
++      struct ExpatCallbacks
++      {
++        XML_Parser parser;
++        XMLHandler& handler;
++        std::exception_ptr exception;
++
++        template <typename Callback>
++        void invoke(Callback&& callback) noexcept
++        {
++          // Never unwind a C++ exception through Expat's C stack.
++          if (exception) return;
++          try { callback(); }
++          catch (...)
++          {
++            exception = std::current_exception();
++            XML_StopParser(parser, XML_FALSE);
++          }
++        }
++
++        static void XMLCALL start(void* data, const XML_Char* name, const XML_Char** attributes) noexcept
++        {
++          auto& self = *static_cast<ExpatCallbacks*>(data);
++          self.invoke([&]
++          {
++            const auto tag = utf16(name);
++            std::vector<std::u16string> strings;
++            for (Size i = 0; attributes[i]; ++i) strings.push_back(utf16(attributes[i]));
++            std::vector<const char16_t*> pairs;
++            pairs.reserve(strings.size() + 1);
++            for (const auto& value : strings) pairs.push_back(value.c_str());
++            pairs.push_back(nullptr);
++            self.handler.onStartElement(tag.c_str(), XMLAttributes(pairs.data()));
++          });
++        }
+ 
+-      // XMLHandler exposes only Xerces-free callbacks; bridge it to the SAX parser.
+-      SAX2HandlerAdapter adapter(*handler);
+-      parser->setContentHandler(&adapter);
+-      parser->setErrorHandler(&adapter);
++        static void XMLCALL end(void* data, const XML_Char* name) noexcept
++        {
++          auto& self = *static_cast<ExpatCallbacks*>(data);
++          self.invoke([&]
++          {
++            const auto tag = utf16(name);
++            self.handler.onEndElement(tag.c_str());
++          });
++        }
+ 
++        static void XMLCALL characters(void* data, const XML_Char* text, int length) noexcept
++        {
++          auto& self = *static_cast<ExpatCallbacks*>(data);
++          self.invoke([&]
++          {
++            if (self.handler.tryOnCharactersUTF8(text, static_cast<Size>(length))) return;
++            const auto value = utf16(std::string_view(text, static_cast<Size>(length)));
++            self.handler.onCharacters(value.c_str(), value.size());
++          });
++        }
++      };
++    }
+ 
+-      // try to parse file
++    void parse(xercesc::InputSource* source, XMLHandler* handler, const std::string& encoding)
++    {
++      // Reuse the existing bounded-memory plain/compressed streams. Xerces remains
++      // a dependency for these stream adapters, DOM readers and XSD validation.
++      unique_ptr<XML_ParserStruct, decltype(&XML_ParserFree)> parser(
++        XML_ParserCreate(encoding.empty() ? nullptr : encoding.c_str()), XML_ParserFree);
++      if (!parser) throw std::bad_alloc();
++      ExpatCallbacks callbacks{parser.get(), *handler, {}};
++      XML_SetUserData(parser.get(), &callbacks);
++      XML_SetElementHandler(parser.get(), ExpatCallbacks::start, ExpatCallbacks::end);
++      XML_SetCharacterDataHandler(parser.get(), ExpatCallbacks::characters);
++      // Ordinary OpenMS SAX reads use qualified names without namespace expansion.
++      // External entities are rejected; parameter entity parsing is disabled.
++      XML_SetParamEntityParsing(parser.get(), XML_PARAM_ENTITY_PARSING_NEVER);
++      XML_SetExternalEntityRefHandler(parser.get(), [](XML_Parser, const XML_Char*, const XML_Char*, const XML_Char*, const XML_Char*) -> int { return XML_STATUS_ERROR; });
+       try
+       {
+-        parser->parse(*source);
+-      }
+-      catch (const xercesc::XMLException& toCatch)
+-      {
+-        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "",std::string("XMLException: ") + StringManager().convert(toCatch.getMessage()));
+-      }
+-      catch (const xercesc::SAXException& toCatch)
+-      {
+-        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "",std::string("SAXException: ") + StringManager().convert(toCatch.getMessage()));
++        unique_ptr<xercesc::BinInputStream> stream(source->makeStream());
++        if (!stream) throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "Cannot open XML input stream");
++        std::array<XMLByte, 65536> buffer;
++        for (;;)
++        {
++          const auto length = stream->readBytes(buffer.data(), buffer.size());
++          const auto status = XML_Parse(parser.get(), reinterpret_cast<const char*>(buffer.data()), static_cast<int>(length), length == 0);
++          if (callbacks.exception) std::rethrow_exception(callbacks.exception);
++          if (status == XML_STATUS_ERROR)
++          {
++            handler->fatalError(XMLHandler::LOAD, XML_ErrorString(XML_GetErrorCode(parser.get())),
++                                static_cast<UInt>(XML_GetCurrentLineNumber(parser.get())),
++                                static_cast<UInt>(XML_GetCurrentColumnNumber(parser.get()) + 1));
++          }
++          if (length == 0) break;
++        }
+       }
+-      catch (const XMLHandler::EndParsingSoftly& /*toCatch*/)
++      catch (const xercesc::XMLException& error)
+       {
+-        // nothing to do here, as this exception is used to softly abort the
+-        // parsing for whatever reason.
++        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", StringManager::convert(error.getMessage()));
+       }
+-      catch (...)
++      catch (const XMLHandler::EndParsingSoftly&)
+       {
+-        // re-throw
+-        throw;
++        // Expected early termination (metadata/size-only reads).
+       }
+     }
+ 
+@@ -145,10 +245,10 @@ private:
+       std::string bz;
+       {
+         std::ifstream file(filename.c_str());
+-        char tmp_bz[3];
++        char tmp_bz[3] = {};
+         file.read(tmp_bz, 2);
+         tmp_bz[2] = '\0';
+-        bz =std::string(tmp_bz);
++        bz = std::string(tmp_bz, 2);
+       }
+ 
+       unique_ptr<xercesc::InputSource> source;
+@@ -168,14 +268,7 @@ private:
+       {
+         source.reset(new xercesc::LocalFileInputSource(sm.convert(filename).c_str()));
+       }
+-      // what if no encoding given http://xerces.apache.org/xerces-c/apiDocs-3/classInputSource.html
+-      if (!enforced_encoding_.empty())
+-      {
+-        static const XMLCh* s_enc = xercesc::XMLString::transcode(enforced_encoding_.c_str());
+-        source->setEncoding(s_enc);
+-      }
+-      
+-      parse(source.get(), handler);
++      parse(source.get(), handler, enforced_encoding_);
+     }
+ 
+     void XMLFile::parseBuffer_(const std::string & buffer, XMLHandler * handler)
+@@ -206,14 +299,7 @@ private:
+         auto fake_id = sm.convert("inMemory");
+         source.reset(new xercesc::MemBufInputSource(reinterpret_cast<const unsigned char *>(buffer.c_str()), buffer.size(), fake_id.c_str()));
+       }
+-      // what if no encoding given http://xerces.apache.org/xerces-c/apiDocs-3/classInputSource.html
+-      if (!enforced_encoding_.empty())
+-      {
+-        static const XMLCh* s_enc = xercesc::XMLString::transcode(enforced_encoding_.c_str());
+-        source->setEncoding(s_enc);
+-      }
+-      
+-      parse(source.get(), handler);
++      parse(source.get(), handler, enforced_encoding_);
+     }
+ 
+     void XMLFile::save_(const std::string & filename, XMLHandler * handler) const
+diff --git a/src/tests/class_tests/openms/executables.cmake b/src/tests/class_tests/openms/executables.cmake
+index 7fd95a265f..3b31ae85bb 100644
+--- a/src/tests/class_tests/openms/executables.cmake
++++ b/src/tests/class_tests/openms/executables.cmake
+@@ -307,6 +307,7 @@ set(format_executables_list
+   UnimodXMLFile_test
+   XMassFile_test
+   XMLFile_test
++  ExpatXMLFile_test
+   XMLHandler_test
+   XMLValidator_test
+   XQuestResultXMLFile_test
+diff --git a/src/tests/class_tests/openms/source/ExpatXMLFile_test.cpp b/src/tests/class_tests/openms/source/ExpatXMLFile_test.cpp
+new file mode 100644
+index 0000000000..e113e24402
+--- /dev/null
++++ b/src/tests/class_tests/openms/source/ExpatXMLFile_test.cpp
+@@ -0,0 +1,267 @@
++// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
++// SPDX-License-Identifier: BSD-3-Clause
++// --------------------------------------------------------------------------
++// $Maintainer: Timo Sachsenberg $
++// --------------------------------------------------------------------------
++
++#include <OpenMS/CONCEPT/ClassTest.h>
++#include <OpenMS/FORMAT/XMLFile.h>
++#include <OpenMS/FORMAT/HANDLERS/XMLHandler.h>
++#include <OpenMS/FORMAT/HANDLERS/XMLAttributes.h>
++#include <OpenMS/FORMAT/HANDLERS/MzMLSpectrumDecoder.h>
++#include <OpenMS/FORMAT/HANDLERS/IndexedMzMLDecoder.h>
++#include <OpenMS/test_config.h>
++
++#include <atomic>
++#include <cstdio>
++#include <fstream>
++#include <thread>
++#include <vector>
++
++using namespace OpenMS;
++using namespace OpenMS::Internal;
++
++namespace
++{
++  struct Reader : XMLFile
++  {
++    using XMLFile::parse_;
++    using XMLFile::parseBuffer_;
++    using XMLFile::enforceEncoding_;
++    using XMLFile::save_;
++  };
++
++  struct FragmentReader : MzMLSpectrumDecoder
++  {
++    using MzMLSpectrumDecoder::BinaryData;
++    using MzMLSpectrumDecoder::domParseString_;
++  };
++  struct FooterReader : IndexedMzMLDecoder
++  {
++    using IndexedMzMLDecoder::domParseIndexedEnd_;
++  };
++
++  struct Handler : XMLHandler
++  {
++    Handler() : XMLHandler("ExpatXMLFile_test", "") {}
++    std::u16string text;
++    std::vector<std::u16string> tags;
++    std::vector<std::u16string> end_tags;
++    bool attributes_ok = false;
++    bool unicode_attribute_ok = false;
++    bool abort = false;
++    bool fail = false;
++    std::string document;
++    void onStartElement(const char16_t* name, const XMLAttributes& attributes) override
++    {
++      tags.emplace_back(name);
++      if (abort) throw EndParsingSoftly(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION);
++      if (fail) throw Exception::InvalidValue(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "callback sentinel", "");
++      if (tags.back() == u"p:child")
++      {
++        attributes_ok = std::u16string(attributes.value("a")) == u"\u00e4\U0001f9ea&" &&
++          std::u16string(attributes.value(u"a")) == u"\u00e4\U0001f9ea&" &&
++          attributes.index(u"a") == 0 && attributes.index(u"missing") < 0 &&
++          attributes.value("missing") == nullptr && attributes.valueByIndex(99) == nullptr &&
++          std::u16string(attributes.valueByIndex(0)) == u"\u00e4\U0001f9ea&";
++        const char16_t* unicode_value = attributes.value("\xc3\xa4");
++        unicode_attribute_ok = unicode_value && std::u16string(unicode_value) == u"unicode" &&
++          attributes.value(u"\u00e4") && std::u16string(attributes.value(u"\u00e4")) == u"unicode";
++      }
++    }
++    void onEndElement(const char16_t* name) override { end_tags.emplace_back(name); }
++    void onCharacters(const char16_t* value, Size length) override { text.append(value, length); }
++    void writeTo(std::ostream& stream) override { stream << document; }
++  };
++}
++
++START_TEST(ExpatXMLFile, "$Id$")
++
++START_SECTION((qualified names, attribute access, entities and Unicode across input chunks))
++{
++  Reader reader;
++  Handler handler;
++  const std::string padding(65500, 'x');
++  reader.parseBuffer_("<?xml version='1.0'?><root xmlns:p='urn:test'><p:child a='\xc3\xa4\xf0\x9f\xa7\xaa&amp;' \xc3\xa4='unicode'>" + padding + "\xc3\xa4\xf0\x9f\xa7\xaa&amp;<![CDATA[<tail>]]></p:child></root>", &handler);
++  TEST_EQUAL(handler.tags.size(), 2)
++  TEST_TRUE(handler.tags[1] == u"p:child")
++  TEST_TRUE(handler.attributes_ok)
++  TEST_TRUE(handler.unicode_attribute_ok)
++  TEST_TRUE(handler.end_tags == std::vector<std::u16string>({u"p:child", u"root"}))
++  TEST_TRUE(handler.text == std::u16string(65500, u'x') + u"\u00e4\U0001f9ea&<tail>")
++}
++END_SECTION
++
++START_SECTION((malformed XML and callback exception propagation))
++{
++  Reader reader;
++  Handler handler;
++  TEST_EXCEPTION(Exception::ParseError, reader.parseBuffer_("<root><child></root>", &handler))
++  TEST_EXCEPTION(Exception::ParseError, reader.parseBuffer_("", &handler))
++  TEST_EXCEPTION(Exception::ParseError, reader.parseBuffer_("<root>\xff</root>", &handler))
++  handler.fail = true;
++  TEST_EXCEPTION(Exception::InvalidValue, reader.parseBuffer_("<root/>", &handler))
++  handler.fail = false;
++  handler.abort = true;
++  // Soft abort must succeed even though the remainder is malformed.
++  reader.parseBuffer_("<root><bad", &handler);
++  handler.abort = false;
++  reader.parseBuffer_("<root/>", &handler);
++}
++END_SECTION
++
++START_SECTION((explicit encoding is applied per reader))
++{
++  Reader reader;
++  Handler latin;
++  reader.enforceEncoding_("ISO-8859-1");
++  reader.parseBuffer_("<root>\xe4</root>", &latin);
++  TEST_TRUE(latin.text == u"\u00e4")
++  Handler utf8;
++  reader.enforceEncoding_("UTF-8");
++  reader.parseBuffer_("<root>\xc3\xa4</root>", &utf8);
++  TEST_TRUE(utf8.text == u"\u00e4")
++}
++END_SECTION
++
++START_SECTION((UTF-16 declaration and entity policy))
++{
++  Reader reader;
++  Handler unicode;
++  const std::u16string document = u"<?xml version='1.0' encoding='UTF-16'?><root>\u00e4\U0001f9ea</root>";
++  std::string encoded = "\xff\xfe";
++  for (char16_t unit : document)
++  {
++    encoded.push_back(static_cast<char>(unit & 0xff));
++    encoded.push_back(static_cast<char>(unit >> 8));
++  }
++  reader.parseBuffer_(encoded, &unicode);
++  TEST_TRUE(unicode.text == u"\u00e4\U0001f9ea")
++  Handler internal;
++  reader.parseBuffer_("<!DOCTYPE root [<!ENTITY text 'internal'>]><root>&text;</root>", &internal);
++  TEST_TRUE(internal.text == u"internal")
++  Handler external;
++  TEST_EXCEPTION(Exception::ParseError, reader.parseBuffer_("<!DOCTYPE root [<!ENTITY text SYSTEM 'must-not-open'>]><root>&text;</root>", &external))
++}
++END_SECTION
++
++START_SECTION((plain, gzip, bzip2 and ZIP inputs))
++{
++  Reader reader;
++  Handler writer;
++  writer.document = "<root>compressed text</root>";
++  std::string path;
++  NEW_TMP_FILE(path)
++  for (const std::string suffix : {"", ".gz", ".bz2"})
++  {
++    const auto filename = path + suffix;
++    reader.save_(filename, &writer);
++    Handler parsed;
++    reader.parse_(filename, &parsed);
++    TEST_TRUE(parsed.text == u"compressed text")
++    std::remove(filename.c_str());
++  }
++  Handler zipped;
++  reader.parse_(OPENMS_GET_TEST_DATA_PATH("Deisotoper_input1.mzML.zip"), &zipped);
++  TEST_TRUE(!zipped.tags.empty())
++}
++END_SECTION
++
++START_SECTION((Expat indexed fragments preserve metadata and accept large binary text))
++{
++  FragmentReader reader;
++  std::vector<FragmentReader::BinaryData> arrays;
++  const std::string binary(13 * 1024 * 1024, 'A');
++  const auto id = reader.domParseString_("<spectrum id='scan=\xc3\xa4&amp;1' defaultArrayLength='1277952'><binaryDataArrayList><binaryDataArray>"
++    "<cvParam accession='MS:1000523' value=''/><cvParam accession='MS:1000514' value=''/>"
++    "<binary>" + binary + "</binary></binaryDataArray></binaryDataArrayList></spectrum>", arrays);
++  TEST_EQUAL(id, "scan=\xc3\xa4&1")
++  TEST_EQUAL(arrays.size(), 1)
++  ABORT_IF(arrays.empty())
++  TEST_EQUAL(arrays[0].size, 1277952)
++  TEST_EQUAL(arrays[0].base64, binary)
++  std::vector<FragmentReader::BinaryData> framed;
++  TEST_EQUAL(reader.domParseString_("<spectrum id='frame' defaultArrayLength='0'/></spectrumList><chromatogramList>", framed), "frame")
++  TEST_EXCEPTION(Exception::ParseError, reader.domParseString_("<spectrum defaultArrayLength='0'><binaryDataArray/></spectrum>", arrays))
++  TEST_EXCEPTION(Exception::ParseError, reader.domParseString_("<spectrum defaultArrayLength='0'><binaryDataArray><binary><bad/></binary></binaryDataArray></spectrum>", arrays))
++  TEST_EXCEPTION(Exception::ParseError, reader.domParseString_("<spectrum defaultArrayLength='0'><binaryDataArray><binary><![CDATA[AAAA]]></binary></binaryDataArray></spectrum>", arrays))
++  TEST_EXCEPTION(Exception::ParseError, reader.domParseString_("<spectrum defaultArrayLength='0'><binaryDataArray><binary>AAAA<!--bad--></binary></binaryDataArray></spectrum>", arrays))
++  TEST_EXCEPTION(Exception::ParseError, reader.domParseString_("<spectrum defaultArrayLength='0'><broken></spectrum>", arrays))
++  TEST_EXCEPTION(Exception::ParseError, reader.domParseString_("<spectrum/>", arrays))
++}
++END_SECTION
++
++START_SECTION((Expat index footer handles Unicode, entities, offset conversion and failures))
++{
++  FooterReader reader;
++  IndexedMzMLDecoder::OffsetVector spectra, chromatograms;
++  const std::string footer = "<indexedmzML><indexList count='2'><index name='spectrum'>"
++    "<offset idRef='scan=\xc3\xa4&amp;1'>123456789012</offset></index>"
++    "<index name='chromatogram'><offset idRef='TIC'>42</offset></index>"
++    "</indexList><indexListOffset>1</indexListOffset></indexedmzML>";
++  TEST_EQUAL(reader.domParseIndexedEnd_(footer, spectra, chromatograms), 0)
++  TEST_EQUAL(spectra.size(), 1)
++  TEST_EQUAL(chromatograms.size(), 1)
++  ABORT_IF(spectra.empty() || chromatograms.empty())
++  TEST_EQUAL(spectra[0].first, "scan=\xc3\xa4&1")
++  TEST_EQUAL(spectra[0].second, std::streampos(123456789012LL))
++  TEST_EQUAL(chromatograms[0].second, std::streampos(42))
++  TEST_EQUAL(reader.domParseIndexedEnd_("<root><indexList/><indexList/></root>", spectra, chromatograms), -1)
++  TEST_EQUAL(reader.domParseIndexedEnd_("<root><indexList><index name='invalid'/></indexList></root>", spectra, chromatograms), -1)
++  TEST_EXCEPTION(Exception::ConversionError, reader.domParseIndexedEnd_("<root><indexList><index name='spectrum'><offset>bad</offset></index></indexList></root>", spectra, chromatograms))
++  TEST_EXCEPTION(Exception::ParseError, reader.domParseIndexedEnd_("<root><indexList></root>", spectra, chromatograms))
++}
++END_SECTION
++
++START_SECTION((independent concurrent parser instances))
++{
++  std::atomic<bool> correct{true};
++  std::vector<std::thread> workers;
++  for (int i = 0; i < 8; ++i)
++  {
++    workers.emplace_back([&]
++    {
++      try
++      {
++        for (int j = 0; j < 25; ++j)
++        {
++          Reader reader;
++          Handler handler;
++          reader.parseBuffer_("<root>parallel \xf0\x9f\xa7\xaa</root>", &handler);
++          if (handler.text != u"parallel \U0001f9ea") correct = false;
++          FragmentReader fragments;
++          std::vector<FragmentReader::BinaryData> arrays;
++          if (fragments.domParseString_("<spectrum id='thread' defaultArrayLength='1'><binaryDataArray><binary>AAAA</binary></binaryDataArray></spectrum>", arrays) != "thread" ||
++              arrays.size() != 1 || arrays[0].base64 != "AAAA") correct = false;
++          FooterReader footer;
++          IndexedMzMLDecoder::OffsetVector spectra, chromatograms;
++          if (footer.domParseIndexedEnd_("<root><indexList><index name='spectrum'><offset idRef='thread'>42</offset></index></indexList></root>", spectra, chromatograms) != 0 ||
++              spectra.size() != 1 || spectra[0].second != std::streampos(42)) correct = false;
++        }
++      }
++      catch (...) { correct = false; }
++    });
++  }
++  for (auto& worker : workers) worker.join();
++  TEST_TRUE(correct.load())
++}
++END_SECTION
++
++START_SECTION(Native ASCII attribute lookup and UTF8 fallback)
++{
++  const char16_t* pairs[]{u"id", u"one", u"idRef", u"two", u"β", u"unicode", u"naïve", u"accent", nullptr};
++  const Internal::XMLAttributes attributes(pairs);
++  TEST_TRUE(attributes.value(u"id") != nullptr)
++  TEST_TRUE(attributes.value("id") == attributes.value(u"id"))
++  TEST_TRUE(attributes.value("idRef") == attributes.value(u"idRef"))
++  TEST_TRUE(attributes.value("idR") == nullptr)
++  TEST_TRUE(attributes.value("idReference") == nullptr)
++  TEST_TRUE(attributes.value("") == nullptr)
++  TEST_TRUE(attributes.value("missing") == nullptr)
++  TEST_TRUE(attributes.value(u"β") != nullptr)
++  TEST_TRUE(attributes.value("β") == attributes.value(u"β"))
++  TEST_TRUE(attributes.value("naïve") == attributes.value(u"naïve"))
++  TEST_TRUE(attributes.value("βmissing") == nullptr)
++}
++END_SECTION
++END_TEST
+diff --git a/src/tests/class_tests/openms/source/IndexedMzMLDecoder_test.cpp b/src/tests/class_tests/openms/source/IndexedMzMLDecoder_test.cpp
+index e4192fb29f..a9a470340f 100644
+--- a/src/tests/class_tests/openms/source/IndexedMzMLDecoder_test.cpp
++++ b/src/tests/class_tests/openms/source/IndexedMzMLDecoder_test.cpp
+@@ -94,6 +94,57 @@ END_SECTION
+ 
+     
+ 
++START_SECTION(([EXTRA] Tiny files clamp footer reads and parse directly from one buffer))
++  std::string filename;
++  NEW_TMP_FILE(filename)
++  const std::string footer = "<indexList count='1'><index name='spectrum'><offset idRef='tiny'>37</offset>"
++    "</index></indexList><indexListOffset>0</indexListOffset></indexedmzML>";
++  { std::ofstream output(filename, std::ios::binary); output << footer; }
++  IndexedMzMLDecoder decoder;
++  TEST_EQUAL(decoder.findIndexListOffset(filename), 0)
++  TEST_EQUAL(decoder.findIndexListOffset(filename, 1), -1)
++  TEST_EQUAL(decoder.findIndexListOffset(filename, 0), -1)
++  TEST_EQUAL(decoder.findIndexListOffset(filename, -17), -1)
++  IndexedMzMLDecoder::OffsetVector spectra, chromatograms;
++  TEST_EQUAL(decoder.parseOffsets(filename, 0, spectra, chromatograms), 0)
++  TEST_EQUAL(spectra.size(), 1)
++  if (!spectra.empty())
++  {
++    TEST_STRING_EQUAL(spectra[0].first, "tiny")
++    TEST_EQUAL(spectra[0].second, 37)
++  }
++  TEST_TRUE(chromatograms.empty())
++  TEST_EQUAL(decoder.parseOffsets(filename, -1, spectra, chromatograms), -1)
++  TEST_EQUAL(decoder.parseOffsets(filename, std::streampos(footer.size()), spectra, chromatograms), -1)
++  TEST_EQUAL(decoder.parseOffsets(filename, std::streampos(footer.size() + 1), spectra, chromatograms), -1)
++END_SECTION
++
++START_SECTION(([EXTRA] Empty missing and truncated footer tokens return no offset))
++  std::string filename;
++  NEW_TMP_FILE(filename)
++  IndexedMzMLDecoder decoder;
++  for (const std::string& text : {std::string(), std::string("<root/>"), std::string("<indexListOff"),
++       std::string("<indexListOffset></indexListOffset>"), std::string("<indexListOffset>-1</indexListOffset>")})
++  {
++    { std::ofstream output(filename, std::ios::binary); output << text; }
++    TEST_EQUAL(decoder.findIndexListOffset(filename), -1)
++  }
++  // A file truncated to empty must be rejected before entering a backend DOM parser.
++  { std::ofstream output(filename, std::ios::binary); }
++  IndexedMzMLDecoder::OffsetVector spectra, chromatograms;
++  TEST_EQUAL(decoder.parseOffsets(filename, 0, spectra, chromatograms), -1)
++END_SECTION
++
++START_SECTION(([EXTRA] Namespaced footer pattern and overflowing offsets preserve conversion semantics))
++  std::string filename;
++  NEW_TMP_FILE(filename)
++  IndexedMzMLDecoder decoder;
++  { std::ofstream output(filename, std::ios::binary); output << "<ns:indexListOffset > 123</ns:indexListOffset>"; }
++  TEST_EQUAL(decoder.findIndexListOffset(filename), 123)
++  { std::ofstream output(filename, std::ios::binary); output << "<indexListOffset>" << std::string(100, '9') << "</indexListOffset>"; }
++  TEST_EXCEPTION(Exception::ConversionError, decoder.findIndexListOffset(filename))
++END_SECTION
++
+ /////////////////////////////////////////////////////////////
+ /////////////////////////////////////////////////////////////
+ END_TEST
+diff --git a/src/tests/class_tests/openms/source/MzMLSpectrumDecoder_test.cpp b/src/tests/class_tests/openms/source/MzMLSpectrumDecoder_test.cpp
+index 2d95c78d3b..89d34cb724 100644
+--- a/src/tests/class_tests/openms/source/MzMLSpectrumDecoder_test.cpp
++++ b/src/tests/class_tests/openms/source/MzMLSpectrumDecoder_test.cpp
+@@ -389,7 +389,7 @@ START_SECTION(([EXTRA] void domParseSpectrum(std::string& in, OpenMS::Interfaces
+             <cvParam cvRef="MS" accession="MS:1000576" name="no compression" value=""/>
+             <cvParam cvRef="MS" accession="MS:1000514" name="m/z array" unitAccession="MS:1000040" unitName="m/z" unitCvRef="MS"/>
+             <binary>
+-              whoPutMeHere: some crazy person, obviously! What if I contain invalid characters like these &- 
++              whoPutMeHere: some crazy person, obviously! What if I contain invalid characters like these &amp;-
+             </binary>
+           </binaryDataArray>
+         </binaryDataArrayList>
+diff --git a/src/tests/class_tests/openms/source/XMLHandler_test.cpp b/src/tests/class_tests/openms/source/XMLHandler_test.cpp
+index 0aaa8428bb..9534202c4c 100644
+--- a/src/tests/class_tests/openms/source/XMLHandler_test.cpp
++++ b/src/tests/class_tests/openms/source/XMLHandler_test.cpp
+@@ -5,6 +5,9 @@
+ #include <OpenMS/DATASTRUCTURES/ListUtils.h>
+ 
+ #include <OpenMS/FORMAT/HANDLERS/XMLHandler.h>
++#include <OpenMS/FORMAT/HANDLERS/MzMLHandler.h>
++#include <OpenMS/FORMAT/MzMLFile.h>
++#include <OpenMS/FORMAT/XMLFile.h>
+ 
+ class StringManager_test : public OpenMS::Internal::StringManager
+ {
+@@ -24,6 +27,40 @@ using namespace OpenMS::Internal;
+ 
+ 
+ 
++namespace
++{
++  struct CharacterSpy : OpenMS::Internal::XMLHandler
++  {
++    CharacterSpy() : XMLHandler("memory", "1.0") {}
++    std::u16string text;
++    void onCharacters(const char16_t* chars, OpenMS::Size length) override { text.append(chars, length); }
++  };
++
++  struct BufferReader : OpenMS::Internal::XMLFile
++  {
++    using XMLFile::parseBuffer_;
++  };
++
++  struct MzMLCharacterSpy : OpenMS::Internal::MzMLHandler
++  {
++    MzMLCharacterSpy(OpenMS::MSExperiment& experiment, const OpenMS::ProgressLogger& logger) :
++      MzMLHandler(experiment, "memory", "1.1.0", logger) {}
++    std::u16string text;
++    void onStartElement(const char16_t*, const OpenMS::Internal::XMLAttributes&) override {}
++    void onEndElement(const char16_t*) override {}
++    void onCharacters(const char16_t* chars, OpenMS::Size length) override { text.append(chars, length); }
++    void prepareBinary(bool fill)
++    {
++      options_.setFillData(fill);
++      open_tags_.assign(1, "binary");
++      bin_data_.clear();
++      bin_data_.emplace_back();
++    }
++    void appendUTF16(const char16_t* chars, OpenMS::Size length) { MzMLHandler::onCharacters(chars, length); }
++    const std::string& payload() const { return bin_data_.back().base64; }
++  };
++}
++
+ START_TEST(StringManager, "$Id$")
+ 
+ 
+@@ -153,6 +190,72 @@ START_SECTION(strLength(const XMLCh* input_ptr))
+     TEST_EQUAL(o_length, 0);
+ END_SECTION
+ 
++START_SECTION((UTF8 fast-path default preserves existing UTF16 virtual callbacks))
++  CharacterSpy handler;
++  TEST_FALSE(handler.tryOnCharactersUTF8("plain", 5))
++  TEST_FALSE(handler.tryOnCharactersUTF8("β🧬", std::string("β🧬").size()))
++  TEST_TRUE(handler.text.empty())
++  BufferReader reader;
++  reader.parseBuffer_("<root>β🧬 &amp;</root>", &handler);
++  TEST_EQUAL(handler.text == u"β🧬 &", true)
++END_SECTION
++
++START_SECTION((MzML UTF8 opt-in preserves a derived handler UTF16 override))
++  OpenMS::MSExperiment experiment;
++  OpenMS::ProgressLogger logger;
++  OpenMS::Internal::MzMLHandler exact(experiment, "memory", "1.1.0", logger);
++  TEST_TRUE(exact.tryOnCharactersUTF8(nullptr, 0))
++  TEST_TRUE(exact.tryOnCharactersUTF8("plain", 5))
++  TEST_FALSE(exact.tryOnCharactersUTF8("β🧬", std::string("β🧬").size()))
++  MzMLCharacterSpy derived(experiment, logger);
++  TEST_FALSE(derived.tryOnCharactersUTF8("plain", 5))
++  TEST_FALSE(derived.tryOnCharactersUTF8("β🧬", std::string("β🧬").size()))
++  BufferReader reader;
++  reader.parseBuffer_("<root>plain β🧬</root>", &derived);
++  TEST_EQUAL(derived.text == u"plain β🧬", true)
++END_SECTION
++
++START_SECTION((Metadata-only UTF16 callbacks do not retain discarded base64 payloads))
++  OpenMS::MSExperiment experiment;
++  OpenMS::ProgressLogger logger;
++  MzMLCharacterSpy handler(experiment, logger);
++  handler.prepareBinary(false);
++  handler.appendUTF16(u"AAAAAAAAAAA=", 12);
++  TEST_TRUE(handler.payload().empty())
++  handler.prepareBinary(true);
++  handler.appendUTF16(u"AAAAAAAAAAA=", 12);
++  TEST_STRING_EQUAL(handler.payload(), "AAAAAAAAAAA=")
++END_SECTION
++
++START_SECTION((Skipping binary accumulation preserves mzML spectrum and chromatogram metadata))
++  OpenMS::MSExperiment full, metadata;
++  OpenMS::MzMLFile file;
++  const std::string path = OPENMS_GET_TEST_DATA_PATH("MzMLFile_1.mzML");
++  file.load(path, full);
++  auto options = file.getOptions();
++  options.setFillData(false);
++  file.setOptions(options);
++  file.load(path, metadata);
++  TEST_EQUAL(full.size(), metadata.size())
++  TEST_EQUAL(full.getChromatograms().size(), metadata.getChromatograms().size())
++  for (OpenMS::Size i = 0; i < metadata.size(); ++i)
++  {
++    TEST_TRUE(metadata[i].empty())
++    TEST_EQUAL(metadata[i].getRT(), full[i].getRT())
++    TEST_EQUAL(metadata[i].getMSLevel(), full[i].getMSLevel())
++    TEST_STRING_EQUAL(metadata[i].getNativeID(), full[i].getNativeID())
++    TEST_EQUAL(metadata[i].getPrecursors() == full[i].getPrecursors(), true)
++    TEST_EQUAL(metadata[i].getProducts() == full[i].getProducts(), true)
++  }
++  for (OpenMS::Size i = 0; i < metadata.getChromatograms().size(); ++i)
++  {
++    TEST_TRUE(metadata.getChromatograms()[i].empty())
++    TEST_STRING_EQUAL(metadata.getChromatograms()[i].getNativeID(), full.getChromatograms()[i].getNativeID())
++    TEST_EQUAL(metadata.getChromatograms()[i].getPrecursor() == full.getChromatograms()[i].getPrecursor(), true)
++    TEST_EQUAL(metadata.getChromatograms()[i].getProduct() == full.getChromatograms()[i].getProduct(), true)
++  }
++END_SECTION
++
+ END_TEST
+ 
+ 
+diff --git a/tools/xml-parser-benchmark/CMakeLists.txt b/tools/xml-parser-benchmark/CMakeLists.txt
+new file mode 100644
+index 0000000000..5003d76037
+--- /dev/null
++++ b/tools/xml-parser-benchmark/CMakeLists.txt
+@@ -0,0 +1,21 @@
++cmake_minimum_required(VERSION 3.24)
++project(OpenMSXMLParserBenchmark LANGUAGES CXX)
++
++find_package(OpenMS CONFIG REQUIRED)
++find_package(Threads REQUIRED)
++add_executable(xml_parser_benchmark benchmark.cpp)
++target_compile_features(xml_parser_benchmark PRIVATE cxx_std_23)
++target_link_libraries(xml_parser_benchmark PRIVATE OpenMS::OpenMS Threads::Threads ${CMAKE_DL_LIBS})
++add_executable(xml_schema_validation_probe schema_validation_probe.cpp)
++target_compile_features(xml_schema_validation_probe PRIVATE cxx_std_23)
++target_link_libraries(xml_schema_validation_probe PRIVATE OpenMS::OpenMS)
++if(UNIX)
++  add_executable(xml_benchmark_launcher launcher.cpp)
++  target_compile_features(xml_benchmark_launcher PRIVATE cxx_std_17)
++endif()
++
++enable_testing()
++find_package(Python3 REQUIRED COMPONENTS Interpreter)
++add_test(NAME xml_benchmark_smoke
++  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_benchmark.py
++    $<TARGET_FILE:xml_parser_benchmark>)
+diff --git a/tools/xml-parser-benchmark/benchmark.cpp b/tools/xml-parser-benchmark/benchmark.cpp
+new file mode 100644
+index 0000000000..688c5befde
+--- /dev/null
++++ b/tools/xml-parser-benchmark/benchmark.cpp
+@@ -0,0 +1,375 @@
++// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
++// SPDX-License-Identifier: BSD-3-Clause
++// $Maintainer: Timo Sachsenberg $
++// $Authors: OpenMS contributors $
++
++#include <OpenMS/FORMAT/DATAACCESS/MSDataWritingConsumer.h>
++#include <OpenMS/FORMAT/MzMLFile.h>
++#include <OpenMS/INTERFACES/IMSDataConsumer.h>
++#include <OpenMS/KERNEL/MSExperiment.h>
++#include <OpenMS/KERNEL/OnDiscMSExperiment.h>
++
++#include <barrier>
++#include <bit>
++#include <chrono>
++#include <cmath>
++#include <cstdint>
++#include <exception>
++#include <filesystem>
++#include <fstream>
++#include <iomanip>
++#include <iostream>
++#include <memory>
++#include <random>
++#include <stdexcept>
++#include <string>
++#include <thread>
++#include <vector>
++#if defined(__APPLE__)
++#include <mach-o/dyld.h>
++#include <mach/mach.h>
++#elif defined(__linux__)
++#include <link.h>
++#include <unistd.h>
++#endif
++
++namespace
++{
++  using Clock = std::chrono::steady_clock;
++
++  std::uint64_t currentRssBytes()
++  {
++#if defined(__APPLE__)
++    mach_task_basic_info_data_t info{};
++    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
++    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
++                  reinterpret_cast<task_info_t>(&info), &count) == KERN_SUCCESS)
++    {
++      return info.resident_size;
++    }
++#elif defined(__linux__)
++    std::ifstream statm("/proc/self/statm");
++    std::uint64_t virtual_pages = 0, resident_pages = 0;
++    if (statm >> virtual_pages >> resident_pages)
++    {
++      return resident_pages * static_cast<std::uint64_t>(sysconf(_SC_PAGESIZE));
++    }
++#endif
++    return 0;
++  }
++
++  std::string loadedLibrary()
++  {
++    std::string result;
++#if defined(__APPLE__)
++    for (std::uint32_t i = 0; i < _dyld_image_count(); ++i)
++    {
++      const std::string path(_dyld_get_image_name(i));
++      if (std::filesystem::path(path).filename() == "libOpenMS.dylib") { result = path; }
++    }
++#elif defined(__linux__)
++    dl_iterate_phdr([](dl_phdr_info* info, std::size_t, void* data)
++    {
++      const std::string path(info->dlpi_name);
++      if (std::filesystem::path(path).filename().string().starts_with("libOpenMS.so"))
++      {
++        *static_cast<std::string*>(data) = path;
++      }
++      return 0;
++    }, &result);
++#endif
++    return result;
++  }
++
++  // Hash every decoded coordinate/intensity, independently of XML text formatting.
++  struct Digest final : OpenMS::Interfaces::IMSDataConsumer
++  {
++    std::uint64_t hash = 14695981039346656037ULL;
++    std::uint64_t spectra = 0, chromatograms = 0, points = 0;
++
++    void word(std::uint64_t value)
++    {
++      for (unsigned i = 0; i < 8; ++i)
++      {
++        hash = (hash ^ ((value >> (8 * i)) & 255)) * 1099511628211ULL;
++      }
++    }
++
++    void text(const std::string& value)
++    {
++      word(value.size());
++      for (const unsigned char character : value) { hash = (hash ^ character) * 1099511628211ULL; }
++    }
++
++    void consumeSpectrum(OpenMS::MSSpectrum& spectrum) override
++    {
++      ++spectra;
++      points += spectrum.size();
++      word(1);
++      word(spectrum.size());
++      text(spectrum.getNativeID());
++      for (const auto& peak : spectrum)
++      {
++        word(std::bit_cast<std::uint64_t>(peak.getMZ()));
++        word(std::bit_cast<std::uint64_t>(static_cast<double>(peak.getIntensity())));
++      }
++    }
++
++    void consumeChromatogram(OpenMS::MSChromatogram& chromatogram) override
++    {
++      ++chromatograms;
++      points += chromatogram.size();
++      word(2);
++      word(chromatogram.size());
++      text(chromatogram.getNativeID());
++      for (const auto& peak : chromatogram)
++      {
++        word(std::bit_cast<std::uint64_t>(peak.getRT()));
++        word(std::bit_cast<std::uint64_t>(static_cast<double>(peak.getIntensity())));
++      }
++    }
++
++    void setExpectedSize(std::size_t, std::size_t) override {}
++    void setExperimentalSettings(const OpenMS::ExperimentalSettings&) override {}
++    bool operator==(const Digest& other) const
++    {
++      return hash == other.hash && spectra == other.spectra &&
++        chromatograms == other.chromatograms && points == other.points;
++    }
++  };
++
++  struct Result
++  {
++    Digest digest;
++    // Keep opened contexts alive until every worker has completed.
++    std::shared_ptr<OpenMS::OnDiscMSExperiment> retained_context;
++    std::shared_ptr<OpenMS::MSExperiment> retained_experiment;
++    double open_seconds = 0;
++    double read_seconds = 0;
++    std::size_t index_spectra = 0, index_chromatograms = 0;
++  };
++
++  Result run(const std::string& mode, const std::string& path, std::size_t queries)
++  {
++    Result result;
++    const auto begin = Clock::now();
++    if (mode == "stream")
++    {
++      OpenMS::MzMLFile().transform(path, &result.digest, true, true);
++    }
++    else if (mode == "load")
++    {
++      result.retained_experiment = std::make_shared<OpenMS::MSExperiment>();
++      auto& experiment = *result.retained_experiment;
++      OpenMS::MzMLFile().load(path, experiment);
++      for (auto& spectrum : experiment) { result.digest.consumeSpectrum(spectrum); }
++      for (auto& chromatogram : experiment.getChromatograms()) { result.digest.consumeChromatogram(chromatogram); }
++    }
++    else if (mode == "idle")
++    {
++      // Warmup and worker creation are common; no input/context allocations.
++    }
++    else if (mode == "contexts" || mode == "contexts-metadata")
++    {
++      result.retained_context = std::make_shared<OpenMS::OnDiscMSExperiment>();
++      if (!result.retained_context->openFile(path, mode != "contexts-metadata"))
++      {
++        throw std::runtime_error("Input has no usable mzML index");
++      }
++      result.open_seconds = std::chrono::duration<double>(Clock::now() - begin).count();
++      result.index_spectra = result.retained_context->getNrSpectra();
++      result.index_chromatograms = result.retained_context->getNrChromatograms();
++    }
++    else if (mode == "indexed" || mode == "index-open" || mode == "indexed-metadata")
++    {
++      OpenMS::OnDiscMSExperiment experiment;
++      if (!experiment.openFile(path, mode != "indexed-metadata"))
++      {
++        throw std::runtime_error("Input has no usable mzML index");
++      }
++      const auto opened = Clock::now();
++      result.open_seconds = std::chrono::duration<double>(opened - begin).count();
++      result.index_spectra = experiment.getNrSpectra();
++      result.index_chromatograms = experiment.getNrChromatograms();
++      if (mode == "indexed" || mode == "indexed-metadata")
++      {
++        if (experiment.getNrSpectra() == 0)
++        {
++          throw std::runtime_error("Indexed input has no spectra");
++        }
++        std::mt19937_64 random(20261019);
++        for (std::size_t i = 0; i < queries; ++i)
++        {
++          auto spectrum = experiment.getSpectrum(random() % experiment.getNrSpectra());
++          result.digest.consumeSpectrum(spectrum);
++        }
++      }
++      result.read_seconds = std::chrono::duration<double>(Clock::now() - opened).count();
++    }
++    else
++    {
++      throw std::runtime_error("Expected stream, load, indexed[-metadata], index-open, contexts[-metadata], or idle");
++    }
++    if (mode == "stream" || mode == "load" || mode == "idle")
++    {
++      result.read_seconds = std::chrono::duration<double>(Clock::now() - begin).count();
++    }
++    return result;
++  }
++
++  void generate(const std::string& path, std::size_t count, std::size_t points, bool compressed)
++  {
++    OpenMS::PlainMSDataWritingConsumer writer(path);
++    OpenMS::PeakFileOptions options;
++    options.setCompression(compressed);
++    options.setWriteIndex(true);
++    writer.setOptions(options);
++    writer.setExpectedSize(count, 1);
++    writer.setExperimentalSettings(OpenMS::ExperimentalSettings());
++    std::mt19937 random(20261019);
++    for (std::size_t i = 0; i < count; ++i)
++    {
++      OpenMS::MSSpectrum spectrum;
++      spectrum.setNativeID("scan=" + std::to_string(i + 1));
++      spectrum.setRT(static_cast<double>(i) * 0.5);
++      spectrum.setMSLevel(1);
++      spectrum.setType(OpenMS::SpectrumSettings::SpectrumType::CENTROID);
++      spectrum.setMetaValue("xml_poc_note", std::string("Unicode \xCE\xB2 & <escaped> \"value\""));
++      spectrum.reserve(points);
++      for (std::size_t p = 0; p < points; ++p)
++      {
++        OpenMS::Peak1D peak;
++        peak.setMZ(100.0 + static_cast<double>(p) * 0.01 + static_cast<double>(i % 17) * 0.00001);
++        peak.setIntensity(static_cast<float>(random() % 1000000) / 8.0F);
++        spectrum.push_back(peak);
++      }
++      writer.consumeSpectrum(spectrum);
++    }
++    OpenMS::MSChromatogram chromatogram;
++    chromatogram.setNativeID("TIC");
++    for (std::size_t i = 0; i < count; ++i)
++    {
++      OpenMS::ChromatogramPeak peak;
++      peak.setRT(static_cast<double>(i) * 0.5);
++      peak.setIntensity(static_cast<float>(i % 101));
++      chromatogram.push_back(peak);
++    }
++    writer.consumeChromatogram(chromatogram);
++  }
++
++  void verify(const std::string& path)
++  {
++    OpenMS::MSExperiment loaded;
++    OpenMS::MzMLFile().load(path, loaded);
++    Digest expected;
++    for (auto& spectrum : loaded) { expected.consumeSpectrum(spectrum); }
++    for (auto& chromatogram : loaded.getChromatograms()) { expected.consumeChromatogram(chromatogram); }
++    const auto streamed = run("stream", path, 0).digest;
++    OpenMS::OnDiscMSExperiment indexed;
++    if (!indexed.openFile(path)) { throw std::runtime_error("Index verification failed"); }
++    Digest actual;
++    for (std::size_t i = 0; i < indexed.getNrSpectra(); ++i)
++    {
++      auto spectrum = indexed.getSpectrum(i);
++      const auto& original = loaded.getSpectra().at(i);
++      if (spectrum.getRT() != original.getRT() || spectrum.getMSLevel() != original.getMSLevel() ||
++          spectrum.getFloatDataArrays() != original.getFloatDataArrays() ||
++          spectrum.getIntegerDataArrays() != original.getIntegerDataArrays() ||
++          spectrum.getStringDataArrays() != original.getStringDataArrays() ||
++          spectrum.getMetaValue("xml_poc_note") != original.getMetaValue("xml_poc_note"))
++      {
++        throw std::runtime_error("Indexed spectrum metadata differ from full load");
++      }
++      actual.consumeSpectrum(spectrum);
++    }
++    for (std::size_t i = 0; i < indexed.getNrChromatograms(); ++i)
++    {
++      auto chromatogram = indexed.getChromatogram(i);
++      actual.consumeChromatogram(chromatogram);
++    }
++    if (!(expected == streamed) || !(expected == actual))
++    {
++      throw std::runtime_error("Decoded data differ between load, streaming and indexed access");
++    }
++    std::cout << "{\"verified\":true,\"spectra\":" << expected.spectra
++              << ",\"points\":" << expected.points << ",\"hash\":\"" << expected.hash << "\"}\n";
++  }
++}
++
++int main(int argc, char** argv)
++{
++  std::cerr << "XML_BENCHMARK_MAIN_STARTED\n";
++  try
++  {
++    if (argc < 3) { throw std::runtime_error("Usage: xml_parser_benchmark MODE FILE [WORKERS|SPECTRA] [QUERIES|POINTS] [ZLIB]"); }
++    const std::string mode(argv[1]), path(argv[2]);
++    const std::size_t workers = argc > 3 ? std::stoull(argv[3]) : 1;
++    const std::size_t queries = argc > 4 ? std::stoull(argv[4]) : 1000;
++    if (workers == 0) { throw std::runtime_error("Worker/spectrum count must be positive"); }
++    if (mode == "generate")
++    {
++      generate(path, workers, queries, argc > 5 && std::string(argv[5]) == "zlib");
++      return 0;
++    }
++    if (mode == "verify") { verify(path); return 0; }
++
++    // Warm shared CV/parser initialization before independent worker jobs.
++    OpenMS::MzMLFile warmup;
++    OpenMS::MSExperiment empty;
++    std::string warmup_xml;
++    warmup.storeBuffer(warmup_xml, empty);
++    warmup.loadBuffer(warmup_xml, empty);
++    std::vector<Result> results(workers);
++    std::vector<std::exception_ptr> errors(workers);
++    std::barrier start(static_cast<std::ptrdiff_t>(workers + 1));
++    std::vector<std::jthread> threads;
++    for (std::size_t i = 0; i < workers; ++i)
++    {
++      threads.emplace_back([&, i]
++      {
++        start.arrive_and_wait();
++        try { results[i] = run(mode, path, queries); }
++        catch (...) { errors[i] = std::current_exception(); }
++      });
++    }
++    const auto begin = Clock::now();
++    start.arrive_and_wait();
++    threads.clear();
++    const double seconds = std::chrono::duration<double>(Clock::now() - begin).count();
++    for (const auto& error : errors) { if (error) { std::rethrow_exception(error); } }
++    for (const auto& result : results)
++    {
++      if (!(result.digest == results.front().digest)) { throw std::runtime_error("Worker digest mismatch"); }
++      if (result.index_spectra != results.front().index_spectra ||
++          result.index_chromatograms != results.front().index_chromatograms)
++      {
++        throw std::runtime_error("Worker index count mismatch");
++      }
++    }
++    // Query after joining, while retained contexts/experiments remain alive.
++    const auto resident_rss = currentRssBytes();
++    std::cout << std::setprecision(12) << "{\"mode\":\"" << mode << "\",\"workers\":" << workers
++              << ",\"openms_library\":" << std::quoted(loadedLibrary())
++              << ",\"resident_rss_bytes\":" << resident_rss
++              << ",\"seconds\":" << seconds << ",\"file_bytes\":" << std::filesystem::file_size(path)
++              << ",\"spectra_per_worker\":" << results.front().digest.spectra
++              << ",\"chromatograms_per_worker\":" << results.front().digest.chromatograms
++              << ",\"points_per_worker\":" << results.front().digest.points
++              << ",\"index_spectra\":" << results.front().index_spectra
++              << ",\"index_chromatograms\":" << results.front().index_chromatograms
++              << ",\"hash_per_worker\":\"" << results.front().digest.hash << "\",\"jobs\":[";
++    for (std::size_t i = 0; i < workers; ++i)
++    {
++      if (i) { std::cout << ','; }
++      std::cout << "{\"open_seconds\":" << results[i].open_seconds
++                << ",\"read_seconds\":" << results[i].read_seconds << '}';
++    }
++    std::cout << "]}\n";
++  }
++  catch (const std::exception& error)
++  {
++    std::cerr << error.what() << '\n';
++    return 1;
++  }
++  return 0;
++}
+diff --git a/tools/xml-parser-benchmark/launcher.cpp b/tools/xml-parser-benchmark/launcher.cpp
+new file mode 100644
+index 0000000000..0dbb010943
+--- /dev/null
++++ b/tools/xml-parser-benchmark/launcher.cpp
+@@ -0,0 +1,35 @@
++// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
++// SPDX-License-Identifier: BSD-3-Clause
++// $Maintainer: Timo Sachsenberg $
++// $Authors: OpenMS contributors $
++
++#include <sys/stat.h>
++#include <unistd.h>
++#include <cerrno>
++#include <cstdio>
++#include <cstring>
++#include <ctime>
++#include <string>
++
++int main(int argc, char** argv)
++{
++  if (argc < 2) { return 2; }
++  // A reused PID can inherit a zero-byte file from a crashed old libomp process.
++  // libomp maps that existing file without checking its size, before main().
++  // Remove only this process's old, empty, regular file owned by this user.
++  const auto launched = std::time(nullptr);
++  const std::string path = "/tmp/__KMP_REGISTERED_LIB_" + std::to_string(getpid());
++  struct stat state {};
++  if (lstat(path.c_str(), &state) == 0 && S_ISREG(state.st_mode) &&
++      state.st_uid == getuid() && state.st_size == 0 && state.st_mtime < launched)
++  {
++    if (unlink(path.c_str()) == 0)
++    {
++      std::fprintf(stderr, "XML_BENCHMARK_REMOVED_STALE_KMP\n");
++    }
++  }
++  // exec preserves the PID and avoids inheriting a Python parent's peak RSS.
++  execv(argv[1], argv + 1);
++  std::fprintf(stderr, "Cannot execute benchmark: %s\n", std::strerror(errno));
++  return 127;
++}
+diff --git a/tools/xml-parser-benchmark/run_benchmarks.py b/tools/xml-parser-benchmark/run_benchmarks.py
+new file mode 100644
+index 0000000000..f86fb413dc
+--- /dev/null
++++ b/tools/xml-parser-benchmark/run_benchmarks.py
+@@ -0,0 +1,161 @@
++"""Run identical OpenMS workloads in fresh processes and record time/RSS/digests.
++
++Example: python run_benchmarks.py --binary build/xml_parser_benchmark \
++  --backend xerces=/snapshots/xerces/lib --backend libxml2=/snapshots/libxml2/lib \
++  --input data/medium.mzML --input data/large.mzML --output results.json
++"""
++import argparse
++from collections import defaultdict
++import hashlib
++import json
++import os
++from pathlib import Path
++import platform
++import random
++import statistics
++import subprocess
++import sys
++import tempfile
++import time
++
++
++def measured(command, environment, timeout):
++    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
++        begin = time.perf_counter()
++        process = subprocess.Popen(command, stdout=stdout, stderr=stderr, env=environment)
++        deadline = begin + timeout
++        while True:
++            child, status, usage = os.wait4(process.pid, os.WNOHANG)
++            if child:
++                break
++            if time.perf_counter() >= deadline:
++                process.kill()
++                child, status, usage = os.wait4(process.pid, 0)
++                process.returncode = os.waitstatus_to_exitcode(status)
++                raise TimeoutError(f'Benchmark timed out: {command}')
++            time.sleep(0.02)
++        process.returncode = os.waitstatus_to_exitcode(status)
++        stdout.seek(0)
++        stderr.seek(0)
++        output, errors = stdout.read().decode(), stderr.read().decode()
++        process_data = dict(process_seconds=time.perf_counter() - begin,
++                            max_rss_bytes=usage.ru_maxrss * (1 if sys.platform == 'darwin' else 1024),
++                            user_seconds=usage.ru_utime, system_seconds=usage.ru_stime,
++                            removed_stale_kmp='XML_BENCHMARK_REMOVED_STALE_KMP' in errors)
++        if process.returncode:
++            return dict(ok=False, exit_code=process.returncode,
++                        phase='main' if 'XML_BENCHMARK_MAIN_STARTED' in errors else 'startup',
++                        stdout=output[-8192:], stderr=errors[-8192:], **process_data)
++        lines = [line for line in output.splitlines() if line.startswith('{')]
++        result = json.loads(lines[-1])
++        result.update(ok=True, **process_data)
++        return result
++
++
++def sha256(path):
++    digest = hashlib.sha256()
++    with open(path, 'rb') as handle:
++        for block in iter(lambda: handle.read(1024 * 1024), b''):
++            digest.update(block)
++    return digest.hexdigest()
++
++
++def summarize(records):
++    groups = defaultdict(list)
++    for record in records:
++        groups[(record['backend'], record['input'], record['mode'], record['workers'])].append(record)
++    result = []
++    for (backend, filename, mode, workers), rows in sorted(groups.items()):
++        seconds = [row['seconds'] for row in rows]
++        rss = [row['max_rss_bytes'] / 1024 ** 2 for row in rows]
++        median = statistics.median(seconds)
++        item = dict(backend=backend, input=filename, mode=mode, workers=workers,
++                    repetitions=len(rows), seconds_median=median, seconds_min=min(seconds),
++                    seconds_max=max(seconds), rss_mib_median=statistics.median(rss),
++                    rss_mib_max=max(rss), hash_per_worker=rows[0]['hash_per_worker'])
++        if all('resident_rss_bytes' in row for row in rows):
++            item['resident_rss_mib_median'] = statistics.median(row['resident_rss_bytes'] / 1024 ** 2 for row in rows)
++        item['job_open_seconds_median'] = statistics.median(job['open_seconds'] for row in rows for job in row['jobs'])
++        item['job_read_seconds_median'] = statistics.median(job['read_seconds'] for row in rows for job in row['jobs'])
++        if mode == 'stream':
++            item['aggregate_mib_per_second'] = rows[0]['file_bytes'] * workers / median / 1024 ** 2
++        elif mode in ('indexed', 'indexed-metadata'):
++            item['aggregate_spectra_per_second'] = rows[0]['spectra_per_worker'] * workers / median
++        result.append(item)
++    return result
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--binary', required=True, type=Path)
++    parser.add_argument('--backend', required=True, action='append', help='LABEL=directory of OpenMS libraries')
++    parser.add_argument('--input', required=True, action='append', type=Path)
++    parser.add_argument('--workers', default='1,2,4,8')
++    parser.add_argument('--modes', default='stream,indexed,index-open')
++    parser.add_argument('--repetitions', type=int, default=5)
++    parser.add_argument('--queries', type=int, default=2048)
++    parser.add_argument('--timeout', type=int, default=600)
++    parser.add_argument('--startup-retries', type=int, default=1)
++    parser.add_argument('--output', required=True, type=Path)
++    arguments = parser.parse_args()
++    backends = dict(item.split('=', 1) for item in arguments.backend)
++    workers = [int(item) for item in arguments.workers.split(',')]
++    if arguments.repetitions < 1 or any(value < 1 for value in workers):
++        parser.error('Repetitions and worker counts must be positive')
++    inputs = {str(path.resolve()): dict(bytes=path.stat().st_size, sha256=sha256(path)) for path in arguments.input}
++    library_files = {label: {str(path.resolve()): sha256(path) for path in Path(directory).glob('lib*')
++                            if path.is_file()} for label, directory in backends.items()}
++    launcher = arguments.binary.resolve().with_name('xml_benchmark_launcher')
++    if not launcher.is_file():
++        parser.error('Build xml_benchmark_launcher next to the benchmark binary')
++    report = dict(platform=platform.platform(), machine=platform.machine(), python=sys.version,
++                  cpu_count=os.cpu_count(), binary=str(arguments.binary.resolve()),
++                  binary_sha256=sha256(arguments.binary), backends=backends, libraries=library_files, inputs=inputs,
++                  parameters=vars(arguments) | {'binary': str(arguments.binary),
++                    'input': [str(path) for path in arguments.input], 'output': str(arguments.output)},
++                  launcher_sha256=sha256(launcher), records=[], failures=[], summary=[])
++    matrix = [(backend, filename, mode, worker, repetition)
++              for backend in backends for filename in inputs
++              for mode in arguments.modes.split(',') for worker in workers
++              for repetition in range(arguments.repetitions)
++              if mode in ('stream', 'load', 'idle') or not filename.endswith(('.gz', '.bz2', '.zip'))]
++    random.Random(20261019).shuffle(matrix)
++    digests = {}
++    arguments.output.parent.mkdir(parents=True, exist_ok=True)
++    for number, (backend, filename, mode, worker, repetition) in enumerate(matrix, 1):
++        environment = dict(os.environ, OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1')
++        variable = 'DYLD_LIBRARY_PATH' if sys.platform == 'darwin' else 'LD_LIBRARY_PATH'
++        environment[variable] = str(Path(backends[backend]).resolve()) + os.pathsep + environment.get(variable, '')
++        command = [str(launcher), str(arguments.binary.resolve()), mode, filename, str(worker), str(arguments.queries)]
++        for attempt in range(arguments.startup_retries + 1):
++            row = measured(command, environment, arguments.timeout)
++            if row['ok']:
++                break
++            row.update(backend=backend, input=filename, mode=mode, workers=worker,
++                       repetition=repetition, attempt=attempt)
++            report['failures'].append(row)
++            arguments.output.write_text(json.dumps(report, indent=2) + '\n')
++            print(f'FAILED {backend} {Path(filename).name} {mode} x{worker}: '
++                  f'{row["phase"]}, exit {row["exit_code"]}', flush=True)
++            if row['phase'] != 'startup':
++                break
++        if not row['ok']:
++            continue
++        if not row.get('openms_library') or Path(row['openms_library']).resolve().parent != Path(backends[backend]).resolve():
++            raise RuntimeError(f'Wrong OpenMS library loaded for {backend}: {row.get("openms_library")}')
++        row.update(backend=backend, input=filename, repetition=repetition)
++        key = filename, mode
++        fingerprint = (row['hash_per_worker'], row['spectra_per_worker'], row['chromatograms_per_worker'],
++                       row['points_per_worker'], row['index_spectra'], row['index_chromatograms'])
++        if key in digests and digests[key] != fingerprint:
++            raise RuntimeError(f'Decoded-output mismatch for {key}: {digests[key]} != {fingerprint}, backend={backend}')
++        digests[key] = fingerprint
++        report['records'].append(row)
++        report['summary'] = summarize(report['records'])
++        arguments.output.write_text(json.dumps(report, indent=2) + '\n')
++        print(f'{number}/{len(matrix)} {backend} {Path(filename).name} {mode} x{worker}: '
++              f'{row["seconds"]:.3f}s, {row["max_rss_bytes"] / 1024 ** 2:.1f} MiB', flush=True)
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/tools/xml-parser-benchmark/run_openmp_scaling.py b/tools/xml-parser-benchmark/run_openmp_scaling.py
+new file mode 100644
+index 0000000000..8ab5ea29c3
+--- /dev/null
++++ b/tools/xml-parser-benchmark/run_openmp_scaling.py
+@@ -0,0 +1,77 @@
++"""Fixed-work streaming: one reader, varying OpenMP binary-decoding threads.
++
++Use a completed run_benchmarks.py report to select the identical binary,
++backend snapshots, inputs and expected decoded results. Run without other jobs.
++"""
++import argparse
++from collections import defaultdict
++import json
++import os
++from pathlib import Path
++import random
++import statistics
++import sys
++
++from run_benchmarks import measured, sha256
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--matrix', required=True, type=Path)
++    parser.add_argument('--output', required=True, type=Path)
++    parser.add_argument('--threads', default='1,2,4,8')
++    args = parser.parse_args()
++    matrix = json.loads(args.matrix.read_text())
++    thread_counts = [int(t) for t in args.threads.split(',')]
++    assert all(t > 0 for t in thread_counts)
++    binary = Path(matrix['binary'])
++    launcher = binary.with_name('xml_benchmark_launcher')
++    assert sha256(binary) == matrix['binary_sha256']
++    assert sha256(launcher) == matrix['launcher_sha256']
++    inputs = {p: data for p, data in matrix['inputs'].items()
++              if Path(p).name in ('large.mzML', 'medium-zlib.mzML')}
++    assert len(inputs) == 2
++    assert all(sha256(p) == data['sha256'] for p, data in inputs.items())
++    expected = {p: next(r['hash_per_worker'] for r in matrix['records']
++                       if r['input'] == p and r['mode'] == 'stream') for p in inputs}
++    report = {k:matrix[k] for k in ('platform','machine','binary','binary_sha256','launcher_sha256','backends','libraries')}
++    report.update(kind='fixed-work OpenMP streaming', inputs=inputs, reader_workers=1,
++                  openmp_threads=thread_counts, repetitions=5, records=[], failures=[], summary=[])
++    jobs = [(b,p,t,r) for b in matrix['backends'] for p in inputs
++            for t in thread_counts for r in range(5)]
++    random.Random(20261020).shuffle(jobs)
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    for n,(backend,filename,threads,repetition) in enumerate(jobs,1):
++        env = dict(os.environ, OMP_NUM_THREADS=str(threads), OMP_DYNAMIC='FALSE', OPENBLAS_NUM_THREADS='1')
++        variable = 'DYLD_LIBRARY_PATH' if sys.platform == 'darwin' else 'LD_LIBRARY_PATH'
++        directory = Path(matrix['backends'][backend]).resolve()
++        env[variable] = str(directory) + os.pathsep + env.get(variable,'')
++        command = [str(launcher),str(binary),'stream',filename,'1','0']
++        for attempt in range(2):
++            row = measured(command,env,600)
++            if row['ok']:
++                break
++            report['failures'].append(dict(row,backend=backend,input=filename,openmp_threads=threads,repetition=repetition,attempt=attempt))
++            args.output.write_text(json.dumps(report,indent=2)+'\n')
++            if row['phase'] != 'startup':
++                raise RuntimeError(report['failures'][-1])
++        if not row['ok']:
++            raise RuntimeError(report['failures'][-1])
++        assert Path(row['openms_library']).resolve().parent == directory
++        assert row['hash_per_worker'] == expected[filename]
++        row.update(backend=backend,input=filename,openmp_threads=threads,repetition=repetition)
++        report['records'].append(row)
++        groups=defaultdict(list)
++        for item in report['records']:
++            groups[item['backend'],item['input'],item['openmp_threads']].append(item)
++        report['summary']=[dict(backend=b,input=p,openmp_threads=t,repetitions=len(rows),
++            seconds_median=statistics.median(x['seconds'] for x in rows),
++            seconds_min=min(x['seconds'] for x in rows),seconds_max=max(x['seconds'] for x in rows),
++            rss_mib_median=statistics.median(x['max_rss_bytes']/1024**2 for x in rows))
++            for (b,p,t),rows in sorted(groups.items())]
++        args.output.write_text(json.dumps(report,indent=2)+'\n')
++        print(f'{n}/{len(jobs)} {backend} {Path(filename).name} OpenMP={threads}: {row["seconds"]:.3f}s',flush=True)
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/tools/xml-parser-benchmark/schema_validation_probe.cpp b/tools/xml-parser-benchmark/schema_validation_probe.cpp
+new file mode 100644
+index 0000000000..2f1769398b
+--- /dev/null
++++ b/tools/xml-parser-benchmark/schema_validation_probe.cpp
+@@ -0,0 +1,28 @@
++// Copyright (c) 2002-present, OpenMS Inc. -- EKU Tuebingen, ETH Zurich, and FU Berlin
++// SPDX-License-Identifier: BSD-3-Clause
++#include <OpenMS/FORMAT/VALIDATORS/XMLValidator.h>
++#include <exception>
++#include <iomanip>
++#include <iostream>
++
++int main(int argc, char** argv)
++{
++  if (argc != 3)
++  {
++    std::cerr << "Usage: xml_schema_validation_probe XML_FILE XSD_FILE\n";
++    return 2;
++  }
++  try
++  {
++    const bool valid = OpenMS::XMLValidator().isValid(argv[1], argv[2]);
++    std::cout << "{\"valid\":" << (valid ? "true" : "false")
++              << ",\"file\":" << std::quoted(argv[1])
++              << ",\"schema\":" << std::quoted(argv[2]) << "}\n";
++    return valid ? 0 : 1;
++  }
++  catch (const std::exception& error)
++  {
++    std::cerr << error.what() << '\n';
++    return 1;
++  }
++}
+diff --git a/tools/xml-parser-benchmark/test_benchmark.py b/tools/xml-parser-benchmark/test_benchmark.py
+new file mode 100644
+index 0000000000..0db169bfa7
+--- /dev/null
++++ b/tools/xml-parser-benchmark/test_benchmark.py
+@@ -0,0 +1,74 @@
++"""Exercise decoded equivalence, worker independence and benchmark failures."""
++import json
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import unittest
++
++BINARY = sys.argv.pop(1)
++LAUNCHER = str(Path(BINARY).with_name('xml_benchmark_launcher'))
++
++
++def invoke(*args):
++    result = subprocess.run([LAUNCHER, BINARY, *map(str, args)], check=True, capture_output=True, text=True)
++    lines = [line for line in result.stdout.splitlines() if line.startswith('{')]
++    return json.loads(lines[-1]) if lines else None
++
++
++class BenchmarkTest(unittest.TestCase):
++    def test_equivalence_and_workers(self):
++        with tempfile.TemporaryDirectory() as directory:
++            for compression in ('plain', 'zlib'):
++                path = Path(directory) / f'{compression}.mzML'
++                invoke('generate', path, 17, 31, compression)
++                result = invoke('verify', path)
++                self.assertTrue(result['verified'])
++                self.assertEqual(result['spectra'], 17)
++                self.assertEqual(result['points'], 17 * 31 + 17)
++                for mode in ('stream', 'load', 'indexed', 'index-open', 'contexts', 'idle', 'indexed-metadata', 'contexts-metadata'):
++                    single = invoke(mode, path, 1, 41)
++                    parallel = invoke(mode, path, 4, 41)
++                    self.assertEqual(single['hash_per_worker'], parallel['hash_per_worker'])
++                    self.assertEqual(single['points_per_worker'], parallel['points_per_worker'])
++                    if mode in ('stream', 'load'):
++                        self.assertEqual(single['hash_per_worker'], result['hash'])
++                    if mode.startswith('contexts'):
++                        self.assertEqual(single['index_spectra'], 17)
++                        self.assertGreater(single['resident_rss_bytes'], 0)
++                        self.assertGreater(parallel['resident_rss_bytes'], 0)
++                    if mode == 'indexed-metadata':
++                        self.assertEqual(single['hash_per_worker'], invoke('indexed', path, 1, 41)['hash_per_worker'])
++
++    def test_errors_propagate(self):
++        with tempfile.TemporaryDirectory() as directory:
++            path = Path(directory) / 'broken.mzML'
++            path.write_text('<mzML><broken></mzML>')
++            for mode in ('stream', 'load', 'indexed', 'contexts', 'indexed-metadata', 'contexts-metadata'):
++                result = subprocess.run([LAUNCHER, BINARY, mode, str(path), '2', '3'], capture_output=True)
++                self.assertNotEqual(result.returncode, 0)
++
++    def test_stale_registration_cleanup(self):
++        with tempfile.TemporaryDirectory() as directory:
++            path = Path(directory) / 'registration.mzML'
++            invoke('generate', path, 1, 3, 'plain')
++            code = '''import os, sys
++p = '/tmp/__KMP_REGISTERED_LIB_' + str(os.getpid())
++try:
++    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
++except FileExistsError:
++    sys.exit(77)
++os.close(fd)
++os.utime(p, (0, 0))
++os.execv(sys.argv[1], sys.argv[1:])
++'''
++            result = subprocess.run([sys.executable, '-c', code, LAUNCHER, BINARY,
++                                     'stream', str(path), '1', '1'], capture_output=True, text=True)
++            if result.returncode == 77:
++                self.skipTest('Own PID already has an existing runtime registration file')
++            self.assertEqual(result.returncode, 0, result.stderr)
++            self.assertIn('XML_BENCHMARK_REMOVED_STALE_KMP', result.stderr)
++
++
++if __name__ == '__main__':
++    unittest.main()
+diff --git a/vcpkg.json b/vcpkg.json
+index af278ad6e7..ec97b76a99 100644
+--- a/vcpkg.json
++++ b/vcpkg.json
+@@ -50,6 +50,7 @@
+     "coinutils",
+     "curl",
+     "eigen3",
++    "expat",
+     "libsvm",
+     "libxml2",
+     "libzip",

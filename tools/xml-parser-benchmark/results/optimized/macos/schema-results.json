@@ -1,0 +1,1508 @@
+{
+  "library": "/opt/homebrew/opt/libxml2/lib/libxml2.dylib",
+  "summary": {
+    "schema_count": 22,
+    "instance_count": 195,
+    "libxml_valid": 128,
+    "xerces_valid": 130,
+    "mismatches": [
+      {
+        "file": "TargetedSpectraExtractor_13C1_spectra0to100.mzML",
+        "schema": "mzML_idx_1_10.xsd",
+        "status": 1824,
+        "expected_valid": null,
+        "xerces_status": 0,
+        "known_reason": "Windows file:// drive/backslash xs:anyURI lexical handling"
+      },
+      {
+        "file": "tools/xml-poc/fixtures/anyuri-windows.xml",
+        "schema": "tools/xml-poc/fixtures/anyuri.xsd",
+        "status": 1824,
+        "expected_valid": null,
+        "xerces_status": 0,
+        "known_reason": "Minimal reproducer of the same xs:anyURI difference"
+      }
+    ]
+  },
+  "schemas": [
+    {
+      "schema": "share/OpenMS/SCHEMAS/ConsensusXML_1_7.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/FeatureXML_1_9.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/FuGElightv1.0.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/IdXML_1_5.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/Param_1_7_0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/Param_1_8_0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/TraML1.0.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/TrafoXML_1_1.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/general_types_1.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzData_1_05.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzIdentML1.0.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzIdentML1.1.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzIdentML1.2.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzIdentML1.3.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzML_1_10.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzXML_3.1_mod.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzXML_idx_3.1.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/pepXML_v114.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/protXML_v6.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/separation_technique_1.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/xQuest_1_0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    }
+  ],
+  "validation": [
+    {
+      "file": "XMLValidator_missing_attribute.xml",
+      "schema": "XMLValidator.xsd",
+      "status": 1868,
+      "expected_valid": false,
+      "xerces_status": 1
+    },
+    {
+      "file": "XMLValidator_missing_element.xml",
+      "schema": "XMLValidator.xsd",
+      "status": 1871,
+      "expected_valid": false,
+      "xerces_status": 1
+    },
+    {
+      "file": "XMLValidator_syntax.xml",
+      "schema": "XMLValidator.xsd",
+      "status": -1,
+      "expected_valid": false,
+      "xerces_status": 1
+    },
+    {
+      "file": "XMLValidator_valid.xml",
+      "schema": "XMLValidator.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "FeatureXMLFile_1.featureXML",
+      "schema": "FeatureXML_1_9.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "FeatureXMLFile_2_options.featureXML",
+      "schema": "FeatureXML_1_9.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "ConsensusXMLFile_1.consensusXML",
+      "schema": "ConsensusXML_1_7.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "ConsensusXMLFile_2_options.consensusXML",
+      "schema": "ConsensusXML_1_7.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "TransformationXMLFile_1.trafoXML",
+      "schema": "TrafoXML_1_1.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "TransformationXMLFile_2.trafoXML",
+      "schema": "TrafoXML_1_1.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "TransformationXMLFile_3.trafoXML",
+      "schema": "TrafoXML_1_1.xsd",
+      "status": -1,
+      "expected_valid": false,
+      "xerces_status": 1
+    },
+    {
+      "file": "TransformationXMLFile_4.trafoXML",
+      "schema": "TrafoXML_1_1.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLFile_4_indexed.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "BayesianProteinInference_2_test.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 1824,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "BayesianProteinInference_3_test.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 1824,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "BayesianProteinInference_test.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 1824,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "FalseDiscoveryRate_OMSSA.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "FalseDiscoveryRate_picked_in.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDBoostGraph_test_in.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 1824,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "IDFilter_test.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDFilter_test2.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDFilter_test3.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDFilter_test4.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDFilter_test5.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDMapper_1.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDMapper_2.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDMapper_3.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDMapper_4.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDMapper_5.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDMapper_7.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IDScoreSwitcherAlgorithm_test_input.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 1866,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "IdXMLFile_no_proteinhits.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IdXMLFile_whole.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IdXML_XLMS_labelled.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MapAlignmentAlgorithmIdentification_test_1.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MapAlignmentAlgorithmIdentification_test_2.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MascotXMLFile_test_out_3.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "OPXLHelper_test.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeptideProteinResolution_in.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeptideProteinResolution_in2.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeptideProteinResolution_out.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeptideProteinResolution_out2.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeptideProteinResolution_out2_ibg.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeptideProteinResolution_out_ibg.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PrecursorIonSelection_ids.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "ProteinQuantifier_input.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "XTandem_fwd_ids.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "XTandem_fwd_ids_withProtScores.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "XTandem_rev_ids.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "XTandem_rev_ids_withProtScores.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "comet.topperc.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "comet.topperc_check.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "msgf.topperc.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "msgf.topperc_check.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "newIDMergerTest1.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 1866,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "newIDMergerTest2.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 1866,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "newMergerTest_out.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 1824,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "xtandem.topperc.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "xtandem.topperc_check.idXML",
+      "schema": "IdXML_1_5.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "DummyExtenderTestData.mzData",
+      "schema": "mzData_1_05.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "DummySeederTestData.mzData",
+      "schema": "mzData_1_05.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "Inspect.mzData",
+      "schema": "mzData_1_05.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzDataFile_1.mzData",
+      "schema": "mzData_1_05.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzDataFile_2_long.mzData",
+      "schema": "mzData_1_05.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzDataFile_3_minimal.mzData",
+      "schema": "mzData_1_05.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzDataFile_4_64bit.mzData",
+      "schema": "mzData_1_05.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PickedPeakTestData.mzData",
+      "schema": "mzData_1_05.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "SimpleExtender_test.mzData",
+      "schema": "mzData_1_05.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "SimpleExtender_test2.mzData",
+      "schema": "mzData_1_05.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "Inspect.mzXML",
+      "schema": "mzXML_idx_3.1.xsd",
+      "status": 1845,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "InspectOutfile_test_1.mzXML",
+      "schema": "mzXML_idx_3.1.xsd",
+      "status": 1845,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "InspectOutfile_test_2.mzXML",
+      "schema": "mzXML_idx_3.1.xsd",
+      "status": 1845,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzXMLFile_1.mzXML",
+      "schema": "mzXML_idx_3.1.xsd",
+      "status": 1845,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzXMLFile_1_compressed.mzXML",
+      "schema": "mzXML_idx_3.1.xsd",
+      "status": 1845,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzXMLFile_2_minimal.mzXML",
+      "schema": "mzXML_idx_3.1.xsd",
+      "status": 1845,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzXMLFile_3_64bit.mzXML",
+      "schema": "mzXML_idx_3.1.xsd",
+      "status": 1845,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzXMLFile_4_long.mzXML",
+      "schema": "mzXML_idx_3.1.xsd",
+      "status": 1845,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "Mascot_MSMS_example.mzid",
+      "schema": "mzIdentML1.3.0.xsd",
+      "status": 1845,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzIdentMLFile_cdata_comment_peptide_sequence.mzid",
+      "schema": "mzIdentML1.1.0.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzIdentMLFile_comet_scores.mzid",
+      "schema": "mzIdentML1.1.0.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzIdentMLFile_empty_peptide_sequence.mzid",
+      "schema": "mzIdentML1.1.0.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzIdentMLFile_missing_mod_location.mzid",
+      "schema": "mzIdentML1.1.0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzIdentMLFile_msgf_mini.mzid",
+      "schema": "mzIdentML1.1.0.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzIdentMLFile_whole.mzid",
+      "schema": "mzIdentML1.1.0.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzIdentMLFile_xtandem_omssa_scores.mzid",
+      "schema": "mzIdentML1.1.0.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzIdentML_3runs.mzid",
+      "schema": "mzIdentML1.1.0.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzIdentML_XLMS_labelled.mzid",
+      "schema": "mzIdentML1.2.0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzIdentML_XLMS_unlabelled.mzid",
+      "schema": "mzIdentML1.2.0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzIdentML_v1.3_crosslinking.mzid",
+      "schema": "mzIdentML1.3.0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzIdentML_v1.3_multi_spectra.mzid",
+      "schema": "mzIdentML1.3.0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzIdentML_v1.3_noncov_assoc.mzid",
+      "schema": "mzIdentML1.3.0.xsd",
+      "status": 1839,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzIdentML_v1.3_xlink_edc.mzid",
+      "schema": "mzIdentML1.3.0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PepXMLFileMascot_test.pepXML",
+      "schema": "pepXML_v114.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PepXMLFile_test_case_insensitive_enzyme.pepXML",
+      "schema": "pepXML_v114.xsd",
+      "status": 1866,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test_missing_no_cut.pepXML",
+      "schema": "pepXML_v114.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test_missing_no_cut_nonempty_cut.pepXML",
+      "schema": "pepXML_v114.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test_run_enzyme_reset.pepXML",
+      "schema": "pepXML_v114.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test.pepxml",
+      "schema": "pepXML_v114.xsd",
+      "status": 1866,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test_base_names.pepxml",
+      "schema": "pepXML_v114.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test_enzyme_synonym.pepxml",
+      "schema": "pepXML_v114.xsd",
+      "status": 1866,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test_extended.pepxml",
+      "schema": "pepXML_v114.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test_out.pepxml",
+      "schema": "pepXML_v114.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test_out_1.pepxml",
+      "schema": "pepXML_v114.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test_out_mzML.pepxml",
+      "schema": "pepXML_v114.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PepXMLFile_test_store.pepxml",
+      "schema": "pepXML_v114.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PepXMLFile_test_xtandem.pepxml",
+      "schema": "pepXML_v114.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "ProtXMLFile_input_1.protXML",
+      "schema": "protXML_v6.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "ProtXMLFile_input_2.protXML",
+      "schema": "protXML_v6.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "ProtXMLFile_input_3.protXML",
+      "schema": "protXML_v6.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "ToyExample1.traML",
+      "schema": "TraML1.0.0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "20171013_HMP_C61_ISO_P1_GA1_UV_VIS_2.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "ChromatogramExtractor_input.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "Deisotoper_input1.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "Deisotoper_input2.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "Deisotoper_output1.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "Deisotoper_output2.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "Deisotoper_test_in.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "Deisotoper_test_out.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "ElutionPeakDetection_input1.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "FLASHDeconv_1_input.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "FLASHDeconv_sample_input1.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "FeatureFinderAlgorithmMRM_input.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "FeatureFinderAlgorithmPicked.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "FeatureFinderMultiplex_1_input.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "FeatureFindingMetabo_input1.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IM_FAIMS_test.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "IndexedmzMLFile_1.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IndexedmzMLFile_2_broken.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": -1,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "IndexedmzMLFile_3_broken.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": -1,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "IsobaricChannelExtractor_6.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IsobaricChannelExtractor_7.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "IsobaricChannelExtractor_8.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MSChromatogramParquetConsumer_1_output.chrom.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MassTraceDetection_input1.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MultiplexClustering.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MultiplexFiltering.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLFile_1.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLFile_2_minimal.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLFile_3_invalid.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzMLFile_5_long.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLFile_6_compressed.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLFile_6_uncompressed.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLFile_list_value.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLFile_negative_offsets.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "MzMLFile_xsd-ranges.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLFile_zstd.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLSqliteHandler_1.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "OfflinePrecursorIonSelection_raw_data.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "OpenPepXL_input.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "OpenSwath_generic_input.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeakPickerHiRes_ftms.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PeakPickerHiRes_ftms_ppmax.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PeakPickerHiRes_ftms_sn0_out.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PeakPickerHiRes_ftms_sn1_out.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PeakPickerHiRes_ftms_sn4_out.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PeakPickerHiRes_ftms_sn4_out_ppmax.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 1877,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "PeakPickerHiRes_orbitrap.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeakPickerHiRes_orbitrap_ppmax.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeakPickerHiRes_orbitrap_sn0_out.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeakPickerHiRes_orbitrap_sn1_out.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeakPickerHiRes_orbitrap_sn4_out.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeakPickerHiRes_orbitrap_sn4_out_ppmax.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeakPickerHiRes_simulation.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PeakPickerHiRes_spectrum_selection.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PepXMLFile_test.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "PrecursorPurity_input.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "RNAPrecursorCorrector_competition.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "RawTandemMSSignalSimulation_no_ms2.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "RawTandemMSSignalSimulation_with_ms2.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "Single_MS2_profileMode.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 1871,
+      "expected_valid": null,
+      "xerces_status": 1
+    },
+    {
+      "file": "SpectraMerger_input_2.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "SpectraMerger_input_3.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "SpectraMerger_input_4.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "SpectraMerger_input_precursor.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "SpectraMerger_output_3.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "SpectraMerger_output_4.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "SpectraMerger_output_precursor.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "SwathFile.mzML",
+      "schema": "mzML_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "TargetedSpectraExtractor_13C1_spectra0to100.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 1824,
+      "expected_valid": null,
+      "xerces_status": 0,
+      "known_reason": "Windows file:// drive/backslash xs:anyURI lexical handling"
+    },
+    {
+      "file": "TargetedSpectraExtractor_matchSpectrum_GCMS.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "FeatureFinderAlgorithmPicked.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "FeatureFinderMultiplex_1_parameters.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "Param_advanced_no_required.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "Param_post16_update.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "Param_pre16_update.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "TOPPBaseCmdParseSubsectionsTest.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "TOPPBase_common.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "TOPPBase_flag_true.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "TOPPBase_test_write_ini_out.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "TOPPBase_test_write_ini_subsec_out.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "TOPPBase_toolcommon.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "TOPPBase_toolcommon_only.ini",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "ParamXMLFile_test_writeXMLToStream.xml",
+      "schema": "Param_1_8_0.xsd",
+      "status": 0,
+      "expected_valid": null,
+      "xerces_status": 0
+    },
+    {
+      "file": "tools/xml-poc/fixtures/anyuri-windows.xml",
+      "schema": "tools/xml-poc/fixtures/anyuri.xsd",
+      "status": 1824,
+      "expected_valid": null,
+      "xerces_status": 0,
+      "known_reason": "Minimal reproducer of the same xs:anyURI difference"
+    },
+    {
+      "file": "tools/xml-poc/fixtures/anyuri-normalized.xml",
+      "schema": "tools/xml-poc/fixtures/anyuri.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "timestamp_utc": "2026-10-19T15:58:36.405583+00:00",
+  "phase": "after completed macOS measurement matrices",
+  "thermal_status": "No thermal warning level, performance warning level, or CPU power status recorded (pmset -g therm).",
+  "swap_status": "vm.swapusage: total = 0.00M used = 0.00M free = 0.00M (encrypted)",
+  "scope": "Post-run read-only snapshot; not a continuous thermal trace."
+}

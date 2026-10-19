@@ -1,0 +1,29 @@
+{
+  "driver_pid": 2563094,
+  "cgroup": "0::/user.slice/user-7125.slice/session-148505.scope\n",
+  "constraints": [
+    {
+      "path": "/sys/fs/cgroup/user.slice/user-7125.slice/session-148505.scope",
+      "cpu.max": "max 100000",
+      "memory.max": "max",
+      "memory.swap.max": "max"
+    },
+    {
+      "path": "/sys/fs/cgroup/user.slice/user-7125.slice",
+      "cpu.max": "max 100000",
+      "memory.max": "max",
+      "memory.swap.max": "max"
+    },
+    {
+      "path": "/sys/fs/cgroup/user.slice",
+      "cpu.max": "max 100000",
+      "cpuset.cpus.effective": "0-127",
+      "memory.max": "max",
+      "memory.swap.max": "max"
+    },
+    {
+      "path": "/sys/fs/cgroup",
+      "cpuset.cpus.effective": "0-127"
+    }
+  ]
+}

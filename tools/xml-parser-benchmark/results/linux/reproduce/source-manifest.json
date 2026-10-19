@@ -1,0 +1,22 @@
+{
+  "base": "77cccda7caf40b46a4919d33748450270eccd565",
+  "branches": {
+    "libxml2": {
+      "commit": "cf45d453129bcc9f48cff617295f53ae8c273118",
+      "patch": "libxml2.patch"
+    },
+    "expat": {
+      "commit": "8fa31b14470beed22ce99da2347903a13e500c5c",
+      "patch": "expat.patch"
+    },
+    "pugixml": {
+      "commit": "c08d12384aed0c7a5918653abafa4ccbfa7b34f6",
+      "patch": "pugixml.patch"
+    },
+    "xerces": {
+      "commit": "77cccda7caf40b46a4919d33748450270eccd565",
+      "harness": "cf45d453129bcc9f48cff617295f53ae8c273118:tools/xml-parser-benchmark",
+      "patch": "xerces.patch"
+    }
+  }
+}

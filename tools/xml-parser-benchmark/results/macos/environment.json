@@ -1,0 +1,134 @@
+{
+  "base_commit": "77cccda7caf40b46a4919d33748450270eccd565",
+  "hardware": {
+    "cpu": "Apple M4 Max",
+    "cores": 16,
+    "memory_gib": 128,
+    "power": "AC"
+  },
+  "compiler": "Apple Clang21.0.0",
+  "build_type": "Release -O3 -DNDEBUG, C++23",
+  "openmp_workers_in_benchmark": 1,
+  "versions": {
+    "xerces": "3.3.0",
+    "libxml2": "2.15.4",
+    "expat": "2.9.0",
+    "pugixml": "1.16"
+  },
+  "methodology": "Independent std::thread parser per worker; each reads the same cached full input or the same 2048 random queries. Weak scaling; common tiny in-memory CV warmup. Timing includes decoded native ID/coordinate/intensity FNV consumption; RSS is whole-process high water including initialization. Indexed opening skips global metadata.",
+  "implementations": {
+    "libxml2": {
+      "branch": "feature/xml-libxml2-poc",
+      "source_commit_before_handoff": "27bd7add0c6bc487ebce2d1fac2649b78999c166",
+      "modified_source_sha256": {
+        "cmake/cmake_findExternalLibs.cmake": "f343f864300e0366301c95314b25e3e6541daf12fbef76ffb3cf439003f7d756",
+        "src/openms/CMakeLists.txt": "2c831dc28c2951c8bbf14e4a0d4699a417887e2455dc2afc8aec7ea702f4b3cd",
+        "src/openms/include/OpenMS/FORMAT/HANDLERS/XMLAttributes.h": "6dcaf82b8f7926a5591b567c88a3ace7d03593c551413967403bfee6350cef0e",
+        "src/openms/source/FORMAT/HANDLERS/IndexedMzMLDecoder.cpp": "feb01944c10b2364d4ed594806612e02046a466528cda615bf11f34da56a7b7b",
+        "src/openms/source/FORMAT/HANDLERS/MzMLSpectrumDecoder.cpp": "b215daf5a7f0c04b90c3da3222d6d564f27311fbbad83ca4bc98bcd2d320b678",
+        "src/openms/source/FORMAT/HANDLERS/XMLAttributes.cpp": "0895d1ca0190cc4b055f31a1b52769f6a048abfa5532d4e4892717ef5e5f38ef",
+        "src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp": "352de8c60074fa75c7a66f3cdf9f0e57e5a952e039e7a2855b801edfa143f15a",
+        "src/openms/source/FORMAT/VALIDATORS/XMLValidator.cpp": "2af43d08964e814d5aef06c62050afb733bc25cf7982133b90be1d4e1b96eb0d",
+        "src/openms/source/FORMAT/XMLFile.cpp": "0455b8b59264d2b001f25a16c7c22b8a80a54502380bdc33aac16800a9865a94",
+        "src/tests/class_tests/openms/executables.cmake": "528cf8be509e2bc28c3a103f77958329832b38f05a949341ce3f9d44fe48af12",
+        "src/tests/class_tests/openms/source/MzMLSpectrumDecoder_test.cpp": "9e375938900315cfb54d1cbfb33041cbd448f97a3764854d891e56a261e23411",
+        "src/tests/class_tests/openms/source/XMLParserBackend_test.cpp": "afe1c1e596f639f4a0ec55def378d56a14232a727a418afd8e615391ae166f1f",
+        "tools/xml-parser-benchmark/CMakeLists.txt": "81ff4c3ea4afacadd95293517a0b80385fbb7b66f3ec4188c6cd92e97491da7d",
+        "tools/xml-parser-benchmark/benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+        "tools/xml-parser-benchmark/launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+        "tools/xml-parser-benchmark/run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+        "tools/xml-parser-benchmark/run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f",
+        "tools/xml-parser-benchmark/schema_validation_probe.cpp": "36dff739490a9e75e08280d89e831df543e1275e63077235fd664b09f311f665",
+        "tools/xml-parser-benchmark/test_benchmark.py": "a9437f8b7d6587fe740899fa34030ab3a7325762938db0dd6283850d2f94c19a",
+        "tools/xml-poc/check_schemas.py": "c821d4aae5a95b26d4a582ceb302ee49a2bb028a1493d240bbea848afdac3201",
+        "tools/xml-poc/xerces_schema_probe.cpp": "16f837ba17208179c2d7c62fdfb194ea7837fd44d9e51faf186aca6ae79f9a81"
+      },
+      "source_fingerprint": "8d902f487506beb869c4341b30e3cba7a432e1d1145aa0eee0014f6df327a0ab"
+    },
+    "expat": {
+      "branch": "feature/xml-expat-poc",
+      "source_commit_before_handoff": "74d529ecb0a63877d61d5eb45c37449c85b85167",
+      "modified_source_sha256": {
+        "cmake/cmake_findExternalLibs.cmake": "d3ee6c1c7ab903232dd71edb20a36b4a5a7c2c2949398dfb89f5689861c67af9",
+        "src/openms/CMakeLists.txt": "2839bcbd7a248ceb467a47dc96f2b2632a735e28820d786825415586920dbb3a",
+        "src/openms/include/OpenMS/FORMAT/HANDLERS/MzMLSpectrumDecoder.h": "68b247b1898bd18acbeecb9547713a465e31af9af8622cae340c85293075135f",
+        "src/openms/include/OpenMS/FORMAT/HANDLERS/XMLAttributes.h": "3234ebfa98b15fcf6de2c98ba52872dba969b02ec910397126d6477f7b93de44",
+        "src/openms/include/OpenMS/FORMAT/XMLFile.h": "43bc10e2c6a46e0dddb4d14472018e06ee4110ad192de28a69bf91da3a14dc7b",
+        "src/openms/source/FORMAT/HANDLERS/IndexedMzMLDecoder.cpp": "594d97dea2d062a32cfa650b393c6ddbe9ebab9ccdf4683db95e56244147465e",
+        "src/openms/source/FORMAT/HANDLERS/MzMLSpectrumDecoder.cpp": "333b8c1e1101b67432a617985a87c8b9f13d3dbb0e1768b14b297dfb1c64276e",
+        "src/openms/source/FORMAT/HANDLERS/XMLAttributes.cpp": "fd9a6e05ce8b7e1d1f0037963a5d90cfca6e599a258477362b73a86058ac4581",
+        "src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp": "352de8c60074fa75c7a66f3cdf9f0e57e5a952e039e7a2855b801edfa143f15a",
+        "src/openms/source/FORMAT/XMLFile.cpp": "16923c7695dcc145e4d897ceae80fc16d46e49ece704b18000838bc805fbeeba",
+        "src/tests/class_tests/openms/executables.cmake": "42786ed39335c24491a28921f422b29d2ee96e1f86c2dd02221433e3e30ad972",
+        "src/tests/class_tests/openms/source/ExpatXMLFile_test.cpp": "675d9c541057187776dd2c22d35d332ab9e80ad739ca0a25872dc80280f8d665",
+        "src/tests/class_tests/openms/source/MzMLSpectrumDecoder_test.cpp": "a7ed576377bc7ba5f19b1258d43224ba9580d850df4e618d8f191f767aeb09e6",
+        "tools/xml-parser-benchmark/CMakeLists.txt": "81ff4c3ea4afacadd95293517a0b80385fbb7b66f3ec4188c6cd92e97491da7d",
+        "tools/xml-parser-benchmark/benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+        "tools/xml-parser-benchmark/launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+        "tools/xml-parser-benchmark/run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+        "tools/xml-parser-benchmark/run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f",
+        "tools/xml-parser-benchmark/schema_validation_probe.cpp": "36dff739490a9e75e08280d89e831df543e1275e63077235fd664b09f311f665",
+        "tools/xml-parser-benchmark/test_benchmark.py": "a9437f8b7d6587fe740899fa34030ab3a7325762938db0dd6283850d2f94c19a",
+        "vcpkg.json": "67cfaddddbd37fdcfdc8e4547dcf7d343c028d4a1641726736a3f2afd3be3c62"
+      },
+      "source_fingerprint": "c7164e196424a6a28b516bca86d9b80b1759443923cdba0bfad9d006bb55f75f"
+    },
+    "pugixml": {
+      "branch": "feature/xml-pugixml-poc",
+      "source_commit_before_handoff": "27538482e6ea370fe894578f2d1a47d0b649af67",
+      "modified_source_sha256": {
+        "src/openms/CMakeLists.txt": "7d186876d59601cbb97503905c7fc70de6f38a7d0d07df211b9ccbb014764fc1",
+        "src/openms/include/OpenMS/FORMAT/HANDLERS/XMLAttributes.h": "e4059c356ab64e14b215a24592b9dd12cf5cac191b81fd067eeaa4e9ab1ff91b",
+        "src/openms/source/FORMAT/HANDLERS/IndexedMzMLDecoder.cpp": "d6cf9ccedf3fe8e00600aa6d7c6a4ee65bdc7e2f436335b798811d5cc5073ee8",
+        "src/openms/source/FORMAT/HANDLERS/MzMLSpectrumDecoder.cpp": "188947bf7cc18e2657560b31b2a44168a16c6a35b470f0ee0822066bc6c291af",
+        "src/openms/source/FORMAT/HANDLERS/XMLAttributes.cpp": "b3a66f5f9e80185afb3c2ff2e1b953449594eea18ef51d900de0e5062f849ea8",
+        "src/openms/source/FORMAT/HANDLERS/XMLHandler.cpp": "352de8c60074fa75c7a66f3cdf9f0e57e5a952e039e7a2855b801edfa143f15a",
+        "src/openms/source/FORMAT/XMLFile.cpp": "9c61bfc116780702d00faedf6fa0545aea08fde415cdf7eafc03376ce0b735da",
+        "src/tests/class_tests/openms/executables.cmake": "3cf2369a37f727c59dc4dfac7c6dbe409a254e7eedb8fe2182400693ee33eb5c",
+        "src/tests/class_tests/openms/source/MzMLSpectrumDecoder_test.cpp": "9e375938900315cfb54d1cbfb33041cbd448f97a3764854d891e56a261e23411",
+        "src/tests/class_tests/openms/source/XMLBackendPrototype_test.cpp": "ea121ecd9ec8324b8631a9798b06d3f091236e71dbc3dc262662213101d1251b",
+        "tools/xml-parser-benchmark/CMakeLists.txt": "81ff4c3ea4afacadd95293517a0b80385fbb7b66f3ec4188c6cd92e97491da7d",
+        "tools/xml-parser-benchmark/benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+        "tools/xml-parser-benchmark/launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+        "tools/xml-parser-benchmark/run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+        "tools/xml-parser-benchmark/run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f",
+        "tools/xml-parser-benchmark/schema_validation_probe.cpp": "36dff739490a9e75e08280d89e831df543e1275e63077235fd664b09f311f665",
+        "tools/xml-parser-benchmark/test_benchmark.py": "a9437f8b7d6587fe740899fa34030ab3a7325762938db0dd6283850d2f94c19a",
+        "vcpkg.json": "e3767d9fbe3c7e5326294eb3c39b5285d71369a0ddf54bdf795a70c65a48cc8a"
+      },
+      "source_fingerprint": "93f053882e6ada849659c92da6d8f02c29e78921434b97956df781ec72f7ab61"
+    }
+  },
+  "mid_run_conditions": {
+    "time": "2026-10-19T11:36:02.192563+00:00",
+    "completed_records": 672,
+    "swap_used_mib": 0,
+    "swap_total_mib": 0,
+    "thermal_warning": "none recorded by pmset",
+    "performance_warning": "none recorded by pmset"
+  },
+  "inherited_thread_environment": {
+    "OMP_DYNAMIC": null,
+    "OMP_PROC_BIND": null,
+    "OMP_PLACES": null,
+    "OMP_WAIT_POLICY": null,
+    "GOMP_CPU_AFFINITY": null,
+    "KMP_AFFINITY": null,
+    "KMP_BLOCKTIME": null,
+    "MALLOC_ARENA_MAX": null
+  },
+  "benchmark_source_provenance": {
+    "primary_and_openmp": "715d804",
+    "retained_whole_load": "17a8a3ef",
+    "resident_and_default_metadata": "28a160db"
+  },
+  "correctness": {
+    "baseline_existing_tests": 25,
+    "each_prototype_existing_tests": 25,
+    "each_prototype_focused_tests": 1,
+    "benchmark_unittest_cases_per_backend": 3,
+    "timed_measurements": 2560,
+    "timing_failures": 0,
+    "launcher_cleanups": 0
+  }
+}

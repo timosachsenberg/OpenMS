@@ -1,0 +1,65 @@
+{
+  "xerces": {
+    "source_commit": "58aa37348c968a12e3285295f28c197cc0b7bdbe",
+    "optimization": "Release -O3 -DNDEBUG, C++23",
+    "libraries": {
+      "libOpenSwathAlgo.dylib": "c37b9cd6f4268731899609f3232e1523fbaa5714ce3db16e926e81bf765ba42d",
+      "libOpenMS.dylib": "881fd6b7448017068404312a6d5d8afdc9ca026a60cfb1576460df966e6eed56"
+    },
+    "source_tree": "cd9387209029839d243ae70532a90b4fb0cef294",
+    "timed_source_sha256": {
+      "benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+      "launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+      "run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+      "run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f"
+    }
+  },
+  "libxml2": {
+    "source_commit": "dc7ad95e1eb4fe72b37f59373416ccd339f39c75",
+    "optimization": "Release -O3 -DNDEBUG, C++23",
+    "libraries": {
+      "libOpenSwathAlgo.dylib": "c37b9cd6f4268731899609f3232e1523fbaa5714ce3db16e926e81bf765ba42d",
+      "libOpenMS.dylib": "9cfa3f9d8d8349541f6326561d997b633d8ccc51c6f4a9a98883f3f6542507a2"
+    },
+    "source_tree": "919fd63099129af1472511891a0704020f9ab507",
+    "timed_source_sha256": {
+      "benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+      "launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+      "run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+      "run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f"
+    }
+  },
+  "expat": {
+    "source_commit": "6ebf5ec649805d807c65c75e757bc21d4be2a3c9",
+    "optimization": "Release -O3 -DNDEBUG, C++23",
+    "libraries": {
+      "libOpenSwathAlgo.dylib": "c37b9cd6f4268731899609f3232e1523fbaa5714ce3db16e926e81bf765ba42d",
+      "libexpat.dylib": "28c37b564a66edec616d982892b5a3ed33f776bd07803736e6e854c4a3aece9c",
+      "libOpenMS.dylib": "7dd660828bc19ede609dd514b5f3ebaec08a2a3b150579afc6da2fff5f111dd8",
+      "libexpat.1.dylib": "28c37b564a66edec616d982892b5a3ed33f776bd07803736e6e854c4a3aece9c",
+      "libexpat.1.13.0.dylib": "28c37b564a66edec616d982892b5a3ed33f776bd07803736e6e854c4a3aece9c"
+    },
+    "source_tree": "66e809b52a021d4859b265ad155bac62438764a5",
+    "timed_source_sha256": {
+      "benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+      "launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+      "run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+      "run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f"
+    }
+  },
+  "pugixml": {
+    "source_commit": "250dd47ef6af3879b1c2735041618c17e1ba1ccc",
+    "optimization": "Release -O3 -DNDEBUG, C++23",
+    "libraries": {
+      "libOpenSwathAlgo.dylib": "c37b9cd6f4268731899609f3232e1523fbaa5714ce3db16e926e81bf765ba42d",
+      "libOpenMS.dylib": "1f497896e3811ab836c504d520f3db7ab3cca0e498fc10a1d46fe6534725248c"
+    },
+    "source_tree": "0a208afc7858346a32a60cefae9f1e216e482bac",
+    "timed_source_sha256": {
+      "benchmark.cpp": "c8c523b8140948e1674ca48c74d8c741f35298774bd2d42bc8afe95e5f71e71c",
+      "launcher.cpp": "66122201244d9cfa2b1d31b1f50f1debd6104661a1ffcbc0c630317eb8f9f57d",
+      "run_benchmarks.py": "a94e064bdb5c5d782ded33428656a87cbe1abf3f5b3bfa1ff349b9a6a886f40c",
+      "run_openmp_scaling.py": "9a39facf08f5bf9f52823a20f7385c6e0e56147370d681854c8e205ae349230f"
+    }
+  }
+}

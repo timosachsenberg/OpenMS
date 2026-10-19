@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<!-- Minimal reproducer for a validator difference in an existing mzML fixture. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="sourceFile">
+    <xs:complexType><xs:attribute name="location" type="xs:anyURI" use="required"/></xs:complexType>
+  </xs:element>
+</xs:schema>

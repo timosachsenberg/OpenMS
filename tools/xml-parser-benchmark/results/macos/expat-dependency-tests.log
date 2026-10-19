@@ -1,0 +1,7 @@
+Test project $WORKSPACE/dependencies/expat-build
+    Start 1: runtests
+1/1 Test #1: runtests .........................   Passed    9.58 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   9.59 sec

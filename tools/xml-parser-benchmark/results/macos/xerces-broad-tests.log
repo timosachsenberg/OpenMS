@@ -1,0 +1,31 @@
+Test project $WORKSPACE/OpenMS-build
+      Start 172: CVMappingFile_test
+ 1/13 Test #172: CVMappingFile_test ...............   Passed    0.43 sec
+      Start 196: IdXMLFile_test
+ 2/13 Test #196: IdXMLFile_test ...................   Passed    0.50 sec
+      Start 214: MzDataFile_test
+ 3/13 Test #214: MzDataFile_test ..................   Passed    1.31 sec
+      Start 215: MzIdentMLFile_test
+ 4/13 Test #215: MzIdentMLFile_test ...............   Passed    2.21 sec
+      Start 216: MzDataValidator_test
+ 5/13 Test #216: MzDataValidator_test .............   Passed    0.48 sec
+      Start 226: MzMLValidator_test
+ 6/13 Test #226: MzMLValidator_test ...............   Passed    0.94 sec
+      Start 231: MzXMLFile_test
+ 7/13 Test #231: MzXMLFile_test ...................   Passed    0.55 sec
+      Start 244: ParamXMLFile_test
+ 8/13 Test #244: ParamXMLFile_test ................   Passed    0.83 sec
+      Start 252: PepXMLFile_test
+ 9/13 Test #252: PepXMLFile_test ..................   Passed    0.75 sec
+      Start 259: ProtXMLFile_test
+10/13 Test #259: ProtXMLFile_test .................   Passed    0.55 sec
+      Start 262: SemanticValidator_test
+11/13 Test #262: SemanticValidator_test ...........   Passed    0.44 sec
+      Start 277: TraMLFile_test
+12/13 Test #277: TraMLFile_test ...................   Passed    0.59 sec
+      Start 279: UnimodXMLFile_test
+13/13 Test #279: UnimodXMLFile_test ...............   Passed    0.63 sec
+
+100% tests passed out of 13
+
+Total Test time (real) =  10.23 sec

@@ -1,0 +1,24 @@
+UpdateCTestConfiguration  from :$WORKSPACE/benchmark-residency-build/DartConfiguration.tcl
+Test project $WORKSPACE/benchmark-residency-build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 1
+    Start 1: xml_benchmark_smoke
+
+1: Test command: /opt/homebrew/Frameworks/Python.framework/Versions/3.15/bin/python3.15 "$WORKSPACE/OpenMS/tools/xml-parser-benchmark/test_benchmark.py" "$WORKSPACE/benchmark-residency-build/xml_parser_benchmark"
+1: Working Directory: $WORKSPACE/benchmark-residency-build
+1: Test timeout computed to be: 10000000
+1: ...
+1: ----------------------------------------------------------------------
+1: Ran 3 tests in 7.372s
+1: 
+1: OK
+1/1 Test #1: xml_benchmark_smoke ..............   Passed    7.46 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   7.46 sec

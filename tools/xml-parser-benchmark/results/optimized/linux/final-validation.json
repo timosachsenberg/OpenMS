@@ -1,0 +1,20 @@
+{
+  "completed_measurements": 4480,
+  "failures": 0,
+  "sha256_verified_remote_result_log_files": 96,
+  "sha256_verified_reproduction_files": 30,
+  "all_remote_snapshot_library_hashes_unchanged": true,
+  "all_cross_mode_digests_and_counts_verified": true,
+  "all_before_after_digests_counts_and_input_sha256_match": true,
+  "source_commits_trees_and_timed_source_hashes_match_macos": true,
+  "source_tracked_changes": false,
+  "conformance_cases": 44,
+  "schema_api_cases": 12,
+  "minimum_available_gib": 776.248291015625,
+  "swap_free_kib_min": 3706068,
+  "swap_free_kib_max": 3706068,
+  "host_pswpin_delta": 0,
+  "host_pswpout_delta": 0,
+  "maximum_peak_rss_gib": 204.9323501586914,
+  "cleanup_pending_parent_local_verification": true
+}

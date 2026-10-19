@@ -1,0 +1,110 @@
+[
+  {
+    "backend": "xerces",
+    "case": "huge-array",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/benchmark-data/huge-array.mzML",
+    "schema": "$WORKSPACE/OpenMS/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd"
+  },
+  {
+    "backend": "xerces",
+    "case": "anyuri-windows",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri-windows.xml",
+    "schema": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri.xsd"
+  },
+  {
+    "backend": "xerces",
+    "case": "anyuri-normalized",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri-normalized.xml",
+    "schema": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri.xsd"
+  },
+  {
+    "backend": "libxml2",
+    "case": "huge-array",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/benchmark-data/huge-array.mzML",
+    "schema": "$WORKSPACE/OpenMS/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd"
+  },
+  {
+    "backend": "libxml2",
+    "case": "anyuri-windows",
+    "returncode": 1,
+    "stderr": "Validation error in file '$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri-windows.xml' line 2 column 0: Element 'sourceFile', attribute 'location': 'file://F:\\Users\\example\\Dropbox (UCSD SBRG)\\data' is not a valid value of the atomic type 'xs:anyURI'.\n\n",
+    "valid": false,
+    "file": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri-windows.xml",
+    "schema": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri.xsd"
+  },
+  {
+    "backend": "libxml2",
+    "case": "anyuri-normalized",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri-normalized.xml",
+    "schema": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri.xsd"
+  },
+  {
+    "backend": "expat",
+    "case": "huge-array",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/benchmark-data/huge-array.mzML",
+    "schema": "$WORKSPACE/OpenMS/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd"
+  },
+  {
+    "backend": "expat",
+    "case": "anyuri-windows",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri-windows.xml",
+    "schema": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri.xsd"
+  },
+  {
+    "backend": "expat",
+    "case": "anyuri-normalized",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri-normalized.xml",
+    "schema": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri.xsd"
+  },
+  {
+    "backend": "pugixml",
+    "case": "huge-array",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/benchmark-data/huge-array.mzML",
+    "schema": "$WORKSPACE/OpenMS/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd"
+  },
+  {
+    "backend": "pugixml",
+    "case": "anyuri-windows",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri-windows.xml",
+    "schema": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri.xsd"
+  },
+  {
+    "backend": "pugixml",
+    "case": "anyuri-normalized",
+    "returncode": 0,
+    "stderr": "",
+    "valid": true,
+    "file": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri-normalized.xml",
+    "schema": "$WORKSPACE/OpenMS-libxml2/tools/xml-poc/fixtures/anyuri.xsd"
+  }
+]

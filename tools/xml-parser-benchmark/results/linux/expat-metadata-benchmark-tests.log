@@ -1,0 +1,8 @@
+Internal ctest changing into directory: ${XML_POC_ROOT}/benchmark-metadata-build
+Test project ${XML_POC_ROOT}/benchmark-metadata-build
+    Start 1: xml_benchmark_smoke
+1/1 Test #1: xml_benchmark_smoke ..............   Passed    4.32 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   4.33 sec

@@ -1,0 +1,212 @@
+{
+  "kind": "Actual OpenMS XMLValidator API on generated huge mzML and anyURI cases",
+  "input": "${XML_POC_ROOT}/optimized/data/huge-array.mzML",
+  "schema": "${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd",
+  "probe": "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+  "results": [
+    {
+      "backend": "xerces",
+      "case": "huge-array",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/data/huge-array.mzML",
+        "${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/data/huge-array.mzML\",\"schema\":\"${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/xerces/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/data/huge-array.mzML",
+      "schema": "${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd",
+      "expected_valid": true
+    },
+    {
+      "backend": "xerces",
+      "case": "anyuri-windows",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml\",\"schema\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/xerces/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml",
+      "schema": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd",
+      "expected_valid": true
+    },
+    {
+      "backend": "xerces",
+      "case": "anyuri-normalized",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml\",\"schema\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/xerces/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml",
+      "schema": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd",
+      "expected_valid": true
+    },
+    {
+      "backend": "libxml2",
+      "case": "huge-array",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/data/huge-array.mzML",
+        "${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/data/huge-array.mzML\",\"schema\":\"${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/libxml2/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/data/huge-array.mzML",
+      "schema": "${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd",
+      "expected_valid": true
+    },
+    {
+      "backend": "libxml2",
+      "case": "anyuri-windows",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd"
+      ],
+      "returncode": 1,
+      "stdout": "{\"valid\":false,\"file\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml\",\"schema\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd\"}\n",
+      "stderr": "Validation error in file '${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml' line 2 column 0: Element 'sourceFile', attribute 'location': 'file://F:\\Users\\example\\Dropbox (UCSD SBRG)\\data' is not a valid value of the atomic type 'xs:anyURI'.\n\n",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/libxml2/lib/libOpenMS.so",
+      "valid": false,
+      "file": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml",
+      "schema": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd",
+      "expected_valid": false
+    },
+    {
+      "backend": "libxml2",
+      "case": "anyuri-normalized",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml\",\"schema\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/libxml2/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml",
+      "schema": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd",
+      "expected_valid": true
+    },
+    {
+      "backend": "expat",
+      "case": "huge-array",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/data/huge-array.mzML",
+        "${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/data/huge-array.mzML\",\"schema\":\"${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/expat/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/data/huge-array.mzML",
+      "schema": "${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd",
+      "expected_valid": true
+    },
+    {
+      "backend": "expat",
+      "case": "anyuri-windows",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml\",\"schema\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/expat/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml",
+      "schema": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd",
+      "expected_valid": true
+    },
+    {
+      "backend": "expat",
+      "case": "anyuri-normalized",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml\",\"schema\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/expat/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml",
+      "schema": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd",
+      "expected_valid": true
+    },
+    {
+      "backend": "pugixml",
+      "case": "huge-array",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/data/huge-array.mzML",
+        "${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/data/huge-array.mzML\",\"schema\":\"${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/pugixml/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/data/huge-array.mzML",
+      "schema": "${XML_POC_ROOT}/optimized/source/share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd",
+      "expected_valid": true
+    },
+    {
+      "backend": "pugixml",
+      "case": "anyuri-windows",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml\",\"schema\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/pugixml/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-windows.xml",
+      "schema": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd",
+      "expected_valid": true
+    },
+    {
+      "backend": "pugixml",
+      "case": "anyuri-normalized",
+      "command": [
+        "${XML_POC_ROOT}/optimized/benchmark-build/xml_schema_validation_probe",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml",
+        "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd"
+      ],
+      "returncode": 0,
+      "stdout": "{\"valid\":true,\"file\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml\",\"schema\":\"${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd\"}\n",
+      "stderr": "",
+      "openms_library": "${XML_POC_ROOT}/optimized/snapshots/pugixml/lib/libOpenMS.so",
+      "valid": true,
+      "file": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri-normalized.xml",
+      "schema": "${XML_POC_ROOT}/optimized/staging/schema-fixtures/anyuri.xsd",
+      "expected_valid": true
+    }
+  ]
+}

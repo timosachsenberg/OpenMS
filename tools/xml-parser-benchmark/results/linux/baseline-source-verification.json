@@ -1,0 +1,8 @@
+{
+  "base": "77cccda7caf40b46a4919d33748450270eccd565",
+  "checked": 9022,
+  "skipped_export_subst": [
+    ".git_archival.txt"
+  ],
+  "failures": []
+}

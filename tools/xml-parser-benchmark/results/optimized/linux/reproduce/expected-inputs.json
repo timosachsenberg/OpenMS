@@ -1,0 +1,30 @@
+{
+  "small.mzML": {
+    "bytes": 4605393,
+    "sha256": "109da062313c3e25d9b10643b424e51a21cffe9ea250f502fbdde913c4270959"
+  },
+  "medium.mzML": {
+    "bytes": 140758760,
+    "sha256": "241f4c42b2315c011551875a1b74e964b513d4e5f440dafb89975e75546c0519"
+  },
+  "large.mzML": {
+    "bytes": 1126185409,
+    "sha256": "8f2c671efe432f61f21e682c8fd5a58dc4fd9f83ee2bb2020f38e8d0cc61abf7"
+  },
+  "medium-zlib.mzML": {
+    "bytes": 68885049,
+    "sha256": "adca5a3f2d35aa26d2d52102c3b61e4d6d69381a7b5adea18a7f502709bc81b7"
+  },
+  "medium-zlib.mzML.gz": {
+    "bytes": 42269997,
+    "sha256": "8c46ed3fb7809e8f665a3faa986cc25330fe6080b8c879e6b2aca21aaa54b99c"
+  },
+  "BSA1_F1.mzML": {
+    "bytes": 5788763,
+    "sha256": "c3eb9b13f423d89997d14ca68470951026a387afa3959b7dd1c59ceb9c16b2f4"
+  },
+  "huge-array.mzML": {
+    "bytes": 16783199,
+    "sha256": "a7afeee51a600050eb7e8f03e63d82cf8231781362a5c52e17e0a21c0487a81f"
+  }
+}
