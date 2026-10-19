@@ -10,6 +10,8 @@
 
 #include <xercesc/sax2/Attributes.hpp>
 #include <xercesc/util/XMLString.hpp>
+#include <xercesc/util/TransService.hpp>
+#include <cstring>
 
 namespace OpenMS::Internal
 {
@@ -38,9 +40,13 @@ namespace OpenMS::Internal
 
   const char16_t* XMLAttributes::value(const char* qname) const
   {
+    if (native_attributes_)
+    {
+      const xercesc::TranscodeFromStr transcoded(reinterpret_cast<const XMLByte*>(qname), std::strlen(qname), "UTF-8");
+      return value(reinterpret_cast<const char16_t*>(transcoded.str()));
+    }
     ::XMLCh* transcoded = xercesc::XMLString::transcode(qname);
-    const char16_t* val = native_attributes_ ? value(reinterpret_cast<const char16_t*>(transcoded)) :
-      reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(transcoded));
+    const char16_t* val = reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(transcoded));
     xercesc::XMLString::release(&transcoded);
     return val;
   }

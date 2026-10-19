@@ -23,7 +23,7 @@ namespace
   struct Handler : Internal::XMLHandler
   {
     Handler() : XMLHandler("memory", "1.0") {}
-    std::u16string text, attribute;
+    std::u16string text, attribute, unicode_attribute;
     Size starts = 0;
     bool stop = false, fail = false;
     void onStartElement(const char16_t*, const Internal::XMLAttributes& attrs) override
@@ -31,6 +31,7 @@ namespace
       ++starts;
       if (stop) { throw EndParsingSoftly(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION); }
       if (fail) { throw std::runtime_error("callback exception"); }
+      if (attrs.value("clé")) { unicode_attribute = attrs.value("clé"); }
       if (attrs.value("value"))
       {
         attribute = attrs.value("value");
@@ -49,8 +50,9 @@ START_SECTION((UTF8 Unicode, entities, CDATA, attributes, and chunk boundaries))
   Reader reader;
   Handler handler;
   const std::string repeated(70000, 'x');
-  reader.parseBuffer_("<root value='Grüße &amp; &#x1F9EC;'>&lt;<![CDATA[&]]>" + repeated + "🧬</root>", &handler);
+  reader.parseBuffer_("<root clé='é🧬' value='Grüße &amp; &#x1F9EC;'>&lt;<![CDATA[&]]>" + repeated + "🧬</root>", &handler);
   TEST_EQUAL(handler.attribute == u"Grüße & 🧬", true)
+  TEST_EQUAL(handler.unicode_attribute == u"é🧬", true)
   TEST_EQUAL(handler.text == std::u16string(u"<&") + std::u16string(70000, u'x') + u"🧬", true)
   TEST_EQUAL(handler.starts, 1)
 END_SECTION
