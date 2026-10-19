@@ -20,12 +20,27 @@
 #include <OpenMS/FORMAT/CompressedInputSource.h>
 #include <OpenMS/FORMAT/FileNameUtils.h>
 
+#include <OpenMS/FORMAT/HANDLERS/SAX2HandlerAdapter.h>
+
 #include <libxml/parser.h>
 #include <libxml/parserInternals.h>
 #include <xercesc/util/BinInputStream.hpp>
 #include <exception>
 #include <xercesc/framework/LocalFileInputSource.hpp>
 #include <xercesc/framework/MemBufInputSource.hpp>
+#include <xercesc/sax2/SAX2XMLReader.hpp>
+#include <xercesc/sax2/XMLReaderFactory.hpp>
+
+#include <algorithm>
+#include <cctype>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 
 #include <zlib.h>
@@ -161,7 +176,7 @@ private:
         });
       }
     };
-    void parse(xercesc::InputSource* const source, XMLHandler* handler)
+    void parseLibxmlPOC_(xercesc::InputSource* const source, XMLHandler* handler)
     {
       LibxmlState state{handler, {}};
       xmlSAXHandler sax{};
@@ -208,6 +223,450 @@ private:
       if (status)
       {
         throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "libxml2 rejected XML input");
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Benchmark prototype: runtime-selectable XML adapter.
+    //
+    // OPENMS_XML_ADAPTER selects how XMLFile feeds an XMLHandler:
+    //   libxml2-poc  (default) the unchanged proof-of-concept adapter above
+    //   xerces       Xerces SAX2 + SAX2HandlerAdapter, as on develop 77cccda
+    //   libxml2-sax2 reworked adapter: libxml2 SAX2 (startElementNs, attribute
+    //                values as pointers into the parser buffer), cached UTF-16
+    //                element/attribute names, reused UTF-16 value buffers
+    //   libxml2-utf8 libxml2-sax2 plus a UTF-8 path to the handler: attribute
+    //                helpers read UTF-8 directly, UTF-16 values are converted on
+    //                demand only, and MzMLHandler takes the UTF-8 element name
+    //   libxml2-fast libxml2-utf8 plus (a) Latin-1 input decoded by the adapter:
+    //                OpenMS writes mzML with encoding="ISO-8859-1"; libxml2
+    //                would run its byte-wise latin1ToUTF8 over the whole file.
+    //                The adapter passes pure-ASCII chunks through unchanged
+    //                (Latin-1 == UTF-8 there) and converts other chunks itself,
+    //                so decoding stays exact; (b) MzMLHandler's UTF-8 character
+    //                hook checks "data discarded" before its ASCII scan.
+    // The handler API (UTF-16 callbacks) is unchanged in all modes.
+    // -----------------------------------------------------------------------
+    enum class XMLAdapterMode { Xerces, LibxmlPOC, LibxmlSAX2, LibxmlUTF8, LibxmlFast };
+
+    XMLAdapterMode xmlAdapterMode_()
+    {
+      static const XMLAdapterMode mode = []
+      {
+        const char* value = std::getenv("OPENMS_XML_ADAPTER");
+        const std::string name = value ? value : "";
+        XMLAdapterMode result;
+        if (name.empty() || name == "libxml2-poc") { result = XMLAdapterMode::LibxmlPOC; }
+        else if (name == "xerces") { result = XMLAdapterMode::Xerces; }
+        else if (name == "libxml2-sax2") { result = XMLAdapterMode::LibxmlSAX2; }
+        else if (name == "libxml2-utf8") { result = XMLAdapterMode::LibxmlUTF8; }
+        else if (name == "libxml2-fast") { result = XMLAdapterMode::LibxmlFast; }
+        else
+        {
+          std::fprintf(stderr, "Unknown OPENMS_XML_ADAPTER '%s'\n", name.c_str());
+          std::abort();
+        }
+        if (std::getenv("OPENMS_XML_ADAPTER_VERBOSE"))
+        {
+          std::fprintf(stderr, "OpenMS XML adapter: %s\n", name.empty() ? "libxml2-poc" : name.c_str());
+        }
+        return result;
+      }();
+      return mode;
+    }
+
+    void parseXerces_(xercesc::InputSource* const source, XMLHandler* handler)
+    {
+      // Verbatim from develop 77cccda7caf40.
+      unique_ptr<xercesc::SAX2XMLReader> parser(xercesc::XMLReaderFactory::createXMLReader());
+
+      parser->setFeature(xercesc::XMLUni::fgSAX2CoreNameSpaces, false);
+      parser->setFeature(xercesc::XMLUni::fgSAX2CoreNameSpacePrefixes, false);
+
+      // XMLHandler exposes only Xerces-free callbacks; bridge it to the SAX parser.
+      SAX2HandlerAdapter adapter(*handler);
+      parser->setContentHandler(&adapter);
+      parser->setErrorHandler(&adapter);
+
+      // try to parse file
+      try
+      {
+        parser->parse(*source);
+      }
+      catch (const xercesc::XMLException& toCatch)
+      {
+        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "",std::string("XMLException: ") + StringManager().convert(toCatch.getMessage()));
+      }
+      catch (const xercesc::SAXException& toCatch)
+      {
+        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "",std::string("SAXException: ") + StringManager().convert(toCatch.getMessage()));
+      }
+      catch (const XMLHandler::EndParsingSoftly& /*toCatch*/)
+      {
+        // nothing to do here, as this exception is used to softly abort the
+        // parsing for whatever reason.
+      }
+      catch (...)
+      {
+        // re-throw
+        throw;
+      }
+    }
+
+    struct LibxmlSAX2State
+    {
+      struct Name
+      {
+        std::string utf8;
+        std::u16string utf16;
+      };
+
+      struct KeyHash
+      {
+        size_t operator()(const std::pair<const void*, const void*>& key) const noexcept
+        {
+          const auto a = reinterpret_cast<std::uintptr_t>(key.first);
+          const auto b = reinterpret_cast<std::uintptr_t>(key.second);
+          return std::hash<std::uintptr_t>()(a ^ (b * 0x9e3779b97f4a7c15ULL));
+        }
+      };
+
+      /// RAII: the UTF-8 element-name hint is only valid during onStartElement.
+      struct QNameHint
+      {
+        XMLHandler* handler;
+        ~QNameHint() { if (handler) { handler->setNativeQNameUTF8(nullptr); } }
+      };
+
+      XMLHandler* handler = nullptr;
+      std::exception_ptr exception;
+      bool utf8 = false;
+
+      // Element and attribute names come from libxml2's per-parser dictionary, so
+      // their pointers are stable during a parse. Each cache hit is still verified
+      // against the actual string, so correctness never depends on interning.
+      std::unordered_map<std::pair<const void*, const void*>, Name, KeyHash> names;
+
+      // Grow-only attribute buffers, reused for every element.
+      std::vector<const char*> names8;
+      std::vector<const char*> values8;
+      std::vector<Size> values8_length;
+      std::vector<const std::u16string*> names16;
+      std::vector<std::u16string> values16;
+      std::vector<unsigned char> ready;
+      std::u16string chars16;
+
+      static inline const char xmlns_marker = 0;
+
+      static LibxmlSAX2State& state(void* ctx)
+      {
+        return *static_cast<LibxmlSAX2State*>(static_cast<xmlParserCtxt*>(ctx)->_private);
+      }
+
+      static bool matches(const std::string& qname, const char* prefix, const char* local)
+      {
+        const char* q = qname.c_str();
+        if (prefix)
+        {
+          while (*prefix) { if (*q++ != *prefix++) { return false; } }
+          if (*q++ != ':') { return false; }
+        }
+        return std::strcmp(q, local) == 0;
+      }
+
+      const Name& lookup(const void* key, const char* prefix, const char* local)
+      {
+        auto [it, inserted] = names.try_emplace(std::make_pair(key, static_cast<const void*>(local)));
+        Name& entry = it->second;
+        if (inserted || !matches(entry.utf8, prefix, local))
+        {
+          entry.utf8.clear();
+          if (prefix) { entry.utf8 += prefix; entry.utf8 += ':'; }
+          entry.utf8 += local;
+          XMLAttributes::assignUTF16(entry.utf16, entry.utf8.data(), entry.utf8.size());
+        }
+        return entry;
+      }
+
+      const Name& name(const xmlChar* prefix, const xmlChar* local)
+      {
+        return lookup(prefix, reinterpret_cast<const char*>(prefix), reinterpret_cast<const char*>(local));
+      }
+
+      /// Namespace declarations re-exposed as "xmlns"/"xmlns:p" attributes, as Xerces does with namespaces off.
+      const Name& xmlnsName(const xmlChar* prefix)
+      {
+        static const char xmlns[] = "xmlns";
+        return prefix ? lookup(&xmlns_marker, xmlns, reinterpret_cast<const char*>(prefix))
+                      : lookup(&xmlns_marker, nullptr, xmlns);
+      }
+
+      void reserve(Size count)
+      {
+        if (names8.size() < count)
+        {
+          names8.resize(count);
+          values8.resize(count);
+          values8_length.resize(count);
+          names16.resize(count);
+          values16.resize(count);
+          ready.resize(count);
+        }
+      }
+
+      template <typename Callback> static void callback(void* ctx, Callback&& fn)
+      {
+        if (state(ctx).exception) { return; }
+        try { fn(state(ctx)); }
+        catch (...)
+        {
+          state(ctx).exception = std::current_exception();
+          xmlStopParser(static_cast<xmlParserCtxt*>(ctx));
+        }
+      }
+
+      static void start(void* ctx, const xmlChar* localname, const xmlChar* prefix, const xmlChar* /*uri*/,
+                        int nb_namespaces, const xmlChar** namespaces,
+                        int nb_attributes, int /*nb_defaulted*/, const xmlChar** attributes)
+      {
+        callback(ctx, [&](LibxmlSAX2State& s)
+        {
+          const Size count = static_cast<Size>(nb_namespaces) + static_cast<Size>(nb_attributes);
+          s.reserve(count);
+          Size k = 0;
+          for (int i = 0; i < nb_namespaces; ++i, ++k)
+          {
+            const Name& n = s.xmlnsName(namespaces[2 * i]);
+            const xmlChar* uri = namespaces[2 * i + 1];
+            s.names8[k] = n.utf8.c_str();
+            s.names16[k] = &n.utf16;
+            s.values8[k] = uri ? reinterpret_cast<const char*>(uri) : "";
+            s.values8_length[k] = uri ? static_cast<Size>(xmlStrlen(uri)) : 0;
+          }
+          for (int i = 0; i < nb_attributes; ++i, ++k)
+          {
+            const xmlChar** a = attributes + 5 * i; // localname, prefix, URI, value begin, value end
+            const Name& n = s.name(a[1], a[0]);
+            s.names8[k] = n.utf8.c_str();
+            s.names16[k] = &n.utf16;
+            s.values8[k] = reinterpret_cast<const char*>(a[3]);
+            s.values8_length[k] = static_cast<Size>(a[4] - a[3]);
+          }
+          if (s.utf8)
+          {
+            std::fill(s.ready.begin(), s.ready.begin() + count, static_cast<unsigned char>(0));
+          }
+          else
+          {
+            for (Size i = 0; i < count; ++i) { XMLAttributes::assignUTF16(s.values16[i], s.values8[i], s.values8_length[i]); }
+          }
+          XMLAttributes::NativeView view;
+          view.count = count;
+          view.names8 = s.names8.data();
+          view.values8 = s.values8.data();
+          view.values8_length = s.values8_length.data();
+          view.names16 = s.names16.data();
+          view.values16 = s.values16.data();
+          view.values16_ready = s.ready.data();
+          view.lazy_utf16 = s.utf8;
+          view.expose_utf8 = s.utf8;
+
+          const Name& element = s.name(prefix, localname);
+          QNameHint hint{s.utf8 ? s.handler : nullptr};
+          if (s.utf8) { s.handler->setNativeQNameUTF8(element.utf8.c_str()); }
+          s.handler->onStartElement(element.utf16.c_str(), XMLAttributes(view));
+        });
+      }
+
+      static void end(void* ctx, const xmlChar* localname, const xmlChar* prefix, const xmlChar* /*uri*/)
+      {
+        callback(ctx, [&](LibxmlSAX2State& s) { s.handler->onEndElement(s.name(prefix, localname).utf16.c_str()); });
+      }
+
+      static void characters(void* ctx, const xmlChar* text, int length)
+      {
+        callback(ctx, [&](LibxmlSAX2State& s)
+        {
+          const char* chars = reinterpret_cast<const char*>(text);
+          if (s.handler->tryOnCharactersUTF8(chars, static_cast<Size>(length))) { return; }
+          XMLAttributes::assignUTF16(s.chars16, chars, static_cast<Size>(length));
+          s.handler->onCharacters(s.chars16.c_str(), s.chars16.size());
+        });
+      }
+
+      static void error(void* ctx, const xmlError* error)
+      {
+        callback(ctx, [&](LibxmlSAX2State& s)
+        {
+          const std::string message = error->message ? error->message : "libxml2 parse error";
+          if (error->level == XML_ERR_WARNING) { s.handler->warning(XMLHandler::LOAD, message, error->line, error->int2); }
+          else { s.handler->fatalError(XMLHandler::LOAD, message, error->line, error->int2); }
+        });
+      }
+    };
+
+    /// Used by MzMLHandler (benchmark prototype): enable mode-specific handler fast paths.
+    bool xmlAdapterFastPaths_()
+    {
+      return xmlAdapterMode_() == XMLAdapterMode::LibxmlFast;
+    }
+
+    namespace
+    {
+      bool isLatin1Name_(std::string name)
+      {
+        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return name == "iso-8859-1" || name == "iso_8859-1" || name == "iso8859-1" || name == "latin1" ||
+               name == "latin-1" || name == "iso-latin-1" || name == "l1" || name == "iso-ir-100" ||
+               name == "cp819" || name == "ibm819" || name == "csisolatin1" || name == "iso_8859-1:1987";
+      }
+
+      /// Encoding named in an ASCII XML declaration at the very start of @p data; empty if absent/unreadable.
+      std::string declaredEncoding_(const char* data, std::size_t size)
+      {
+        const std::string_view head(data, std::min<std::size_t>(size, 1024));
+        if (head.substr(0, 5) != "<?xml") { return {}; } // BOM or non-ASCII-compatible encoding: leave to libxml2
+        const auto decl_end = head.find("?>");
+        if (decl_end == std::string_view::npos) { return {}; }
+        const std::string_view decl = head.substr(0, decl_end);
+        auto pos = decl.find("encoding");
+        if (pos == std::string_view::npos) { return {}; }
+        pos += 8;
+        auto skip_space = [&] { while (pos < decl.size() && (decl[pos] == ' ' || decl[pos] == '\t' || decl[pos] == '\r' || decl[pos] == '\n')) { ++pos; } };
+        skip_space();
+        if (pos >= decl.size() || decl[pos] != '=') { return {}; }
+        ++pos;
+        skip_space();
+        if (pos >= decl.size() || (decl[pos] != '"' && decl[pos] != '\'')) { return {}; }
+        const char quote = decl[pos++];
+        const auto value_end = decl.find(quote, pos);
+        if (value_end == std::string_view::npos) { return {}; }
+        return std::string(decl.substr(pos, value_end - pos));
+      }
+
+      bool isASCII_(const char* data, std::size_t size)
+      {
+        const auto* bytes = reinterpret_cast<const unsigned char*>(data);
+        std::uint64_t accumulated = 0;
+        std::size_t i = 0;
+        for (; i + 8 <= size; i += 8)
+        {
+          std::uint64_t word;
+          std::memcpy(&word, bytes + i, 8);
+          accumulated |= word;
+        }
+        for (; i < size; ++i) { accumulated |= bytes[i]; }
+        return (accumulated & 0x8080808080808080ULL) == 0;
+      }
+
+      void latin1ToUTF8_(const char* data, std::size_t size, std::string& out)
+      {
+        out.clear();
+        out.reserve(2 * size);
+        for (std::size_t i = 0; i < size; ++i)
+        {
+          const auto c = static_cast<unsigned char>(data[i]);
+          if (c < 0x80) { out.push_back(static_cast<char>(c)); }
+          else
+          {
+            out.push_back(static_cast<char>(0xc0 | (c >> 6)));
+            out.push_back(static_cast<char>(0x80 | (c & 0x3f)));
+          }
+        }
+      }
+    }
+
+    void parseLibxmlSAX2_(xercesc::InputSource* const source, XMLHandler* handler, bool utf8, bool fast = false)
+    {
+      LibxmlSAX2State state;
+      state.handler = handler;
+      state.utf8 = utf8;
+      xmlSAXHandler sax{};
+      xmlSAXVersion(&sax, 2);
+      sax.startElement = nullptr;
+      sax.endElement = nullptr;
+      sax.startElementNs = LibxmlSAX2State::start;
+      sax.endElementNs = LibxmlSAX2State::end;
+      sax.characters = LibxmlSAX2State::characters;
+      sax.cdataBlock = LibxmlSAX2State::characters;
+      // Without a DOM, libxml2 never classifies text as ignorable; sharing the
+      // callback lets it skip that per-chunk check.
+      sax.ignorableWhitespace = LibxmlSAX2State::characters;
+      auto free_parser = [](xmlParserCtxt* ctx)
+      {
+        if (ctx->myDoc) { xmlFreeDoc(ctx->myDoc); }
+        xmlFreeParserCtxt(ctx);
+      };
+      unique_ptr<xmlParserCtxt, decltype(free_parser)> parser(xmlCreatePushParserCtxt(&sax, nullptr, nullptr, 0, nullptr), free_parser);
+      if (!parser) { throw std::bad_alloc(); }
+      parser->_private = &state;
+      parser->userData = parser.get();
+      xmlCtxtSetErrorHandler(parser.get(), LibxmlSAX2State::error, parser.get());
+      // Same options and chunked feeding as the proof of concept.
+      const int options = XML_PARSE_NONET | XML_PARSE_NO_XXE | XML_PARSE_NOENT;
+      xmlCtxtUseOptions(parser.get(), options);
+      // libxml2-fast: decode Latin-1 in the adapter (see mode description above).
+      bool latin1 = false;
+      if (source->getEncoding())
+      {
+        const auto encoding = StringManager::convert(reinterpret_cast<const char16_t*>(source->getEncoding()));
+        if (fast && isLatin1Name_(encoding))
+        {
+          latin1 = true;
+          xmlCtxtUseOptions(parser.get(), options | XML_PARSE_IGNORE_ENC);
+        }
+        else if (xmlSwitchEncodingName(parser.get(), encoding.c_str()) != 0)
+        {
+          throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "Unsupported XML encoding: " + encoding);
+        }
+      }
+      const bool sniff_declaration = fast && !source->getEncoding();
+      unique_ptr<xercesc::BinInputStream> stream(source->makeStream());
+      if (!stream) { throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "Cannot open XML input stream"); }
+      char buffer[65536];
+      std::string converted;
+      bool first = true;
+      int status = 0;
+      while (!state.exception)
+      {
+        const auto count = stream->readBytes(reinterpret_cast<XMLByte*>(buffer), sizeof(buffer));
+        if (first && sniff_declaration && isLatin1Name_(declaredEncoding_(buffer, count)))
+        {
+          latin1 = true;
+          xmlCtxtUseOptions(parser.get(), options | XML_PARSE_IGNORE_ENC);
+        }
+        first = false;
+        const char* data = buffer;
+        std::size_t size = count;
+        if (latin1 && count > 0 && !isASCII_(buffer, count))
+        {
+          latin1ToUTF8_(buffer, count, converted);
+          data = converted.data();
+          size = converted.size();
+        }
+        status = xmlParseChunk(parser.get(), data, static_cast<int>(size), count == 0);
+        if (status || count == 0) { break; }
+      }
+      if (state.exception)
+      {
+        try { std::rethrow_exception(state.exception); }
+        catch (const XMLHandler::EndParsingSoftly&) { return; }
+      }
+      if (status)
+      {
+        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "libxml2 rejected XML input");
+      }
+    }
+
+    void parse(xercesc::InputSource* const source, XMLHandler* handler)
+    {
+      switch (xmlAdapterMode_())
+      {
+        case XMLAdapterMode::Xerces: parseXerces_(source, handler); break;
+        case XMLAdapterMode::LibxmlPOC: parseLibxmlPOC_(source, handler); break;
+        case XMLAdapterMode::LibxmlSAX2: parseLibxmlSAX2_(source, handler, false); break;
+        case XMLAdapterMode::LibxmlUTF8: parseLibxmlSAX2_(source, handler, true); break;
+        case XMLAdapterMode::LibxmlFast: parseLibxmlSAX2_(source, handler, true, true); break;
       }
     }
 

@@ -27,6 +27,9 @@
 
 namespace OpenMS::Internal
 {
+    // Defined in XMLFile.cpp (benchmark prototype): true in OPENMS_XML_ADAPTER=libxml2-fast mode.
+    bool xmlAdapterFastPaths_();
+
     namespace
     {
       /**
@@ -820,6 +823,8 @@ namespace OpenMS::Internal
       // unless the subclass explicitly opts in by overriding this new hook.
       if (typeid(*this) != typeid(MzMLHandler)) { return false; }
       if (length == 0) { return true; }
+      // Benchmark prototype (libxml2-fast): data that onCharacters would discard needs no ASCII scan.
+      if (xmlAdapterFastPaths_() && (skip_spectrum_ || skip_chromatogram_ || !options_.getFillData())) { return true; }
       if (std::any_of(chars, chars + length,
           [](unsigned char value) { return value >= 0x80; })) { return false; }
       if (skip_spectrum_ || skip_chromatogram_ || !options_.getFillData() || open_tags_.empty()) { return true; }
@@ -899,7 +904,9 @@ namespace OpenMS::Internal
       constexpr XMLCh s_scan_settings_ref[] = { 's','c','a','n','S','e','t','t','i','n','g','s','R','e','f' , 0};
 
 
-      open_tags_.push_back(sm_.convert(qname));
+      // Benchmark prototype: the libxml2-utf8 adapter mode passes the UTF-8 name alongside.
+      if (native_qname_utf8_ != nullptr) { open_tags_.emplace_back(native_qname_utf8_); }
+      else { open_tags_.push_back(sm_.convert(qname)); }
       const std::string& tag = open_tags_.back();
 
       // do nothing until a spectrum/chromatogram/spectrumList ends
