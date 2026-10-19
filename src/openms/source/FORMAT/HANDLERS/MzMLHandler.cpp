@@ -23,6 +23,8 @@
 #include <map>
 #include <xercesc/util/XMLString.hpp>
 
+#include <typeinfo>
+
 namespace OpenMS::Internal
 {
     namespace
@@ -809,9 +811,28 @@ namespace OpenMS::Internal
     }
 
 
+    bool MzMLHandler::tryOnCharactersUTF8(const char* chars, Size length)
+    {
+      // A subclass may override only onCharacters. Leave that dispatch intact
+      // unless the subclass explicitly opts in by overriding this new hook.
+      if (typeid(*this) != typeid(MzMLHandler)) { return false; }
+      if (length != 0 && std::any_of(chars, chars + length,
+          [](unsigned char value) { return value >= 0x80; })) { return false; }
+      if (skip_spectrum_ || skip_chromatogram_ || !options_.getFillData() || open_tags_.empty()) { return true; }
+      if (open_tags_.back() == "binary")
+      {
+        // XML parsers have normalized entities/line endings. Valid base64 is
+        // ASCII, so no UTF-8 -> UTF-16 -> ASCII round trip is needed here.
+        bin_data_.back().base64.append(chars, length);
+      }
+      return true;
+    }
+
     void MzMLHandler::onCharacters(const char16_t* chars, Size length)
     {
-      if (skip_spectrum_ || skip_chromatogram_)
+      // Metadata reads discard binary arrays on closing the spectrum. Avoid
+      // constructing their encoded payloads in the first place (also in Xerces).
+      if (skip_spectrum_ || skip_chromatogram_ || !options_.getFillData())
       {
         return;
       }

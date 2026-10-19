@@ -128,6 +128,11 @@ namespace OpenMS::Internal
     {
     }
 
+    bool XMLHandler::tryOnCharactersUTF8(const char* /*chars*/, Size /*length*/)
+    {
+      return false;
+    }
+
     void XMLHandler::writeTo(std::ostream & /*os*/)
     {
     }

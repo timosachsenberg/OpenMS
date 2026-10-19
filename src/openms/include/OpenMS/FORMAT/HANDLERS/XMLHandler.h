@@ -99,6 +99,16 @@ public:
       virtual void onEndElement(const char16_t * qname);
       /// Parsing method for character data
       virtual void onCharacters(const char16_t * chars, Size length);
+      /**
+        @brief Try to consume UTF-8 character data without UTF-16 conversion.
+
+        Length is in bytes; the input is borrowed for this call only. Return
+        false without side effects to request the adapter's existing UTF-16
+        conversion and onCharacters dispatch. The default always returns false.
+        Derived handlers opt in explicitly; existing UTF-16 overrides stay valid.
+      */
+      virtual bool tryOnCharactersUTF8(const char* chars, Size length);
+
       //@}
 
       /// Writes the contents to a stream.
