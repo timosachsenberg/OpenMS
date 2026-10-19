@@ -1,0 +1,2 @@
+/Users/kohlbach/Claude/OpenMS - XERCES Replacement/OpenMS-libxml2/src/tests/class_tests/openms/data/XMLValidator_missing_attribute.xml:1: Schemas validity error : Element 'Root': The attribute 'requiredAttribute' is required but missing.
+/Users/kohlbach/Claude/OpenMS - XERCES Replacement/OpenMS-libxml2/src/tests/class_tests/openms/data/XMLValidator_missing_element.xml:1: Schemas validity error : Element 'Root': Missing child element(s). Expected is ( requiredElement ).

@@ -80,6 +80,7 @@ set(OPENMS_DEP_PRIVATE_LIBRARIES
   Boost::boost
   CURL::libcurl
   XercesC::XercesC
+  LibXml2::LibXml2
   $<$<BOOL:${WITH_HDF5}>:HDF5::HDF5>
   ${LPTARGET}
   BZip2::BZip2

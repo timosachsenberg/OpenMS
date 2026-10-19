@@ -799,6 +799,7 @@ set(TEST_executables
     ${kernel_executables_list}
     ${metadata_executables_list}
     ${format_executables_list}
+    XMLParserBackend_test
     ${math_executables_list}
     ${filtering_executables_list}
     ${comparison_executables_list}

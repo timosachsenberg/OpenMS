@@ -20,6 +20,10 @@
 #include <OpenMS/FORMAT/CompressedInputSource.h>
 #include <OpenMS/FORMAT/FileNameUtils.h>
 
+#include <libxml/parser.h>
+#include <libxml/parserInternals.h>
+#include <xercesc/util/BinInputStream.hpp>
+#include <exception>
 #include <xercesc/framework/LocalFileInputSource.hpp>
 #include <xercesc/framework/MemBufInputSource.hpp>
 
@@ -78,41 +82,129 @@ private:
       enforced_encoding_ = encoding;
     }
 
+    // POC: keep the existing decompression streams, replace their XML parser.
+    // C callbacks capture every exception: no C++ exception crosses libxml2 frames.
+    struct LibxmlState
+    {
+      XMLHandler* handler;
+      std::exception_ptr exception;
+      static LibxmlState& state(void* ctx)
+      {
+        return *static_cast<LibxmlState*>(static_cast<xmlParserCtxt*>(ctx)->_private);
+      }
+      static std::u16string utf16(const xmlChar* text, int length = -1)
+      {
+        std::u16string result;
+        const unsigned char* cursor = text;
+        const unsigned char* end = text + (length < 0 ? xmlStrlen(text) : length);
+        while (cursor < end)
+        {
+          unsigned int cp = *cursor++;
+          if (cp >= 0xc0)
+          {
+            const int remaining = cp < 0xe0 ? 1 : cp < 0xf0 ? 2 : 3;
+            cp &= (1u << (6 - remaining)) - 1;
+            for (int i = 0; i < remaining && cursor < end; ++i) { cp = (cp << 6) | (*cursor++ & 0x3f); }
+          }
+          if (cp > 0xffff)
+          {
+            cp -= 0x10000;
+            result.push_back(static_cast<char16_t>(0xd800 + (cp >> 10)));
+            result.push_back(static_cast<char16_t>(0xdc00 + (cp & 0x3ff)));
+          }
+          else { result.push_back(static_cast<char16_t>(cp)); }
+        }
+        return result;
+      }
+      template <typename Callback> static void callback(void* ctx, Callback&& fn)
+      {
+        try { fn(state(ctx)); }
+        catch (...)
+        {
+          state(ctx).exception = std::current_exception();
+          xmlStopParser(static_cast<xmlParserCtxt*>(ctx));
+        }
+      }
+      static void start(void* ctx, const xmlChar* name, const xmlChar** attrs)
+      {
+        callback(ctx, [&](LibxmlState& s)
+        {
+          std::vector<std::pair<std::u16string, std::u16string>> values;
+          if (attrs)
+          {
+            for (Size i = 0; attrs[i]; i += 2) { values.emplace_back(utf16(attrs[i]), utf16(attrs[i + 1])); }
+          }
+          s.handler->onStartElement(utf16(name).c_str(), XMLAttributes(values));
+        });
+      }
+      static void end(void* ctx, const xmlChar* name)
+      {
+        callback(ctx, [&](LibxmlState& s) { s.handler->onEndElement(utf16(name).c_str()); });
+      }
+      static void characters(void* ctx, const xmlChar* text, int length)
+      {
+        callback(ctx, [&](LibxmlState& s)
+        {
+          const auto value = utf16(text, length);
+          s.handler->onCharacters(value.c_str(), value.size());
+        });
+      }
+      static void error(void* ctx, const xmlError* error)
+      {
+        callback(ctx, [&](LibxmlState& s)
+        {
+          const std::string message = error->message ? error->message : "libxml2 parse error";
+          if (error->level == XML_ERR_WARNING) { s.handler->warning(XMLHandler::LOAD, message, error->line, error->int2); }
+          else { s.handler->fatalError(XMLHandler::LOAD, message, error->line, error->int2); }
+        });
+      }
+    };
     void parse(xercesc::InputSource* const source, XMLHandler* handler)
     {
-      unique_ptr<xercesc::SAX2XMLReader> parser(xercesc::XMLReaderFactory::createXMLReader());
-
-      parser->setFeature(xercesc::XMLUni::fgSAX2CoreNameSpaces, false);
-      parser->setFeature(xercesc::XMLUni::fgSAX2CoreNameSpacePrefixes, false);
-
-      // XMLHandler exposes only Xerces-free callbacks; bridge it to the SAX parser.
-      SAX2HandlerAdapter adapter(*handler);
-      parser->setContentHandler(&adapter);
-      parser->setErrorHandler(&adapter);
-
-
-      // try to parse file
-      try
+      LibxmlState state{handler, {}};
+      xmlSAXHandler sax{};
+      xmlSAXVersion(&sax, 1);
+      sax.startElement = LibxmlState::start;
+      sax.endElement = LibxmlState::end;
+      sax.characters = LibxmlState::characters;
+      sax.cdataBlock = LibxmlState::characters;
+      sax.serror = LibxmlState::error;
+      auto free_parser = [](xmlParserCtxt* ctx)
       {
-        parser->parse(*source);
+        if (ctx->myDoc) { xmlFreeDoc(ctx->myDoc); }
+        xmlFreeParserCtxt(ctx);
+      };
+      unique_ptr<xmlParserCtxt, decltype(free_parser)> parser(xmlCreatePushParserCtxt(&sax, nullptr, nullptr, 0, nullptr), free_parser);
+      if (!parser) { throw std::bad_alloc(); }
+      parser->_private = &state;
+      parser->userData = parser.get();
+      xmlCtxtUseOptions(parser.get(), XML_PARSE_NONET | XML_PARSE_NO_XXE | XML_PARSE_NOENT);
+      if (source->getEncoding())
+      {
+        const auto encoding = StringManager::convert(reinterpret_cast<const char16_t*>(source->getEncoding()));
+        if (xmlSwitchEncodingName(parser.get(), encoding.c_str()) != 0)
+        {
+          throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "Unsupported XML encoding: " + encoding);
+        }
       }
-      catch (const xercesc::XMLException& toCatch)
+      unique_ptr<xercesc::BinInputStream> stream(source->makeStream());
+      if (!stream) { throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "Cannot open XML input stream"); }
+      char buffer[65536];
+      int status = 0;
+      while (!state.exception)
       {
-        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "",std::string("XMLException: ") + StringManager().convert(toCatch.getMessage()));
+        const auto count = stream->readBytes(reinterpret_cast<XMLByte*>(buffer), sizeof(buffer));
+        status = xmlParseChunk(parser.get(), buffer, static_cast<int>(count), count == 0);
+        if (status || count == 0) { break; }
       }
-      catch (const xercesc::SAXException& toCatch)
+      if (state.exception)
       {
-        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "",std::string("SAXException: ") + StringManager().convert(toCatch.getMessage()));
+        try { std::rethrow_exception(state.exception); }
+        catch (const XMLHandler::EndParsingSoftly&) { return; }
       }
-      catch (const XMLHandler::EndParsingSoftly& /*toCatch*/)
+      if (status)
       {
-        // nothing to do here, as this exception is used to softly abort the
-        // parsing for whatever reason.
-      }
-      catch (...)
-      {
-        // re-throw
-        throw;
+        throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "libxml2 rejected XML input");
       }
     }
 

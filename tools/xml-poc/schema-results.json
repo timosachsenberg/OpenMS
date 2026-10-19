@@ -1,0 +1,208 @@
+{
+  "library": "/opt/homebrew/opt/libxml2/lib/libxml2.dylib",
+  "schemas": [
+    {
+      "schema": "share/OpenMS/SCHEMAS/ConsensusXML_1_7.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/FeatureXML_1_9.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/FuGElightv1.0.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/IdXML_1_5.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/Param_1_7_0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/Param_1_8_0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/TraML1.0.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/TrafoXML_1_1.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/general_types_1.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzData_1_05.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzIdentML1.0.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzIdentML1.1.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzIdentML1.2.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzIdentML1.3.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzML_1_10.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzML_idx_1_10.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzXML_3.1_mod.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/mzXML_idx_3.1.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/pepXML_v114.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/protXML_v6.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/separation_technique_1.0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    },
+    {
+      "schema": "share/OpenMS/SCHEMAS/xQuest_1_0.xsd",
+      "compiled": true,
+      "xerces_compiled": true
+    }
+  ],
+  "validation": [
+    {
+      "file": "XMLValidator_missing_attribute.xml",
+      "schema": "XMLValidator.xsd",
+      "status": 1868,
+      "expected_valid": false,
+      "xerces_status": 1
+    },
+    {
+      "file": "XMLValidator_missing_element.xml",
+      "schema": "XMLValidator.xsd",
+      "status": 1871,
+      "expected_valid": false,
+      "xerces_status": 1
+    },
+    {
+      "file": "XMLValidator_syntax.xml",
+      "schema": "XMLValidator.xsd",
+      "status": -1,
+      "expected_valid": false,
+      "xerces_status": 1
+    },
+    {
+      "file": "XMLValidator_valid.xml",
+      "schema": "XMLValidator.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "FeatureXMLFile_1.featureXML",
+      "schema": "FeatureXML_1_9.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "FeatureXMLFile_2_options.featureXML",
+      "schema": "FeatureXML_1_9.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "ConsensusXMLFile_1.consensusXML",
+      "schema": "ConsensusXML_1_7.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "ConsensusXMLFile_2_options.consensusXML",
+      "schema": "ConsensusXML_1_7.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "TransformationXMLFile_1.trafoXML",
+      "schema": "TrafoXML_1_1.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "TransformationXMLFile_2.trafoXML",
+      "schema": "TrafoXML_1_1.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "TransformationXMLFile_3.trafoXML",
+      "schema": "TrafoXML_1_1.xsd",
+      "status": -1,
+      "expected_valid": false,
+      "xerces_status": 1
+    },
+    {
+      "file": "TransformationXMLFile_4.trafoXML",
+      "schema": "TrafoXML_1_1.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    },
+    {
+      "file": "MzMLFile_4_indexed.mzML",
+      "schema": "mzML_idx_1_10.xsd",
+      "status": 0,
+      "expected_valid": true,
+      "xerces_status": 0
+    }
+  ]
+}
