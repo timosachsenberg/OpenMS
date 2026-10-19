@@ -200,7 +200,7 @@ START_SECTION((UTF8 fast-path default preserves existing UTF16 virtual callbacks
   TEST_EQUAL(handler.text == u"β🧬 &", true)
 END_SECTION
 
-START_SECTION((MzML UTF8 opt-in preserves a derived handler's existing UTF16 override))
+START_SECTION((MzML UTF8 opt-in preserves a derived handler UTF16 override))
   OpenMS::MSExperiment experiment;
   OpenMS::ProgressLogger logger;
   OpenMS::Internal::MzMLHandler exact(experiment, "memory", "1.1.0", logger);
