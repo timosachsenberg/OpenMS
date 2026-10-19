@@ -26,17 +26,21 @@ class BenchmarkTest(unittest.TestCase):
                 self.assertTrue(result['verified'])
                 self.assertEqual(result['spectra'], 17)
                 self.assertEqual(result['points'], 17 * 31 + 17)
-                for mode in ('stream', 'indexed', 'index-open'):
+                for mode in ('stream', 'load', 'indexed', 'index-open', 'contexts', 'idle'):
                     single = invoke(mode, path, 1, 41)
                     parallel = invoke(mode, path, 4, 41)
                     self.assertEqual(single['hash_per_worker'], parallel['hash_per_worker'])
                     self.assertEqual(single['points_per_worker'], parallel['points_per_worker'])
+                    if mode in ('stream', 'load'):
+                        self.assertEqual(single['hash_per_worker'], result['hash'])
+                    if mode == 'contexts':
+                        self.assertEqual(single['index_spectra'], 17)
 
     def test_errors_propagate(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'broken.mzML'
             path.write_text('<mzML><broken></mzML>')
-            for mode in ('stream', 'indexed'):
+            for mode in ('stream', 'load', 'indexed', 'contexts'):
                 result = subprocess.run([LAUNCHER, BINARY, mode, str(path), '2', '3'], capture_output=True)
                 self.assertNotEqual(result.returncode, 0)
 

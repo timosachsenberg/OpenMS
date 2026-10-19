@@ -116,7 +116,7 @@ def main():
               for backend in backends for filename in inputs
               for mode in arguments.modes.split(',') for worker in workers
               for repetition in range(arguments.repetitions)
-              if mode == 'stream' or not filename.endswith(('.gz', '.bz2', '.zip'))]
+              if mode in ('stream', 'load', 'idle') or not filename.endswith(('.gz', '.bz2', '.zip'))]
     random.Random(20261019).shuffle(matrix)
     digests = {}
     arguments.output.parent.mkdir(parents=True, exist_ok=True)

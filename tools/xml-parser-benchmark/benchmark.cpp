@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -116,6 +117,8 @@ namespace
   struct Result
   {
     Digest digest;
+    // Keep opened contexts alive until every worker has completed.
+    std::shared_ptr<OpenMS::OnDiscMSExperiment> retained_context;
     double open_seconds = 0;
     double read_seconds = 0;
     std::size_t index_spectra = 0, index_chromatograms = 0;
@@ -128,6 +131,28 @@ namespace
     if (mode == "stream")
     {
       OpenMS::MzMLFile().transform(path, &result.digest, true, true);
+    }
+    else if (mode == "load")
+    {
+      OpenMS::MSExperiment experiment;
+      OpenMS::MzMLFile().load(path, experiment);
+      for (auto& spectrum : experiment) { result.digest.consumeSpectrum(spectrum); }
+      for (auto& chromatogram : experiment.getChromatograms()) { result.digest.consumeChromatogram(chromatogram); }
+    }
+    else if (mode == "idle")
+    {
+      // Warmup and worker creation are common; no input/context allocations.
+    }
+    else if (mode == "contexts")
+    {
+      result.retained_context = std::make_shared<OpenMS::OnDiscMSExperiment>();
+      if (!result.retained_context->openFile(path, true))
+      {
+        throw std::runtime_error("Input has no usable mzML index");
+      }
+      result.open_seconds = std::chrono::duration<double>(Clock::now() - begin).count();
+      result.index_spectra = result.retained_context->getNrSpectra();
+      result.index_chromatograms = result.retained_context->getNrChromatograms();
     }
     else if (mode == "indexed" || mode == "index-open")
     {
@@ -157,9 +182,9 @@ namespace
     }
     else
     {
-      throw std::runtime_error("Expected stream, indexed, or index-open");
+      throw std::runtime_error("Expected stream, load, indexed, index-open, contexts, or idle");
     }
-    if (mode == "stream")
+    if (mode == "stream" || mode == "load" || mode == "idle")
     {
       result.read_seconds = std::chrono::duration<double>(Clock::now() - begin).count();
     }
