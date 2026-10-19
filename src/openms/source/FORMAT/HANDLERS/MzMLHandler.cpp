@@ -244,8 +244,11 @@ namespace OpenMS::Internal
           }
           catch (...)
           {
-            ++errCount;
-            error_message = "Unknown exception during spectrum data population";
+            #pragma omp critical(MZMLErrorHandling)
+            {
+              ++errCount;
+              error_message = "Unknown exception during spectrum data population";
+            }
           }
         }
         }
