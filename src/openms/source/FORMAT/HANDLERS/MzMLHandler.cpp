@@ -816,7 +816,8 @@ namespace OpenMS::Internal
       // A subclass may override only onCharacters. Leave that dispatch intact
       // unless the subclass explicitly opts in by overriding this new hook.
       if (typeid(*this) != typeid(MzMLHandler)) { return false; }
-      if (length != 0 && std::any_of(chars, chars + length,
+      if (length == 0) { return true; }
+      if (std::any_of(chars, chars + length,
           [](unsigned char value) { return value >= 0x80; })) { return false; }
       if (skip_spectrum_ || skip_chromatogram_ || !options_.getFillData() || open_tags_.empty()) { return true; }
       if (open_tags_.back() == "binary")

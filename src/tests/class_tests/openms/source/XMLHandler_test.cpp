@@ -204,6 +204,7 @@ START_SECTION((MzML UTF8 opt-in preserves a derived handler's existing UTF16 ove
   OpenMS::MSExperiment experiment;
   OpenMS::ProgressLogger logger;
   OpenMS::Internal::MzMLHandler exact(experiment, "memory", "1.1.0", logger);
+  TEST_TRUE(exact.tryOnCharactersUTF8(nullptr, 0))
   TEST_TRUE(exact.tryOnCharactersUTF8("plain", 5))
   TEST_FALSE(exact.tryOnCharactersUTF8("β🧬", std::string("β🧬").size()))
   MzMLCharacterSpy derived(experiment, logger);
