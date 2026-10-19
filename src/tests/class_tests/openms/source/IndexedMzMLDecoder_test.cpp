@@ -94,6 +94,57 @@ END_SECTION
 
     
 
+START_SECTION(([EXTRA] Tiny files clamp footer reads and parse directly from one buffer))
+  std::string filename;
+  NEW_TMP_FILE(filename)
+  const std::string footer = "<indexList count='1'><index name='spectrum'><offset idRef='tiny'>37</offset>"
+    "</index></indexList><indexListOffset>0</indexListOffset></indexedmzML>";
+  { std::ofstream output(filename, std::ios::binary); output << footer; }
+  IndexedMzMLDecoder decoder;
+  TEST_EQUAL(decoder.findIndexListOffset(filename), 0)
+  TEST_EQUAL(decoder.findIndexListOffset(filename, 1), -1)
+  TEST_EQUAL(decoder.findIndexListOffset(filename, 0), -1)
+  TEST_EQUAL(decoder.findIndexListOffset(filename, -17), -1)
+  IndexedMzMLDecoder::OffsetVector spectra, chromatograms;
+  TEST_EQUAL(decoder.parseOffsets(filename, 0, spectra, chromatograms), 0)
+  TEST_EQUAL(spectra.size(), 1)
+  if (!spectra.empty())
+  {
+    TEST_STRING_EQUAL(spectra[0].first, "tiny")
+    TEST_EQUAL(spectra[0].second, 37)
+  }
+  TEST_TRUE(chromatograms.empty())
+  TEST_EQUAL(decoder.parseOffsets(filename, -1, spectra, chromatograms), -1)
+  TEST_EQUAL(decoder.parseOffsets(filename, std::streampos(footer.size()), spectra, chromatograms), -1)
+  TEST_EQUAL(decoder.parseOffsets(filename, std::streampos(footer.size() + 1), spectra, chromatograms), -1)
+END_SECTION
+
+START_SECTION(([EXTRA] Empty missing and truncated footer tokens return no offset))
+  std::string filename;
+  NEW_TMP_FILE(filename)
+  IndexedMzMLDecoder decoder;
+  for (const std::string& text : {std::string(), std::string("<root/>"), std::string("<indexListOff"),
+       std::string("<indexListOffset></indexListOffset>"), std::string("<indexListOffset>-1</indexListOffset>")})
+  {
+    { std::ofstream output(filename, std::ios::binary); output << text; }
+    TEST_EQUAL(decoder.findIndexListOffset(filename), -1)
+  }
+  // A file truncated to empty must be rejected before entering a backend DOM parser.
+  { std::ofstream output(filename, std::ios::binary); }
+  IndexedMzMLDecoder::OffsetVector spectra, chromatograms;
+  TEST_EQUAL(decoder.parseOffsets(filename, 0, spectra, chromatograms), -1)
+END_SECTION
+
+START_SECTION(([EXTRA] Namespaced footer pattern and overflowing offsets preserve conversion semantics))
+  std::string filename;
+  NEW_TMP_FILE(filename)
+  IndexedMzMLDecoder decoder;
+  { std::ofstream output(filename, std::ios::binary); output << "<ns:indexListOffset > 123</ns:indexListOffset>"; }
+  TEST_EQUAL(decoder.findIndexListOffset(filename), 123)
+  { std::ofstream output(filename, std::ios::binary); output << "<indexListOffset>" << std::string(100, '9') << "</indexListOffset>"; }
+  TEST_EXCEPTION(Exception::ConversionError, decoder.findIndexListOffset(filename))
+END_SECTION
+
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
 END_TEST

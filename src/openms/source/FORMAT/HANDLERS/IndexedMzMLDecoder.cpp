@@ -20,6 +20,8 @@
 #include <libxml/parser.h>
 #include <memory>
 #include <limits>
+#include <cstdint>
+#include <algorithm>
 
 namespace OpenMS
 {
@@ -67,139 +69,89 @@ namespace OpenMS
 
   int IndexedMzMLDecoder::parseOffsets(const std::string& filename, std::streampos indexoffset, OffsetVector& spectra_offsets, OffsetVector& chromatograms_offsets)
   {
-    //-------------------------------------------------------------
-    // Open file, jump to end and read last indexoffset bytes into buffer.
-    //-------------------------------------------------------------
-    std::ifstream f(filename.c_str());
+    std::ifstream f(filename, std::ios::binary);
     if (!f.is_open())
     {
       if (!File::exists(filename))
       {
         throw Exception::FileNotFound(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
       }
-      else if (!File::readable(filename))
+      if (!File::readable(filename))
       {
         throw Exception::FileNotReadable(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
       }
-      else
-      {
-        throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
-      }
+      throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
     }
 
-    // get length of file:
-    f.seekg(0, f.end);
-    std::streampos length = f.tellg();
-
-    if (indexoffset < 0 || indexoffset > length)
+    f.seekg(0, std::ios::end);
+    const std::streampos length = f.tellg();
+    if (!f || length < 0 || indexoffset < 0 || indexoffset > length)
     {
-      std::cerr << "IndexedMzMLDecoder::parseOffsets Error: Offset was " <<
-        indexoffset << " (not between 0 and " << length << ")." << std::endl;
+      std::cerr << "IndexedMzMLDecoder::parseOffsets Error: Offset was " << indexoffset
+                << " (not between 0 and " << length << ").\n";
       return -1;
     }
 
-    //-------------------------------------------------------------
-    // Read full end of file to parse offsets for spectra and chroms
-    //-------------------------------------------------------------
-    // read data as a block into a buffer
-
-    // allocate enough memory in buffer (+1 for string termination)
-    std::streampos readl = length - indexoffset;
-    char* buffer = new(std::nothrow) char[readl + std::streampos(1)];
-
-    // catch case where not enough memory is available
-    if (buffer == nullptr)
+    // Read straight into the final XML buffer: no raw allocation or full-tail copy.
+    std::string xml = "<indexedmzML>";
+    const Size prefix_size = xml.size();
+    const std::streamoff tail_length = length - indexoffset;
+    if (tail_length == 0 || tail_length > std::numeric_limits<std::streamsize>::max() ||
+        static_cast<std::uintmax_t>(tail_length) > xml.max_size() - prefix_size - 1)
     {
-      // Warning: Index takes up more than 10 % of the whole file, please check your input file.\n";
-      std::cerr << "IndexedMzMLDecoder::parseOffsets Could not allocate enough memory to read in index of indexedMzML" << std::endl;
-      std::cerr << "IndexedMzMLDecoder::parseOffsets calculated index offset " << indexoffset << " and file length " << length <<
-        ", consequently tried to read into memory " << readl << " bytes." << std::endl;
       return -1;
     }
-
-    // read into memory
-    f.seekg(-readl, f.end);
-    f.read(buffer, readl);
-    buffer[readl] = '\0';
-
-    //-------------------------------------------------------------
-    // Add a sane start element and then give it to a DOM parser
-    //-------------------------------------------------------------
-    // http://stackoverflow.com/questions/4691039/making-xerces-parse-a-string-insted-of-a-file
-    std::string tmp_fixed_xml = "<indexedmzML>" +  std::string(buffer) + "\n";
-    int res = domParseIndexedEnd_(tmp_fixed_xml, spectra_offsets, chromatograms_offsets);
-
-    delete[] buffer;
-
-    return res;
+    const Size tail_size = static_cast<Size>(tail_length);
+    xml.resize(prefix_size + tail_size + 1);
+    f.seekg(indexoffset);
+    if (!f) { return -1; }
+    f.read(xml.data() + prefix_size, static_cast<std::streamsize>(tail_length));
+    if (!f || f.gcount() != tail_length) { return -1; }
+    xml.back() = '\n';
+    return domParseIndexedEnd_(xml, spectra_offsets, chromatograms_offsets);
   }
 
   std::streampos IndexedMzMLDecoder::findIndexListOffset(const std::string& filename, int buffersize)
   {
-    // return value
-    std::streampos indexoffset = -1;
-
-    //-------------------------------------------------------------
-    // Open file, jump to end and read last n bytes into buffer.
-    //-------------------------------------------------------------
-    std::ifstream f(filename.c_str());
-
+    if (buffersize <= 0) { return -1; }
+    std::ifstream f(filename, std::ios::binary);
     if (!f.is_open())
     {
       if (!File::exists(filename))
       {
         throw Exception::FileNotFound(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
       }
-      else if (!File::readable(filename))
+      if (!File::readable(filename))
       {
         throw Exception::FileNotReadable(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
       }
-      else
-      {
-        throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
-      }
+      throw Exception::IOException(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, filename);
     }
 
-    // Read the last few bytes and hope our offset is there to be found
-    std::unique_ptr<char[]> buffer(new char[buffersize + 1]);
-    f.seekg(-buffersize, f.end);
-    f.read(buffer.get(), buffersize);
-    buffer.get()[buffersize] = '\0';
+    f.seekg(0, std::ios::end);
+    const std::streampos length = f.tellg();
+    if (!f || length < 0) { return -1; }
+    const std::streamoff read_length = std::min(static_cast<std::streamoff>(length), static_cast<std::streamoff>(buffersize));
+    std::string buffer;
+    if (read_length > std::numeric_limits<std::streamsize>::max() ||
+        static_cast<std::uintmax_t>(read_length) > buffer.max_size()) { return -1; }
+    buffer.resize(static_cast<Size>(read_length));
+    f.seekg(-read_length, std::ios::end);
+    if (!f) { return -1; }
+    f.read(buffer.data(), static_cast<std::streamsize>(read_length));
+    if (!f || f.gcount() != read_length) { return -1; }
 
-#ifdef DEBUG_READER
-    std::cout << " reading file " << filename  << " with size " << buffersize << '\n';
-    std::cout << buffer << '\n';
-#endif
-
-    //-------------------------------------------------------------
-    // Since we could be anywhere in the XML structure, use regex to find
-    // indexListOffset and read its content.
-    //-------------------------------------------------------------
-    boost::regex listoffset_rx(R"(<[^>/]*indexListOffset\s*>\s*(\d*))");
-    boost::cmatch matches;
-    boost::regex_search(buffer.get(), matches, listoffset_rx);
-    std::string thismatch(matches[1].first, matches[1].second);
-    if (!thismatch.empty())
-    {
-      try
-      {
-        indexoffset = OpenMS::IndexedMzMLUtils::stringToStreampos(thismatch);
-      }
-      catch (Exception::ConversionError& /*e*/)
-      {
-        std::cerr << "Corrupted / unreadable value in <indexListOffset> : " << thismatch << std::endl;
-        // free resources and re-throw
-        throw;  // re-throw conversion error
-      }
-    }
-    else
+    // The same namespace/whitespace-tolerant pattern is shared by independent
+    // readers; C++ initializes it once and regex_search never mutates it.
+    static const boost::regex listoffset_rx(R"(<[^>/]*indexListOffset\s*>\s*(\d*))");
+    boost::smatch matches;
+    if (!boost::regex_search(buffer, matches, listoffset_rx) || matches[1].length() == 0)
     {
       std::cerr << "IndexedMzMLDecoder::findIndexListOffset Error: Could not find element indexListOffset in the last "
-                << buffersize << " bytes. Maybe this is not a indexedMzML."
-                << buffer.get() << std::endl;
+                << read_length << " bytes. Maybe this is not an indexedMzML.\n";
+      return -1;
     }
-
-    return indexoffset;
+    return OpenMS::IndexedMzMLUtils::stringToStreampos(matches[1].str());
   }
 
   int IndexedMzMLDecoder::domParseIndexedEnd_(const std::string& in, OffsetVector& spectra_offsets, OffsetVector& chromatograms_offsets)
