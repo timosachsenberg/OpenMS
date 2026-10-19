@@ -108,8 +108,8 @@ START_SECTION(Indexed decoder supports a binary text node larger than 10 MB)
            "<cvParam accession='" + kind + "' name='" + (kind == "MS:1000514" ? "m/z array" : "intensity array") +
            "'/><cvParam accession='MS:1000576' name='no compression'/><binary>" + payload + "</binary></binaryDataArray>";
   };
-  const std::string xml = "<spectrum id='large' defaultArrayLength='1'><binaryDataArrayList count='2'>" +
-    array("MS:1000514", large_payload) + array("MS:1000515", "AAAAAAAAAAA=") + "</binaryDataArrayList></spectrum>";
+  const std::string xml = "<spectrum id='large' defaultArrayLength='1'><!-- </spectrum> --><binaryDataArrayList count='2'>" +
+    array("MS:1000514", large_payload) + array("MS:1000515", "AAAAAAAAAAA=") + "</binaryDataArrayList></spectrum></spectrumList><chromatogramList>";
   MzMLSpectrumDecoder decoder;
   MSSpectrum spectrum;
   decoder.domParseSpectrum(xml, spectrum);
@@ -119,6 +119,12 @@ START_SECTION(Indexed decoder supports a binary text node larger than 10 MB)
     TEST_EQUAL(spectrum[0].getMZ(), 0.0)
     TEST_EQUAL(spectrum[0].getIntensity(), 0.0)
   }
+END_SECTION
+START_SECTION(Indexed decoder rejects malformed XML inside the root)
+  MzMLSpectrumDecoder decoder;
+  MSSpectrum spectrum;
+  TEST_EXCEPTION(Exception::ParseError, decoder.domParseSpectrum("<spectrum defaultArrayLength='0'><broken></spectrum>", spectrum))
+  TEST_EXCEPTION(Exception::ParseError, decoder.domParseSpectrum("<spectrum defaultArrayLength='0'>raw &-</spectrum>", spectrum))
 END_SECTION
 START_SECTION(Indexed decoder retains the entity amplification guard under HUGE)
   std::string dtd = "<!DOCTYPE spectrum [<!ENTITY e0 '0123456789'>";

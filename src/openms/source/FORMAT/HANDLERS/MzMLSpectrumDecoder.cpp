@@ -11,6 +11,7 @@
 #include <OpenMS/FORMAT/HANDLERS/XMLHandler.h>
 
 #include <libxml/parser.h>
+#include <libxml/SAX2.h>
 #include <memory>
 #include <limits>
 
@@ -476,10 +477,25 @@ namespace OpenMS
     // HUGE also raises depth/name caps; external entities stay disabled and the
     // independent entity-amplification limit is explicitly retained at 5.
     xmlCtxtSetMaxAmplification(parser.get(), 5);
-    std::unique_ptr<xmlDoc, decltype(&xmlFreeDoc)> document(
-      xmlCtxtReadMemory(parser.get(), in.data(), static_cast<int>(in.size()), "spectrum.xml", nullptr,
-                       XML_PARSE_NONET | XML_PARSE_NO_XXE | XML_PARSE_NOENT | XML_PARSE_HUGE |
-                       XML_PARSE_NOERROR | XML_PARSE_NOWARNING), xmlFreeDoc);
+    // Indexed offset spans include the completed root followed by parent closing
+    // tags (and sometimes the next list opening). Stop at the real XML root end,
+    // using the parser rather than a lexical search through comments or CDATA.
+    xmlDoc* completed_document = nullptr;
+    parser->_private = &completed_document;
+    parser->sax->endElementNs = [](void* opaque, const xmlChar* name, const xmlChar* prefix, const xmlChar* uri)
+    {
+      auto* ctxt = static_cast<xmlParserCtxt*>(opaque);
+      xmlSAX2EndElementNs(ctxt, name, prefix, uri);
+      if (!ctxt->node)
+      {
+        *static_cast<xmlDoc**>(ctxt->_private) = ctxt->myDoc;
+        ctxt->myDoc = nullptr; // transfer ownership before xmlCtxtReadMemory handles USER_STOP
+        xmlStopParser(ctxt);
+      }
+    };
+    xmlDoc* returned_document = xmlCtxtReadMemory(parser.get(), in.data(), static_cast<int>(in.size()), "spectrum.xml", nullptr,
+      XML_PARSE_NONET | XML_PARSE_NO_XXE | XML_PARSE_NOENT | XML_PARSE_HUGE | XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
+    std::unique_ptr<xmlDoc, decltype(&xmlFreeDoc)> document(completed_document ? completed_document : returned_document, xmlFreeDoc);
     xmlNode* root = document ? xmlDocGetRootElement(document.get()) : nullptr;
     if (!root) { throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, in, "No root element or malformed XML"); }
     OPENMS_PRECONDITION(xmlStrEqual(root->name, BAD_CAST "spectrum") || xmlStrEqual(root->name, BAD_CAST "chromatogram"),
