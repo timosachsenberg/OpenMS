@@ -184,4 +184,20 @@ START_SECTION(Independent parser contexts on eight threads)
   }
   for (auto& worker : workers) { TEST_TRUE(worker.get()) }
 END_SECTION
+START_SECTION(Native ASCII attribute lookup and UTF8 fallback)
+  const std::vector<std::pair<std::u16string, std::u16string>> values{
+      {u"id", u"one"}, {u"idRef", u"two"}, {u"β", u"unicode"}, {u"naïve", u"accent"}};
+  const Internal::XMLAttributes attributes(values);
+  TEST_TRUE(attributes.value(u"id") != nullptr)
+  TEST_TRUE(attributes.value("id") == attributes.value(u"id"))
+  TEST_TRUE(attributes.value("idRef") == attributes.value(u"idRef"))
+  TEST_TRUE(attributes.value("idR") == nullptr)
+  TEST_TRUE(attributes.value("idReference") == nullptr)
+  TEST_TRUE(attributes.value("") == nullptr)
+  TEST_TRUE(attributes.value("missing") == nullptr)
+  TEST_TRUE(attributes.value(u"β") != nullptr)
+  TEST_TRUE(attributes.value("β") == attributes.value(u"β"))
+  TEST_TRUE(attributes.value("naïve") == attributes.value(u"naïve"))
+  TEST_TRUE(attributes.value("βmissing") == nullptr)
+END_SECTION
 END_TEST
