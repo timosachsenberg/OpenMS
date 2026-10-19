@@ -62,11 +62,38 @@ START_SECTION(Malformed XML and exception propagation)
   TEST_EXCEPTION(Exception::ParseError, reader.parseBuffer_("<root><broken></root>", &malformed))
   Handler failure;
   failure.fail = true;
-  TEST_EXCEPTION(std::runtime_error, reader.parseBuffer_("<root/>", &failure))
+  bool callback_failed = false;
+  try { reader.parseBuffer_("<root/>", &failure); }
+  catch (const std::runtime_error& error)
+  {
+    callback_failed = true;
+    TEST_STRING_EQUAL(error.what(), "callback exception")
+  }
+  TEST_TRUE(callback_failed)
   Handler stopped;
   stopped.stop = true;
   reader.parseBuffer_("<root><ignored/></root>", &stopped);
   TEST_EQUAL(stopped.starts, 1)
+END_SECTION
+START_SECTION(SAX1 parser errors retain the actual diagnostic and location)
+  Reader reader;
+  Handler handler;
+  bool caught = false;
+  try
+  {
+    reader.parseBuffer_("<root>\n<broken></root>", &handler);
+  }
+  catch (const Exception::ParseError& error)
+  {
+    caught = true;
+    const std::string message = error.getMessage();
+    TEST_TRUE(message.find("Opening and ending tag mismatch") != std::string::npos)
+    TEST_TRUE(message.find("broken") != std::string::npos)
+    TEST_TRUE(message.find("root") != std::string::npos)
+    TEST_TRUE(message.find("line 2") != std::string::npos)
+    TEST_TRUE(message.find("column ") != std::string::npos)
+  }
+  TEST_TRUE(caught)
 END_SECTION
 START_SECTION(External entity loading is disabled)
   std::string filename;

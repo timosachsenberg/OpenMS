@@ -116,6 +116,9 @@ private:
       }
       template <typename Callback> static void callback(void* ctx, Callback&& fn)
       {
+        // Stopping the parser can re-enter an error callback. Keep the original
+        // handler exception rather than replacing it with a parser-stop error.
+        if (state(ctx).exception) { return; }
         try { fn(state(ctx)); }
         catch (...)
         {
@@ -167,7 +170,6 @@ private:
       sax.endElement = LibxmlState::end;
       sax.characters = LibxmlState::characters;
       sax.cdataBlock = LibxmlState::characters;
-      sax.serror = LibxmlState::error;
       auto free_parser = [](xmlParserCtxt* ctx)
       {
         if (ctx->myDoc) { xmlFreeDoc(ctx->myDoc); }
@@ -177,6 +179,8 @@ private:
       if (!parser) { throw std::bad_alloc(); }
       parser->_private = &state;
       parser->userData = parser.get();
+      // SAX1 ignores sax.serror; the context-local API works in both SAX modes.
+      xmlCtxtSetErrorHandler(parser.get(), LibxmlState::error, parser.get());
       xmlCtxtUseOptions(parser.get(), XML_PARSE_NONET | XML_PARSE_NO_XXE | XML_PARSE_NOENT);
       if (source->getEncoding())
       {
