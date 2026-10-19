@@ -169,10 +169,10 @@ namespace
     {
       // Warmup and worker creation are common; no input/context allocations.
     }
-    else if (mode == "contexts")
+    else if (mode == "contexts" || mode == "contexts-metadata")
     {
       result.retained_context = std::make_shared<OpenMS::OnDiscMSExperiment>();
-      if (!result.retained_context->openFile(path, true))
+      if (!result.retained_context->openFile(path, mode != "contexts-metadata"))
       {
         throw std::runtime_error("Input has no usable mzML index");
       }
@@ -180,10 +180,10 @@ namespace
       result.index_spectra = result.retained_context->getNrSpectra();
       result.index_chromatograms = result.retained_context->getNrChromatograms();
     }
-    else if (mode == "indexed" || mode == "index-open")
+    else if (mode == "indexed" || mode == "index-open" || mode == "indexed-metadata")
     {
       OpenMS::OnDiscMSExperiment experiment;
-      if (!experiment.openFile(path, true))
+      if (!experiment.openFile(path, mode != "indexed-metadata"))
       {
         throw std::runtime_error("Input has no usable mzML index");
       }
@@ -191,7 +191,7 @@ namespace
       result.open_seconds = std::chrono::duration<double>(opened - begin).count();
       result.index_spectra = experiment.getNrSpectra();
       result.index_chromatograms = experiment.getNrChromatograms();
-      if (mode == "indexed")
+      if (mode == "indexed" || mode == "indexed-metadata")
       {
         if (experiment.getNrSpectra() == 0)
         {
@@ -208,7 +208,7 @@ namespace
     }
     else
     {
-      throw std::runtime_error("Expected stream, load, indexed, index-open, contexts, or idle");
+      throw std::runtime_error("Expected stream, load, indexed[-metadata], index-open, contexts[-metadata], or idle");
     }
     if (mode == "stream" || mode == "load" || mode == "idle")
     {

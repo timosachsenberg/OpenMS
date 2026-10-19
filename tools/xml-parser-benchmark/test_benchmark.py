@@ -26,23 +26,25 @@ class BenchmarkTest(unittest.TestCase):
                 self.assertTrue(result['verified'])
                 self.assertEqual(result['spectra'], 17)
                 self.assertEqual(result['points'], 17 * 31 + 17)
-                for mode in ('stream', 'load', 'indexed', 'index-open', 'contexts', 'idle'):
+                for mode in ('stream', 'load', 'indexed', 'index-open', 'contexts', 'idle', 'indexed-metadata', 'contexts-metadata'):
                     single = invoke(mode, path, 1, 41)
                     parallel = invoke(mode, path, 4, 41)
                     self.assertEqual(single['hash_per_worker'], parallel['hash_per_worker'])
                     self.assertEqual(single['points_per_worker'], parallel['points_per_worker'])
                     if mode in ('stream', 'load'):
                         self.assertEqual(single['hash_per_worker'], result['hash'])
-                    if mode == 'contexts':
+                    if mode.startswith('contexts'):
                         self.assertEqual(single['index_spectra'], 17)
                         self.assertGreater(single['resident_rss_bytes'], 0)
                         self.assertGreater(parallel['resident_rss_bytes'], 0)
+                    if mode == 'indexed-metadata':
+                        self.assertEqual(single['hash_per_worker'], invoke('indexed', path, 1, 41)['hash_per_worker'])
 
     def test_errors_propagate(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'broken.mzML'
             path.write_text('<mzML><broken></mzML>')
-            for mode in ('stream', 'load', 'indexed', 'contexts'):
+            for mode in ('stream', 'load', 'indexed', 'contexts', 'indexed-metadata', 'contexts-metadata'):
                 result = subprocess.run([LAUNCHER, BINARY, mode, str(path), '2', '3'], capture_output=True)
                 self.assertNotEqual(result.returncode, 0)
 

@@ -79,7 +79,7 @@ def summarize(records):
         item['job_read_seconds_median'] = statistics.median(job['read_seconds'] for row in rows for job in row['jobs'])
         if mode == 'stream':
             item['aggregate_mib_per_second'] = rows[0]['file_bytes'] * workers / median / 1024 ** 2
-        elif mode == 'indexed':
+        elif mode in ('indexed', 'indexed-metadata'):
             item['aggregate_spectra_per_second'] = rows[0]['spectra_per_worker'] * workers / median
         result.append(item)
     return result
