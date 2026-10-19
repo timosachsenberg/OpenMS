@@ -143,6 +143,7 @@ private:
       {
         callback(ctx, [&](LibxmlState& s)
         {
+          if (s.handler->tryOnCharactersUTF8(reinterpret_cast<const char*>(text), static_cast<Size>(length))) { return; }
           const auto value = utf16(text, length);
           s.handler->onCharacters(value.c_str(), value.size());
         });
