@@ -470,9 +470,16 @@ namespace OpenMS
     {
       throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, "", "XML fragment exceeds libxml2 memory API size limit");
     }
+    std::unique_ptr<xmlParserCtxt, decltype(&xmlFreeParserCtxt)> parser(xmlNewParserCtxt(), xmlFreeParserCtxt);
+    if (!parser) { throw std::bad_alloc(); }
+    // Large spectra can have a base64 text node exceeding the default 10 MB cap.
+    // HUGE also raises depth/name caps; external entities stay disabled and the
+    // independent entity-amplification limit is explicitly retained at 5.
+    xmlCtxtSetMaxAmplification(parser.get(), 5);
     std::unique_ptr<xmlDoc, decltype(&xmlFreeDoc)> document(
-      xmlReadMemory(in.data(), static_cast<int>(in.size()), "spectrum.xml", nullptr,
-                    XML_PARSE_NONET | XML_PARSE_NO_XXE | XML_PARSE_NOENT | XML_PARSE_NOERROR | XML_PARSE_NOWARNING), xmlFreeDoc);
+      xmlCtxtReadMemory(parser.get(), in.data(), static_cast<int>(in.size()), "spectrum.xml", nullptr,
+                       XML_PARSE_NONET | XML_PARSE_NO_XXE | XML_PARSE_NOENT | XML_PARSE_HUGE |
+                       XML_PARSE_NOERROR | XML_PARSE_NOWARNING), xmlFreeDoc);
     xmlNode* root = document ? xmlDocGetRootElement(document.get()) : nullptr;
     if (!root) { throw Exception::ParseError(__FILE__, __LINE__, OPENMS_PRETTY_FUNCTION, in, "No root element or malformed XML"); }
     OPENMS_PRECONDITION(xmlStrEqual(root->name, BAD_CAST "spectrum") || xmlStrEqual(root->name, BAD_CAST "chromatogram"),

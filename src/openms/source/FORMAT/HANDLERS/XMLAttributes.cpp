@@ -38,16 +38,11 @@ namespace OpenMS::Internal
 
   const char16_t* XMLAttributes::value(const char* qname) const
   {
-    if (native_attributes_)
-    {
-      std::u16string name;
-      while (*qname) { name.push_back(static_cast<unsigned char>(*qname++)); }
-      return value(name.c_str());
-    }
     ::XMLCh* transcoded = xercesc::XMLString::transcode(qname);
-    const ::XMLCh* val = attrs(attributes_)->getValue(transcoded);
+    const char16_t* val = native_attributes_ ? value(reinterpret_cast<const char16_t*>(transcoded)) :
+      reinterpret_cast<const char16_t*>(attrs(attributes_)->getValue(transcoded));
     xercesc::XMLString::release(&transcoded);
-    return reinterpret_cast<const char16_t*>(val);
+    return val;
   }
 
   SignedSize XMLAttributes::index(const char16_t* qname) const

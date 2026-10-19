@@ -13,7 +13,7 @@
 #include <OpenMS/CONCEPT/Macros.h>
 
 #include <OpenMS/FORMAT/HANDLERS/XMLHandler.h>
-#include <OpenMS/FORMAT/HANDLERS/SAX2HandlerAdapter.h>
+#include <OpenMS/FORMAT/HANDLERS/XMLAttributes.h>
 #include <OpenMS/SYSTEM/File.h>
 #include <OpenMS/FORMAT/VALIDATORS/XMLValidator.h>
 
@@ -27,8 +27,6 @@
 #include <xercesc/framework/LocalFileInputSource.hpp>
 #include <xercesc/framework/MemBufInputSource.hpp>
 
-#include <xercesc/sax2/SAX2XMLReader.hpp>
-#include <xercesc/sax2/XMLReaderFactory.hpp>
 
 #include <zlib.h>
 #include <bzlib.h>
@@ -263,8 +261,8 @@ private:
       // what if no encoding given http://xerces.apache.org/xerces-c/apiDocs-3/classInputSource.html
       if (!enforced_encoding_.empty())
       {
-        static const XMLCh* s_enc = xercesc::XMLString::transcode(enforced_encoding_.c_str());
-        source->setEncoding(s_enc);
+        const auto encoding = sm.convert(enforced_encoding_);
+        source->setEncoding(reinterpret_cast<const XMLCh*>(encoding.c_str()));
       }
       
       parse(source.get(), handler);
@@ -301,8 +299,8 @@ private:
       // what if no encoding given http://xerces.apache.org/xerces-c/apiDocs-3/classInputSource.html
       if (!enforced_encoding_.empty())
       {
-        static const XMLCh* s_enc = xercesc::XMLString::transcode(enforced_encoding_.c_str());
-        source->setEncoding(s_enc);
+        const auto encoding = sm.convert(enforced_encoding_);
+        source->setEncoding(reinterpret_cast<const XMLCh*>(encoding.c_str()));
       }
       
       parse(source.get(), handler);

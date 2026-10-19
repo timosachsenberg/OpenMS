@@ -13,6 +13,7 @@
 
 #include <libxml/xmlschemas.h>
 #include <memory>
+#include <exception>
 
 using namespace std;
 
@@ -21,13 +22,22 @@ namespace OpenMS
   class XMLValidatorErrorHandler_
   {
   public:
-    static void error(void* ctx, const xmlError* error)
+    struct Context
     {
-      // Context-local callback: independent validators do not share error state.
-      auto& validator = *static_cast<XMLValidator*>(ctx);
-      validator.logError_(error->level == XML_ERR_WARNING ? "warning" : "error",
-                          error->message ? error->message : "libxml2 validation error",
-                          error->line, error->int2);
+      XMLValidator* validator;
+      std::exception_ptr exception;
+    };
+    static void error(void* ctx, const xmlError* error) noexcept
+    {
+      auto& state = *static_cast<Context*>(ctx);
+      if (state.exception) { return; }
+      try
+      {
+        state.validator->logError_(error->level == XML_ERR_WARNING ? "warning" : "error",
+                                  error->message ? error->message : "libxml2 validation error",
+                                  error->line, error->int2);
+      }
+      catch (...) { state.exception = std::current_exception(); }
     }
   };
 
@@ -45,15 +55,18 @@ namespace OpenMS
     unique_ptr<xmlSchemaParserCtxt, decltype(&xmlSchemaFreeParserCtxt)> parser(
       xmlSchemaNewParserCtxt(schema.c_str()), xmlSchemaFreeParserCtxt);
     if (!parser) { throw std::bad_alloc(); }
-    xmlSchemaSetParserStructuredErrors(parser.get(), XMLValidatorErrorHandler_::error, this);
+    XMLValidatorErrorHandler_::Context errors{this, {}};
+    xmlSchemaSetParserStructuredErrors(parser.get(), XMLValidatorErrorHandler_::error, &errors);
     unique_ptr<xmlSchema, decltype(&xmlSchemaFree)> grammar(xmlSchemaParse(parser.get()), xmlSchemaFree);
+    if (errors.exception) { std::rethrow_exception(errors.exception); }
     if (!grammar) { return false; }
     unique_ptr<xmlSchemaValidCtxt, decltype(&xmlSchemaFreeValidCtxt)> validator(
       xmlSchemaNewValidCtxt(grammar.get()), xmlSchemaFreeValidCtxt);
     if (!validator) { throw std::bad_alloc(); }
-    xmlSchemaSetValidStructuredErrors(validator.get(), XMLValidatorErrorHandler_::error, this);
+    xmlSchemaSetValidStructuredErrors(validator.get(), XMLValidatorErrorHandler_::error, &errors);
     // Streaming validation preserves bounded memory for large mzML inputs.
     const int result = xmlSchemaValidateFile(validator.get(), filename.c_str(), XML_PARSE_NONET | XML_PARSE_NO_XXE);
+    if (errors.exception) { std::rethrow_exception(errors.exception); }
     return valid_ && result == 0;
   }
 
