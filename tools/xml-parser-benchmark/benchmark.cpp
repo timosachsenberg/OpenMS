@@ -119,6 +119,7 @@ namespace
     Digest digest;
     // Keep opened contexts alive until every worker has completed.
     std::shared_ptr<OpenMS::OnDiscMSExperiment> retained_context;
+    std::shared_ptr<OpenMS::MSExperiment> retained_experiment;
     double open_seconds = 0;
     double read_seconds = 0;
     std::size_t index_spectra = 0, index_chromatograms = 0;
@@ -134,7 +135,8 @@ namespace
     }
     else if (mode == "load")
     {
-      OpenMS::MSExperiment experiment;
+      result.retained_experiment = std::make_shared<OpenMS::MSExperiment>();
+      auto& experiment = *result.retained_experiment;
       OpenMS::MzMLFile().load(path, experiment);
       for (auto& spectrum : experiment) { result.digest.consumeSpectrum(spectrum); }
       for (auto& chromatogram : experiment.getChromatograms()) { result.digest.consumeChromatogram(chromatogram); }
