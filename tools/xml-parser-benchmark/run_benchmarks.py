@@ -73,6 +73,8 @@ def summarize(records):
                     repetitions=len(rows), seconds_median=median, seconds_min=min(seconds),
                     seconds_max=max(seconds), rss_mib_median=statistics.median(rss),
                     rss_mib_max=max(rss), hash_per_worker=rows[0]['hash_per_worker'])
+        if all('resident_rss_bytes' in row for row in rows):
+            item['resident_rss_mib_median'] = statistics.median(row['resident_rss_bytes'] / 1024 ** 2 for row in rows)
         item['job_open_seconds_median'] = statistics.median(job['open_seconds'] for row in rows for job in row['jobs'])
         item['job_read_seconds_median'] = statistics.median(job['read_seconds'] for row in rows for job in row['jobs'])
         if mode == 'stream':

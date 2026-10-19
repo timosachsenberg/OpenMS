@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -26,13 +27,36 @@
 #include <vector>
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
+#include <mach/mach.h>
 #elif defined(__linux__)
 #include <link.h>
+#include <unistd.h>
 #endif
 
 namespace
 {
   using Clock = std::chrono::steady_clock;
+
+  std::uint64_t currentRssBytes()
+  {
+#if defined(__APPLE__)
+    mach_task_basic_info_data_t info{};
+    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+                  reinterpret_cast<task_info_t>(&info), &count) == KERN_SUCCESS)
+    {
+      return info.resident_size;
+    }
+#elif defined(__linux__)
+    std::ifstream statm("/proc/self/statm");
+    std::uint64_t virtual_pages = 0, resident_pages = 0;
+    if (statm >> virtual_pages >> resident_pages)
+    {
+      return resident_pages * static_cast<std::uint64_t>(sysconf(_SC_PAGESIZE));
+    }
+#endif
+    return 0;
+  }
 
   std::string loadedLibrary()
   {
@@ -322,8 +346,11 @@ int main(int argc, char** argv)
         throw std::runtime_error("Worker index count mismatch");
       }
     }
+    // Query after joining, while retained contexts/experiments remain alive.
+    const auto resident_rss = currentRssBytes();
     std::cout << std::setprecision(12) << "{\"mode\":\"" << mode << "\",\"workers\":" << workers
               << ",\"openms_library\":" << std::quoted(loadedLibrary())
+              << ",\"resident_rss_bytes\":" << resident_rss
               << ",\"seconds\":" << seconds << ",\"file_bytes\":" << std::filesystem::file_size(path)
               << ",\"spectra_per_worker\":" << results.front().digest.spectra
               << ",\"chromatograms_per_worker\":" << results.front().digest.chromatograms

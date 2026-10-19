@@ -35,6 +35,8 @@ class BenchmarkTest(unittest.TestCase):
                         self.assertEqual(single['hash_per_worker'], result['hash'])
                     if mode == 'contexts':
                         self.assertEqual(single['index_spectra'], 17)
+                        self.assertGreater(single['resident_rss_bytes'], 0)
+                        self.assertGreater(parallel['resident_rss_bytes'], 0)
 
     def test_errors_propagate(self):
         with tempfile.TemporaryDirectory() as directory:
